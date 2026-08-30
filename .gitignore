@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Environments
+.env
+venv/
+env/
+.venv/
+
+# Data & Outputs
+data/raw/
+data/processed/
+data/external/
+output/
+tmp/
+reports/figures/
+reports/logs/
+reports/trained_models/
+*.npy
+*.pth
+*.h5
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

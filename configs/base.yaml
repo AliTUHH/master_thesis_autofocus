@@ -1,0 +1,29 @@
+# Data-generation settings. The distance interval is centered on the nominal
+# object-to-detector distance of 1.00 m. Sampling symmetrically around this
+# reference helps prevent a regression model from learning a biased mean value.
+image_size: 128
+distance_min: 0.95
+distance_max: 1.05
+num_samples: 3000
+test_split: 0.2
+
+# Training settings. The batch size controls how many holograms are processed
+# per optimization step, while the epoch count specifies complete passes over
+# the training split. The learning rate determines the Adam update magnitude.
+batch_size: 32
+epochs: 100
+learning_rate: 0.001
+
+# Model architecture. Each entry in conv_channels defines the output width of
+# one convolutional block. Batch normalization is applied inside every block
+# to stabilize activations and improve optimization behavior.
+conv_channels: [16, 32, 64, 128]
+fc_units: 256
+dropout_rate: 0.3
+
+# Output and input paths. These paths are resolved relative to the project root
+# when training is launched with the command documented in README.md.
+data_dir: "./data/raw/"
+log_dir: "./reports/logs/"
+model_dir: "./reports/trained_models/"
+figures_dir: "./reports/figures/"
