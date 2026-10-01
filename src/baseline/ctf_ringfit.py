@@ -551,7 +551,7 @@ def evaluate_file(
         float((np.abs(fr_minima_all[minima_ok] / fr_est_all[minima_ok] - 1.0) < 0.02).mean()) if minima_ok.any() else None
     )
     summary: dict[str, Any] = {
-        "data": str(data_path),
+        "data": _portable_path(data_path),
         "hologram_key": hologram_key,
         "num_samples": n,
         "hologram_shape": [int(s) for s in shape],
@@ -637,7 +637,7 @@ def _write_figures(rows: list[dict[str, Any]], examples: list[tuple[int, RingFit
     path = out_dir / "scatter.png"
     fig.savefig(path, dpi=140)
     plt.close(fig)
-    figures["scatter"] = str(path)
+    figures["scatter"] = path.name
 
     for i, result in examples:
         row = rows[i]
@@ -679,8 +679,16 @@ def _write_figures(rows: list[dict[str, Any]], examples: list[tuple[int, RingFit
         path = out_dir / f"example_{i:03d}.png"
         fig.savefig(path, dpi=130)
         plt.close(fig)
-        figures[f"example_{i:03d}"] = str(path)
+        figures[f"example_{i:03d}"] = path.name
     return figures
+
+
+def _portable_path(path: Path) -> str:
+    """Path relative to the project root when possible (keeps ``summary.json`` free of machine-specific prefixes)."""
+    try:
+        return str(path.resolve().relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
 
 
 def main(argv: list[str] | None = None) -> dict[str, Any]:
@@ -728,8 +736,7 @@ def main(argv: list[str] | None = None) -> dict[str, Any]:
         f"z01 MAE {z['mae']:.2f} mm, RMSE {z['rmse']:.2f} mm, p95 {z['p95']:.2f} mm, bias {z['bias']:+.2f} mm | "
         f"within 5 %: {summary['fraction_within_5pct'] * 100:.0f} % | {summary['ms_per_hologram']['median']:.1f} ms/hologram"
     )
-    out = Path(summary["figures"]["scatter"]).parent
-    print(f"report written to {out.relative_to(PROJECT_ROOT) if out.is_relative_to(PROJECT_ROOT) else out}")
+    print(f"report written to {_portable_path(resolve_path(args.out))}")
     return summary
 
 
