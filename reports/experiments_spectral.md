@@ -127,9 +127,12 @@ python -m src.baseline.ctf_ringfit --data data/processed/small_weak/test.hdf5 --
 
 ## 4. Offene Punkte
 
-* 0.4 %-Offset zwischen Ringperiode und HoloForge-Label bei schwachen Objekten (wächst ∝ Fr): HoloForge-
-  Simulationsgitter (`probe_size`, `padding_factor`, Binning um 8) gegen einen direkten Fresnel-Simulator
-  mit identischen Labels prüfen; bis dahin ist 0.4 % die Untergrenze jeder physikbasierten Methode auf diesen Daten.
+* ~~0.4 %-Offset zwischen Ringperiode und HoloForge-Label bei schwachen Objekten (wächst ∝ Fr)~~ – geklärt in
+  `reports/forge_label_verification.md`: Die Labels sind korrekt (HoloForge-Wellenfeld = Referenz-Propagator mit
+  Label-Fr auf 1e-7; gespeichertes Hologramm aus gespeichertem Phantom + Label reproduzierbar). Der Offset ist ein
+  Schwachobjekt-Bias des Ring-Fits (Term −φ²/2 von exp(iφ) wirkt als frequenzabhängige Absorption), ∝ φ·Fr; für
+  das linearisierte CTF-Modell derselben Phantome verschwindet er (+0.002 %). 0.4 % ist also die Grenze
+  CTF-basierter Schätzer bei φ ≈ 0.3 rad / Fr ≈ 0.01, nicht der Daten (Tests: `tests/test_forge_propagation_consistency.py`).
 * Mehr Seeds (≥ 3) für Hologramm- vs. 2-Kanal-CNN; Spektrum-CNN mit pool 4 oder ohne frühes 4×4-Pooling.
 * Hybrid: Ring-Fit (bzw. Minima-Regression) als Initialisierung/Prior für modellbasiertes Autofokus
   (Fokus-Metrik-Suche um Fr̂ ± 10 %) und als Plausibilitätscheck der CNN-Vorhersage bei schwachen Objekten.

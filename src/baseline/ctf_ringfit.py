@@ -19,6 +19,12 @@ floor, ``m`` the modulation depth and ``theta`` the mixing phase (``theta = 0`` 
 ``theta = pi`` for pure absorption; strong objects fill the zeros and shift the phase).  Estimating
 ``Fr`` is thus a 1-D period estimation problem on the azimuthally averaged log power spectrum.
 
+Weak-object limit: for objects that are not weak the second-order term ``-phi^2/2`` of ``exp(i phi)`` acts as an
+absorption with a frequency-dependent ratio to ``phi~``, i.e. ``theta`` drifts with ``u`` and the apparent period is
+biased by about ``-phi_peak[rad] * Fr / 0.01`` percent (Mg 1-2 um, 0.2-0.7 rad, Fr ~ 0.01: -0.4 %; the HoloForge
+labels themselves are exact, see ``reports/forge_label_verification.md`` and
+``tests/test_forge_propagation_consistency.py``).
+
 Algorithm (``template`` method, default)
 ----------------------------------------
 1. relative contrast ``x / mean(x) - 1`` (optionally tapered with a Tukey/Hann window), ``|FFT2|^2``;
