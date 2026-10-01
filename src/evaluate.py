@@ -208,7 +208,12 @@ def evaluate_checkpoint(
     # per-sample rows in the common baseline schema (src.baseline.results) for method comparisons and
     # the downstream reconstruction test (python -m src.eval.downstream --candidates-csv ...)
     values = physical_errors(pred, true, target_mode, setup)
+    # label = ml_<arch>[_<representation>] so that runs of the same architecture on different input
+    # representations stay distinguishable when several samples.csv files are merged
     method = f"ml_{config.get('model', {}).get('arch', 'cnn')}"
+    representation = str(config.get("data", {}).get("representation", "hologram"))
+    if representation != "hologram":
+        method += "_" + representation.replace("+", "_")
     rows = [
         make_result_row(
             i, data_path.name, values["fr_true"][i], values["z01_true_mm"][i], values["fr_pred"][i], values["z01_pred_mm"][i],
