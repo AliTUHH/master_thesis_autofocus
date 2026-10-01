@@ -1,130 +1,1012 @@
 % =============================================================================
 % Kapitel 2: Grundlagen
 % -----------------------------------------------------------------------------
-% Was hinein gehört (Richtwert 12--18 Seiten):
-%  2.1 Röntgen-Nahfeldholographie (NFH)
-%      - Synchrotronstrahlung, Kohärenz, Phasenkontrast
-%      - komplexer Brechungsindex n = 1 - delta + i beta, Projektionsnäherung,
-%        Exit-Wave psi = exp(iO) * P (Notation der Aufgabenstellung)
-%      - Kegelstrahl-Geometrie an P05: Quelle -> Objekt (z01) -> Detektor (z02)
+% Vollständiger Entwurf (Stand 2026-10-01). Gliederung:
+%  2.1 Synchrotronstrahlung, Kohärenz und Phasenkontrast
 %  2.2 Fresnel-Propagation
-%      - Fresnel-Kirchhoff/paraxiale Näherung, Propagator D_Fr im Fourierraum
-%      - Intensität I = |D_Fr(psi)|^2, Verlust der Phase
-%  2.3 Fresnel-Zahl und Fresnel-Skalierungstheorem
-%      - Definition Fr (pixelbezogen), effektive Distanz z_eff, Vergrößerung M
-%      - Sensitivität des Hologramms gegenüber Fr (-> warum Autofokus möglich ist)
-%  2.4 Phase Retrieval
-%      - Klassiker: Fienup 1982 (iterative Projektionen), Paganin 2002 (TIE, ein
-%        Abstand, homogenes Objekt), CTF-Methoden
-%      - ASRM (Dora et al. 2024): Modell, Regularisierung, Lösung ohne Support
-%  2.5 Das Autofokus-Problem
-%      - Fr als freier Modellparameter; Fehlfokus -> Artefakte
-%      - modellbasierter Autofokus (Dora et al. 2025): Zielfunktion, Optimierer
-%        (z. B. Nelder-Mead), Laufzeit -> Motivation für Lernverfahren
-%  2.6 Deep Learning für Regression
-%      - CNN-Bausteine, Verlustfunktionen (MSE/MAE/Huber), Normierung der Ziel-
-%        größe (Fr vs. log Fr vs. z01), Generalisierung, Datenaugmentierung
-%  2.7 Simulationsbasierte Inferenz (SBI)
-%      - Idee: Simulator + neuronaler Dichteschätzer -> Posterior p(Fr | I)
-%      - NPE/NLE/NRE, sbi-Toolkit (Tejero-Cantero 2020, Boelts 2025),
-%        Praxisleitfaden (Deistler 2025); Nutzen: Unsicherheit statt Punktschätzung
-% Konventionen: Notation aus main.tex (\Fr, \zOne, \zTwo, \magn, \wl, \dx, \prop)
+%  2.3 Kegelstrahlgeometrie und Fresnel-Skalierungstheorem
+%  2.4 Kontrastübertragung schwacher Objekte
+%  2.5 Das Phasenproblem und Phase Retrieval
+%  2.6 Das Autofokus-Problem
+%  2.7 Grundlagen des maschinellen Lernens für Regression
+%  2.8 Simulationsbasierte Inferenz
+% Konventionen: Notation aus main.tex (\Fr, \zOne, \zTwo, \magn, \wl, \dx, \prop);
+% Einheiten wie in HoloWizard (mm, keV, nm); alle Zahlenwerte mit
+% holowizard.forge.utils.calc_Fr bzw. xraylib nachgerechnet (siehe
+% thesis/figures/scripts/ und docs/01_thesis_erklaerung.md).
+% Offene Punkte sind als "% TODO" kommentiert.
 % =============================================================================
 \chapter{\lang{Grundlagen}{Fundamentals}}
 \label{ch:grundlagen}
 
-\section{\lang{Röntgen-Nahfeldholographie}{X-ray Near-field Holography}}
+Dieses Kapitel stellt die physikalischen und methodischen Grundlagen bereit, auf
+denen der lernbasierte Autofokus aufbaut. Ausgehend von der Wechselwirkung harter
+Röntgenstrahlung mit Materie wird das Vorwärtsmodell der
+\ac{nfh} entwickelt und gezeigt, dass es in Pixeleinheiten neben dem Objekt und
+der Beleuchtung nur von einem einzigen Skalar abhängt, der Fresnel-Zahl $\Fr$.
+Anschließend werden die Rekonstruktionsverfahren beschrieben, die eine exakte
+Kenntnis von $\Fr$ voraussetzen, das Autofokus-Problem formuliert und die
+Werkzeuge des maschinellen Lernens eingeführt, mit denen $\Fr$ direkt aus dem
+Hologramm geschätzt werden soll.
+
+% -----------------------------------------------------------------------------
+\section{\lang{Synchrotronstrahlung, Kohärenz und Phasenkontrast}{Synchrotron Radiation, Coherence and Phase Contrast}}
 \label{sec:grundlagen:nfh}
 
-\lang{%
-Ein Objekt wird durch seinen komplexen Brechungsindex
-$n(\vect{r}) = 1 - \delta(\vect{r}) + \mathrm{i}\beta(\vect{r})$ beschrieben, wobei
-$\delta$ die Phasenverschiebung und $\beta$ die Absorption kodiert. In
-Projektionsnäherung ergibt sich die Austrittswelle hinter dem Objekt als Produkt
-aus Beleuchtung $P$ und Objekttransmission.
-}{%
-An object is described by its complex refractive index
-$n(\vect{r}) = 1 - \delta(\vect{r}) + \mathrm{i}\beta(\vect{r})$, where $\delta$
-encodes the phase shift and $\beta$ the absorption. In the projection
-approximation the exit wave behind the object is the product of the illumination
-$P$ and the object transmission.
-}
-\todo{\lang{Herleitung und Skizze der Geometrie ergänzen.}{Add derivation and a sketch of the geometry.}}
+\subsection{Harte Röntgenstrahlung und komplexer Brechungsindex}
 
+Synchrotronquellen der dritten Generation wie PETRA~III am \ac{desy} liefern
+harte Röntgenstrahlung hoher Brillanz, die nach Monochromatisierung in guter
+Näherung monochromatisch ist und über das Bildfeld eine hohe räumliche
+Kohärenz besitzt \cite{alsnielsen2011elements,nugent2010coherent}. Die
+Photonenenergie $E$ und die Wellenlänge $\wl$ sind über
+\begin{equation}
+  \wl = \frac{hc}{E} \approx \frac{\qty{1.2398}{\kilo\electronvolt\,\nano\metre}}{E}
+  \label{eq:grundlagen:wellenlaenge}
+\end{equation}
+verknüpft; bei $E = \qty{11}{\kilo\electronvolt}$ folgt
+$\wl = \qty{0.1127}{\nano\metre}$. Dieselbe Konstante verwendet HoloWizard
+\cite{dora2026holowizard} intern, sodass alle Zahlenwerte dieser Arbeit mit der
+dort implementierten Umrechnung übereinstimmen.
+
+Die Wechselwirkung mit Materie wird durch den komplexen Brechungsindex
+\begin{equation}
+  n(\vect{r}) = 1 - \delta(\vect{r}) + \mathrm{i}\,\beta(\vect{r})
+  \label{eq:grundlagen:brechungsindex}
+\end{equation}
+beschrieben. Das Dekrement $\delta$ bewirkt eine Phasenverschiebung, $\beta$ die
+Absorption. Für harte Röntgenstrahlung gilt $\delta,\beta \ll 1$ und abseits von
+Absorptionskanten $\delta \gg \beta$; $\delta$ ist proportional zur
+Elektronendichte und skaliert mit $\wl^2$, $\beta$ fällt mit der Energie deutlich
+schneller ab \cite{alsnielsen2011elements,henke1993xray}. \Cref{tab:grundlagen:material}
+gibt Werte für einige Materialien bei \qty{11}{\kilo\electronvolt} an, berechnet
+mit der Bibliothek \texttt{xraylib} \cite{schoonjans2011xraylib}, die auch der
+Simulator HoloForge verwendet. Das Verhältnis $\delta/\beta$ liegt zwischen etwa
+10 für Übergangsmetalle und mehreren hundert für Wasser und organisches
+Material: Der Phasenschub ist um ein bis drei Größenordnungen stärker als die
+Absorption. Für biologische Proben und Leichtmetalle ist der
+Absorptionskontrast deshalb oft zu schwach, während der Phasenkontrast nach wie
+vor hoch ist -- die Motivation phasensensitiver Bildgebung
+\cite{snigirev1995possibilities,wilkins1996phase,cloetens1999holotomography}.
+
+\begin{table}[tbp]
+  \centering
+  \small
+  \caption[Brechungsindexdekremente ausgewählter Materialien bei \qty{11}{\kilo\electronvolt}]{%
+    Brechungsindexdekremente ausgewählter Materialien bei
+    $E = \qty{11}{\kilo\electronvolt}$ ($\wl = \qty{0.1127}{\nano\metre}$,
+    $k = 2\pi/\wl = \qty{55.7}{\per\micro\metre}$), berechnet mit
+    \texttt{xraylib} \cite{schoonjans2011xraylib} für die angegebenen Dichten.
+    Der Phasenschub pro Mikrometer Dicke ist $-k\delta$, die Intensitätsabsorption
+    einer \qty{30}{\micro\metre} dicken Schicht $1 - \mathrm{e}^{-2k\beta t}$.}
+  \label{tab:grundlagen:material}
+  \small
+  \begin{tabular}{@{}l S[table-format=2.2] S[table-format=1.2e-1] S[table-format=1.2e-1] S[table-format=3.0] S[table-format=-1.3] S[table-format=2.1]@{}}
+    \toprule
+    Material & {$\rho$ in \unit{\gram\per\cubic\centi\metre}} & {$\delta$} & {$\beta$} & {$\delta/\beta$} & {$-k\delta$ in \unit{\radian\per\micro\metre}} & {Absorption in \unit{\percent}} \\
+    \midrule
+    Wasser    & 1.00  & 1.91e-6 & 3.61e-9 & 529 & -0.107 & 1.2 \\
+    Magnesium & 1.74  & 2.97e-6 & 2.48e-8 & 120 & -0.166 & 8.0 \\
+    Aluminium & 2.70  & 4.51e-6 & 4.80e-8 & 94  & -0.252 & 14.8 \\
+    Eisen     & 7.87  & 1.27e-5 & 9.34e-7 & 14  & -0.705 & 95.6 \\
+    Kupfer    & 8.96  & 1.38e-5 & 1.37e-6 & 10  & -0.768 & 99.0 \\
+    Gold      & 19.32 & 2.41e-5 & 1.61e-6 & 15  & -1.341 & 99.5 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Projektionsnäherung und Austrittswelle}
+
+Ist das Objekt dünn genug, dass Beugung innerhalb des Objekts vernachlässigt
+werden kann, gilt die \emph{Projektionsnäherung}
+\cite{paganin2006coherent}: Die Welle sammelt entlang gerader Strahlen Phase
+und Dämpfung auf. Das Objekt wird dann vollständig durch den komplexen
+projizierten Brechungsindex
+\begin{equation}
+  \tilde O(x,y) = -k \int \big(\delta(x,y,z) - \mathrm{i}\,\beta(x,y,z)\big)\,\mathrm{d}z
+                = \varphi(x,y) + \mathrm{i}\,\mu(x,y)
+  \label{eq:grundlagen:projiziert}
+\end{equation}
+beschrieben, mit der Wellenzahl $k = 2\pi/\wl$, dem Phasenschub
+$\varphi \le 0$ und dem Absorptionsterm $\mu \ge 0$ \cite{dora2024asrm,dora2025autofocus}.
+Die Austrittswelle direkt hinter dem Objekt ist das Produkt aus
+Objekttransmission und einfallender Beleuchtung $P$ (im Folgenden auch
+\emph{Probe} genannt):
+\begin{equation}
+  \psi(x,y) = \exp\!\big(\mathrm{i}\,\tilde O(x,y)\big)\,P(x,y)
+            = \mathrm{e}^{\mathrm{i}\varphi}\,\mathrm{e}^{-\mu}\,P .
+  \label{eq:grundlagen:exitwave}
+\end{equation}
+Das Betragsquadrat $\abs{\psi}^2 = \mathrm{e}^{-2\mu}\abs{P}^2$ ist das
+Lambert-Beer-Gesetz mit dem linearen Schwächungskoeffizienten
+$\mu_{\mathrm{lin}} = 2k\beta = 4\pi\beta/\wl$. Die Vorzeichenbedingungen
+$\varphi \le 0$ und $\mu \ge 0$ sind physikalisch begründet -- Röntgenlicht
+wird durch Materie nur negativ phasenverschoben, und ein Objekt fügt dem Strahl
+keine Intensität hinzu -- und bilden das zentrale A-priori-Wissen der in
+\cref{sec:grundlagen:pr} beschriebenen Rekonstruktion. In \cite{dora2024asrm}
+wird diese Nebenbedingungsmenge als
+\begin{equation}
+  \Omega_P = \big\{\tilde O :\ \operatorname{Re}\tilde O \le 0,\ \operatorname{Im}\tilde O \ge -\ln A_0\big\}
+  \label{eq:grundlagen:omegaP}
+\end{equation}
+formuliert, wobei der Intensitätsoffset $A_0 \ge 1$ Restfehler der
+Flatfield-Korrektur auffängt.
+
+Aus \cref{tab:grundlagen:material} folgt unmittelbar, welche Objekte als
+\emph{schwach} oder \emph{stark} gelten: Ein \qty{30}{\micro\metre} dicker
+Magnesiumdraht, ein Standardobjekt in \cite{dora2025autofocus}, erzeugt rund
+\qty{-5}{\radian} Phasenschub bei nur \qty{8}{\percent} Absorption. Solche
+stark phasenschiebenden, schwach absorbierenden Objekte liegen weit außerhalb
+der Gültigkeit linearisierter Modelle (\cref{sec:grundlagen:ctf}), sind an der
+\ac{p05} aber der Regelfall.
+
+\subsection{Beleuchtung, Flatfield und Detektor}
+
+An der Nano-Imaging-Endstation der \ac{p05} wird der Strahl mit einer
+\ac{fzp} fokussiert; der Fokus wirkt als nahezu punktförmige Quelle, aus der
+ein Kegelstrahl divergiert \cite{dora2024asrm,dora2025autofocus}. Die
+Beleuchtung in der Objektebene ist nicht eben, sondern trägt die Amplituden-
+und Phasenstruktur der Optik, $P = A_0\,\mathrm{e}^{\mathrm{i}\phi_0}$
+\cite{dora2024asrm,hagemann2017thesis}. Eine Leeraufnahme ohne Objekt, das
+\emph{Flatfield}, misst die propagierte Intensität $\abs{\prop{}(P)}^2$ in der
+Detektorebene. Die Division des Hologramms durch das Flatfield entfernt die
+Intensitätsstruktur der Beleuchtung näherungsweise, nicht jedoch deren
+Phasenstruktur; verbleibende Abweichungen von einer ebenen Welle sind eine
+der wesentlichen Fehlerquellen realer Daten \cite{hagemann2017thesis}. Der
+Detektor registriert ausschließlich Intensitäten
+$I = \abs{\prop{}(\psi)}^2$; die Phase der propagierten Welle geht verloren.
+Zu den Störungen zählen Photonenrauschen, Ausleserauschen, die Unschärfe des
+Szintillators und Restfehler der Flatfield-Korrektur
+\cite{dora2024asrm,dora2025autofocus}.
+
+Das Intensitätsbild ist die Interferenz der ungestreuten Beleuchtung mit der am
+Objekt gestreuten Welle auf derselben optischen Achse, also ein In-line- oder
+Gabor-Hologramm \cite{gabor1948new}. Die Phaseninformation ist in Lage und
+Kontrast der Interferenzstreifen kodiert und kann durch Rückpropagation und
+A-priori-Wissen zurückgewonnen werden. Weil die Streifen bei den hier
+betrachteten Abständen auf der Skala weniger Pixel liegen, während die Objekte
+hunderte bis tausende Pixel groß sind, spricht man von
+\emph{Nahfeld}holographie (\cref{sec:grundlagen:propagation}).
+
+% -----------------------------------------------------------------------------
 \section{\lang{Fresnel-Propagation}{Fresnel Propagation}}
 \label{sec:grundlagen:propagation}
 
-% Beispiel: nummerierte Gleichung mit Label und Verweis
-\lang{Die Intensität in der Detektorebene ergibt sich durch Fresnel-Propagation der Austrittswelle $\psi$:}%
-{The intensity in the detector plane follows from Fresnel propagation of the exit wave $\psi$:}
+\subsection{Paraxiale Näherung und Transferfunktion}
+
+Die Ausbreitung einer monochromatischen skalaren Welle $U(\vect{r})$ im freien
+Raum genügt der Helmholtz-Gleichung $(\nabla^2 + k^2)\,U = 0$. Mit dem Ansatz
+$U = \psi(x,y,z)\,\mathrm{e}^{\mathrm{i}kz}$ und der Annahme, dass sich die
+Einhüllende $\psi$ entlang $z$ auf der Skala der Wellenlänge nur langsam ändert
+($\abs{\partial_z^2\psi} \ll k\abs{\partial_z\psi}$), folgt die paraxiale
+Wellengleichung
+\begin{equation}
+  2\mathrm{i}k\,\partial_z \psi + \nabla_\perp^2\psi = 0 ,
+  \label{eq:grundlagen:paraxial}
+\end{equation}
+die im Fourierraum bezüglich der transversalen Koordinaten eine gewöhnliche
+Differentialgleichung erster Ordnung ist \cite{goodman2017fourier,paganin2006coherent}.
+Ihre Lösung ist eine Multiplikation mit der Transferfunktion der
+Fresnel-Propagation: Bezeichnet $\mathcal{F}$ die zweidimensionale
+Fourier-Transformation und $(f_x,f_y)$ die Ortsfrequenzen in Zyklen pro Länge,
+so gilt für die Propagation über die Distanz $z$
+\begin{equation}
+  \prop{z}(\psi) = \mathcal{F}^{-1}\!\Big[\exp\!\big(-\mathrm{i}\pi\wl z\,(f_x^2+f_y^2)\big)\cdot\mathcal{F}[\psi]\Big] .
+  \label{eq:grundlagen:propagation-physikalisch}
+\end{equation}
+Der globale Phasenfaktor $\mathrm{e}^{\mathrm{i}kz}$ ist weggelassen, die
+Vorzeichenkonvention folgt HoloWizard. \Cref{eq:grundlagen:propagation-physikalisch}
+ist die Fresnel-Näherung der Beugungstheorie; sie setzt kleine
+Beugungswinkel voraus, was bei Röntgenwellenlängen und Pixelgrößen im
+Mikrometerbereich hervorragend erfüllt ist \cite{goodman2017fourier}.
+
+\subsection{Pixeleinheiten und Fresnel-Zahl}
+
+Numerisch liegt die Welle auf einem Gitter mit Pixelabstand $\dx$ vor. Werden
+die Frequenzen in Zyklen pro Pixel gemessen, $\xi = f_x\dx$ und $\eta = f_y\dx$,
+nimmt \cref{eq:grundlagen:propagation-physikalisch} die Form an, die HoloWizard
+und \cite{dora2024asrm,dora2025autofocus} verwenden:
 \begin{equation}
   I = \abs{\prop{\Fr}(\psi)}^2,
   \qquad
   \prop{\Fr}(\psi) = \mathcal{F}^{-1}\!\left[\exp\!\left(-\mathrm{i}\pi\,\frac{\xi^2+\eta^2}{\Fr}\right)\mathcal{F}[\psi]\right],
+  \qquad
+  \Fr = \frac{\dx^2}{\wl z}.
   \label{eq:grundlagen:propagation}
 \end{equation}
-\lang{%
-wobei $\mathcal{F}$ die zweidimensionale Fourier-Transformation und $(\xi,\eta)$
-die auf die Pixelgröße normierten Ortsfrequenzen bezeichnen. Die Phase von
-$\prop{\Fr}(\psi)$ geht bei der Messung verloren; ihre Rekonstruktion ist das
-\ac{pr}-Problem \cite{fienup1982phase}.
-}{%
-where $\mathcal{F}$ denotes the two-dimensional Fourier transform and $(\xi,\eta)$
-the spatial frequencies normalised to the pixel size. The phase of
-$\prop{\Fr}(\psi)$ is lost in the measurement; recovering it is the \ac{pr}
-problem \cite{fienup1982phase}.
-}
-\todo{\lang{Normierungskonvention mit HoloWizard abgleichen.}{Check normalisation convention against HoloWizard.}}
+Die Rückpropagation entspricht $\Fr \to -\Fr$. Der Kern $\exp(-\mathrm{i}\pi(\xi^2+\eta^2)/\Fr)$
+hängt nur von $\xi^2+\eta^2$ ab, ist also isotrop und invariant unter
+Verschiebungen, Spiegelungen und Drehungen des Gitters um Vielfache von
+\qty{90}{\degree} -- eine Eigenschaft, die in \cref{sec:grundlagen:dl} die
+zulässigen Datenaugmentierungen festlegt.
 
-\section{\lang{Fresnel-Zahl und Fresnel-Skalierungstheorem}{Fresnel Number and Fresnel Scaling Theorem}}
+\Cref{eq:grundlagen:propagation} enthält die zentrale Beobachtung dieser Arbeit:
+In Pixeleinheiten hängt das Hologramm nur noch vom Objekt $\tilde O$ auf dem
+Pixelgitter, von der Beleuchtung $P$ und von dem \emph{einen} Skalar $\Fr$ ab.
+Wellenlänge, Pixelgröße und Propagationsdistanz gehen ausschließlich über $\Fr$
+ein. Ein Verfahren, das Hologramme auf dem Pixelgitter auswertet, kann daher
+grundsätzlich nur $\Fr$ bestimmen; geometrische Größen wie $\zOne$ folgen erst
+über die bekannte Aufnahmegeometrie (\cref{sec:grundlagen:fresnelzahl}).
+
+Die Fresnel-Zahl ist allgemein für eine Struktur der Größe $a$ als
+$F = a^2/(\wl z)$ definiert \cite{goodman2017fourier,paganin2006coherent}. Sie
+ordnet die Beugungsregime: $F \gg 1$ entspricht dem geometrischen Schatten,
+$F \sim 1$ dem Fresnel-Nahfeld und $F \ll 1$ dem Fraunhofer-Fernfeld. Die
+\emph{Pixel-Fresnel-Zahl} $\Fr$ in \cref{eq:grundlagen:propagation} setzt
+$a = \dx$; typische Werte in der \ac{nfh} liegen zwischen \num{e-5} und
+\num{e-3} \cite{dora2025autofocus,lohse2020toolbox}. Ein einzelnes Pixel liegt
+somit tief im Fernfeld, ein Merkmal aus $N$ Pixeln besitzt jedoch
+$F = N^2\,\Fr$. Die Grenze $F = 1$ liegt bei
+\begin{equation}
+  N_\ast = \frac{1}{\sqrt{\Fr}}
+  \qquad\text{Pixeln}\qquad
+  (\Fr = \num{2.37e-4}:\ N_\ast \approx 65\ \text{Pixel}) .
+  \label{eq:grundlagen:nstern}
+\end{equation}
+Strukturen, die größer als $N_\ast$ Pixel sind, werden holographisch abgebildet,
+d.\,h. mit erkennbarer Kontur und Fresnel-Säumen an den Kanten; kleinere
+Strukturen verschmieren über ihre Beugungsscheibe. $N_\ast$ ist zugleich die
+charakteristische Streifenbreite der Fresnel-Beugung in Pixeln, denn
+$\sqrt{\wl z}/\dx = 1/\sqrt{\Fr}$. Da ganze Objekte weit über $N_\ast$ liegen,
+ist die Bezeichnung Nahfeldholographie gerechtfertigt; \cite{lohse2020toolbox}
+ordnet die Rekonstruktionsverfahren entsprechend nach der Fresnel-Zahl der
+jeweils relevanten Strukturgröße.
+
+\subsection{Abtastbedingung}
+
+Der Kern in \cref{eq:grundlagen:propagation} wird auf einem Gitter aus $N$
+Frequenzen mit Schrittweite $1/N$ abgetastet. Seine Phase
+$\Phi(\xi) = \pi\xi^2/\Fr$ wächst mit $\xi$ quadratisch; aliasfreie Abtastung
+verlangt, dass der Phasenzuwachs zwischen benachbarten Frequenzen $\pi$ nicht
+überschreitet. An der Nyquist-Frequenz $\xi = 1/2$ ergibt
+$\abs{\partial_\xi\Phi}\cdot(1/N) = (2\pi\xi/\Fr)/N \le \pi$ die Bedingung
+\begin{equation}
+  N \ \ge\ \frac{1}{\Fr} .
+  \label{eq:grundlagen:abtastung}
+\end{equation}
+Dies ist das kritische Abtastkriterium der Transferfunktionsmethode
+\cite{voelz2009digital,goodman2017fourier}, in physikalischen Größen
+$N\dx^2 \ge \wl z$. Äquivalent erstreckt sich die Impulsantwort der
+Propagation, ein Chirp mit lokaler Frequenz $\Fr\,x$, über etwa $1/\Fr$ Pixel;
+ist das Gitter kleiner, wickeln sich die Streifen zyklisch um den Bildrand. Das
+erklärt das Zero- bzw. Spiegel-Padding in HoloWizard -- die Beispielskripte
+vergrößern das Gitter um den Faktor~4 von $2048$ auf $8192$ Pixel -- und die
+beiden Gittergrößen in \cite{dora2025autofocus}: Für
+$\Fr \approx \numrange{3e-4}{5e-4}$ gilt $1/\Fr \approx \numrange{2000}{3300} < 8192$,
+für $\Fr = \num{7.8e-5}$ dagegen $1/\Fr \approx 12\,800$, weshalb dort ein
+Gitter von $14\,336$ Pixeln verwendet wird. Für die in dieser Arbeit
+simulierten Trainingsdaten ist \cref{eq:grundlagen:abtastung} eine harte
+Nebenbedingung an die Wahl von Gittergröße, Binning und $\Fr$-Bereich
+(\cref{ch:methoden}).
+
+% -----------------------------------------------------------------------------
+\section{\lang{Kegelstrahlgeometrie und Fresnel-Skalierungstheorem}{Cone-beam Geometry and Fresnel Scaling Theorem}}
 \label{sec:grundlagen:fresnelzahl}
 
-\lang{%
-In der Kegelstrahlgeometrie mit Quelle--Objekt-Abstand $\zOne$ und
-Quelle--Detektor-Abstand $\zTwo$ wirkt die geometrische Vergrößerung
-$\magn = \zTwo/\zOne$. Nach dem Fresnel-Skalierungstheorem ist die Aufnahme
-äquivalent zu einer Parallelstrahl-Propagation über die effektive Distanz
-$\zEff = (\zTwo - \zOne)/\magn$ mit effektiver Pixelgröße $\dx/\magn$. Die
-pixelbezogene Fresnel-Zahl lautet damit
-}{%
-In the cone-beam geometry with source--object distance $\zOne$ and
-source--detector distance $\zTwo$ the geometric magnification is
-$\magn = \zTwo/\zOne$. By the Fresnel scaling theorem the acquisition is
-equivalent to a parallel-beam propagation over the effective distance
-$\zEff = (\zTwo - \zOne)/\magn$ with effective pixel size $\dx/\magn$. The
-pixel-based Fresnel number therefore reads
-}
+\subsection{Geometrie und effektive Größen}
+
+\Cref{fig:grundlagen:kegelstrahl} zeigt die Kegelstrahlgeometrie der \ac{nfh}.
+Vom Fokus der \ac{fzp} aus werden der Fokus-Objekt-Abstand $\zOne$, der
+Fokus-Detektor-Abstand $\zTwo$ und der Objekt-Detektor-Abstand
+$z_{12} = \zTwo - \zOne$ gemessen; alle Abstände in \cite{dora2024asrm,dora2025autofocus}
+und in HoloWizard beziehen sich auf den Fokus. Das Objekt wird mit der
+geometrischen Vergrößerung
 \begin{equation}
-  \Fr = \frac{\dx^2}{\wl\,(\zTwo - \zOne)\,\magn},
-  \qquad \magn = \frac{\zTwo}{\zOne},
+  \magn = \frac{\zTwo}{\zOne}
+  \label{eq:grundlagen:vergroesserung}
+\end{equation}
+auf den Detektor abgebildet. Das \emph{Fresnel-Skalierungstheorem}
+\cite{paganin2006coherent} besagt, dass die Propagation einer Kugelwelle vom
+Objekt zum Detektor äquivalent ist zu einer Parallelstrahl-Propagation über die
+effektive Distanz $\zEff$, gefolgt von einer reinen geometrischen Vergrößerung um
+$\magn$. Die Begründung ist elementar: Die quadratische Phase der Kugelwelle
+lässt sich mit der quadratischen Phase des Fresnel-Kerns zusammenfassen, und
+quadratische Ergänzung liefert wieder einen Fresnel-Kern, nun mit skalierten
+Koordinaten. In der Objektebene erscheinen dadurch die effektive Pixelgröße und
+die effektive Propagationsdistanz
+\begin{equation}
+  \dx_{\mathrm{eff}} = \frac{\dx}{\magn},
+  \qquad
+  \zEff = \frac{z_{12}}{\magn} = \frac{\zOne\,(\zTwo-\zOne)}{\zTwo} .
+  \label{eq:grundlagen:effektiv}
+\end{equation}
+
+\input{figures/grundlagen/kegelstrahl_geometrie}
+
+\subsection{Fresnel-Zahl der Kegelstrahlgeometrie}
+
+Einsetzen von \cref{eq:grundlagen:effektiv} in die Definition
+$\Fr = \dx_{\mathrm{eff}}^2/(\wl\zEff)$ ergibt die in HoloWizard implementierte
+Formel
+\begin{equation}
+  \boxed{\;
+  \Fr = \frac{\dx_{\mathrm{eff}}^2}{\wl\,\zEff}
+      = \frac{\dx^2}{\wl\,(\zTwo-\zOne)\,\magn}
+      = \frac{\dx^2\,\zOne}{\wl\,\zTwo\,(\zTwo-\zOne)}
+  \;}
   \label{eq:grundlagen:fresnelzahl}
 \end{equation}
-\lang{%
-mit der Wellenlänge $\wl$ und der Detektorpixelgröße $\dx$. Bei festem $\zTwo$
-hängt $\Fr$ nur noch von $\zOne$ ab, sodass Autofokus wahlweise als Schätzung von
-$\Fr$ oder von $\zOne$ formuliert werden kann (\cref{fig:grundlagen:fresnelzahl}).
-}{%
-with wavelength $\wl$ and detector pixel size $\dx$. For fixed $\zTwo$, $\Fr$
-depends on $\zOne$ only, so autofocus can equivalently be posed as estimating
-$\Fr$ or $\zOne$ (\cref{fig:grundlagen:fresnelzahl}).
-}
+mit der physikalischen Pixelgröße $\dx$ des Detektors. In
+\cite{dora2025autofocus} wird die Fresnel-Zahl allgemeiner für eine Distanz $z$
+hinter dem Objekt mit zwei Skalierungsfaktoren $M_1 = \zTwo/\zOne$ und
+$M_2 = (\zOne + z)/\zOne$ als $\Fr(z) = (\dx/M_1)^2/(\wl z/M_2)$ geschrieben;
+für $z = z_{12}$ fallen beide Faktoren mit $\magn$ zusammen und
+\cref{eq:grundlagen:fresnelzahl} folgt. Die Implementierungen
+\texttt{calc\_Fr} (Modul \texttt{holowizard.forge.utils}) und
+\texttt{ConeBeam} (Modul \texttt{holowizard.core.models.cone\_beam}) berechnen
+exakt diesen Ausdruck; beide wurden für die in \cref{tab:grundlagen:geometrie}
+aufgeführten Abstände gegeneinander geprüft und liefern identische Werte.
 
-% Beispiel: Abbildung -- Snippet wurde mit tools/export_figures.py erzeugt und
-% enthält Quelle (Run, Commit) als Kommentar. Caption dort anpassen.
-\input{figures/grundlagen/fresnelzahl}
+Für die Standardgeometrie der \ac{p05} -- $E = \qty{11}{\kilo\electronvolt}$,
+$\zTwo = \qty{20}{\metre}$, $\dx = \qty{6.5}{\micro\metre}$ -- und
+$\zOne = \qty{250}{\milli\metre}$ ergibt sich $\wl = \qty{1.1271e-7}{\milli\metre}$,
+$\magn = 80$, $\dx_{\mathrm{eff}} = \qty{81.25}{\nano\metre}$,
+$\zEff = \qty{246.875}{\milli\metre}$ und damit
+\begin{equation}
+  \Fr = \frac{(\qty{8.125e-5}{\milli\metre})^2}{\qty{1.1271e-7}{\milli\metre}\cdot\qty{246.875}{\milli\metre}}
+      = \num{2.3725e-4} .
+  \label{eq:grundlagen:zahlenbeispiel}
+\end{equation}
+\Cref{tab:grundlagen:geometrie} erweitert das Beispiel auf den an der \ac{p05}
+genutzten Bereich von $\zOne$. Über $\zOne \in [\qty{50}{\milli\metre}, \qty{500}{\milli\metre}]$
+ändert sich $\Fr$ um eine Größenordnung und nahezu linear in $\zOne$, weil
+$\zOne \ll \zTwo$; die Mindestgittergröße $1/\Fr$ aus
+\cref{eq:grundlagen:abtastung} variiert entsprechend zwischen rund $2000$ und
+$50\,000$ Pixeln. Zum Abgleich mit \cite{dora2025autofocus}, Tab.~2, wurden die
+dort angegebenen Geometrien nachgerechnet: Für den Magnesiumdraht
+(\qty{11}{\kilo\electronvolt}, $\zOne = \qty{470.8}{\milli\metre}$,
+$\zTwo = \qty{19.661}{\metre}$) liefert \cref{eq:grundlagen:fresnelzahl}
+$\Fr = \num{4.678e-4}$ in Übereinstimmung mit der Tabelle; für das Spinnenhaar
+($\zOne = \qty{79.4}{\milli\metre}$) ergibt sich $\num{7.73e-5}$ gegenüber
+$\num{7.79e-5}$ im Paper, eine Abweichung unter einem Prozent, die sich durch
+gerundete Tabellenwerte erklären lässt.
+% TODO: mit Betreuern klären, ob die <1 %-Abweichungen zu Tab. 2 in Dora 2025
+%       (Spinnenhaar, Simulation) auf Rundung der Tabellenwerte zurückgehen.
 
-\section{Phase Retrieval}
+\begin{table}[tbp]
+  \centering
+  \small
+  \caption[Fresnel-Zahl und effektive Größen für die P05-Standardgeometrie]{%
+    Fresnel-Zahl und effektive Größen nach den
+    Gleichungen~\eqref{eq:grundlagen:vergroesserung} bis
+    \eqref{eq:grundlagen:fresnelzahl} für die Standardgeometrie der \ac{p05} ($E = \qty{11}{\kilo\electronvolt}$,
+    $\zTwo = \qty{20}{\metre}$, $\dx = \qty{6.5}{\micro\metre}$). $1/\Fr$ ist
+    die Mindestgittergröße der Propagation (\cref{eq:grundlagen:abtastung}),
+    $N_\ast = 1/\sqrt{\Fr}$ die Streifenbreite in Pixeln
+    (\cref{eq:grundlagen:nstern}). Werte berechnet mit
+    \texttt{holowizard.forge.utils.calc\_Fr}.}
+  \label{tab:grundlagen:geometrie}
+  \begin{tabular}{@{}S[table-format=3.0] S[table-format=4.0] S[table-format=3.2] S[table-format=3.3] S[table-format=1.3e-1] S[table-format=5.0] S[table-format=3.0]@{}}
+    \toprule
+    {$\zOne$ in \unit{\milli\metre}} & {$\magn$} & {$\dx_{\mathrm{eff}}$ in \unit{\nano\metre}} & {$\zEff$ in \unit{\milli\metre}} & {$\Fr$} & {$1/\Fr$} & {$N_\ast$} \\
+    \midrule
+     20 & 1000 &   6.50 &  19.980 & 1.876e-5 & 53300 & 231 \\
+     50 &  400 &  16.25 &  49.875 & 4.698e-5 & 21288 & 146 \\
+    100 &  200 &  32.50 &  99.500 & 9.419e-5 & 10617 & 103 \\
+    150 &  133 &  48.75 & 148.875 & 1.416e-4 &  7060 &  84 \\
+    250 &   80 &  81.25 & 246.875 & 2.373e-4 &  4215 &  65 \\
+    500 &   40 & 162.50 & 487.500 & 4.806e-4 &  2081 &  46 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Die Umkehrung von \cref{eq:grundlagen:fresnelzahl} ist eindeutig: Bei bekannten
+$\zTwo$, $\wl$ und $\dx$ folgt aus $\Fr$ der Abstand
+\begin{equation}
+  \zOne = \frac{\Fr\,\wl\,\zTwo^2}{\dx^2 + \Fr\,\wl\,\zTwo} ,
+  \label{eq:grundlagen:z01-aus-fr}
+\end{equation}
+wie in \texttt{ConeBeam.get\_z01} implementiert. Autofokus kann daher
+gleichwertig als Schätzung von $\Fr$ oder von $\zOne$ formuliert werden.
+
+\subsection{Sensitivität und Wahl der Zielgröße}
+
+Logarithmisches Differenzieren von \cref{eq:grundlagen:fresnelzahl} liefert die
+relativen Empfindlichkeiten der Fresnel-Zahl gegenüber den beiden Abständen:
+\begin{equation}
+  \frac{\partial\ln\Fr}{\partial\zOne} = \frac{1}{\zOne} + \frac{1}{\zTwo-\zOne},
+  \qquad
+  \frac{\partial\ln\Fr}{\partial\zTwo} = -\frac{1}{\zTwo} - \frac{1}{\zTwo-\zOne} .
+  \label{eq:grundlagen:sensitivitaet}
+\end{equation}
+Bei $\zOne = \qty{250}{\milli\metre}$ ändert ein Millimeter in $\zOne$ die
+Fresnel-Zahl um \qty{0.405}{\percent}, ein Millimeter in $\zTwo$ nur um
+\qty{0.010}{\percent}; bei $\zOne = \qty{79.4}{\milli\metre}$ (Spinnenhaar in
+\cite{dora2025autofocus}) beträgt die Empfindlichkeit gegenüber $\zOne$ sogar
+\qty{1.26}{\percent\per\milli\metre} (\cref{fig:grundlagen:sensitivitaet}).
+Ein Fehler von $\pm\qty{5}{\milli\metre}$ in $\zOne$ verändert $\Fr$ somit um
+\qtyrange{2}{6}{\percent}, derselbe Fehler in $\zTwo$ um \qty{0.05}{\percent}
+-- die quantitative Aussage hinter Fig.~3 in \cite{dora2025autofocus}.
+Messtechnisch kommt hinzu, dass $\zTwo$ (rund \qty{20}{\metre}) durch die
+Beamline-Mechanik fest vorgegeben ist, während $\zOne$ den Abstand zwischen dem
+nicht sichtbaren Fokus der \ac{fzp} und der Probe bezeichnet, wenige Zentimeter
+bis Dezimeter beträgt, bei jedem Probenwechsel neu eingestellt wird und nur auf
+etwa $\pm\qty{5}{\milli\metre}$ bekannt ist \cite{dora2025autofocus}. Energie
+und Pixelgröße werden, wie in \cite{dora2025autofocus}, als bekannt
+vorausgesetzt. Die unsichere Größe des Vorwärtsmodells ist daher $\zOne$, und
+der Autofokus wird als Bestimmung von $\zOne$ beziehungsweise des daraus
+folgenden $\Fr$ formuliert.
+
+\input{figures/grundlagen/sensitivitaet_z01}
+
+Aus \cref{eq:grundlagen:sensitivitaet} folgt auch die Fehlerfortpflanzung für
+ein Verfahren, das $\Fr$ schätzt:
+\begin{equation}
+  \delta\zOne \approx \zOne\Big(1 - \frac{\zOne}{\zTwo}\Big)\,\frac{\delta\Fr}{\Fr} .
+  \label{eq:grundlagen:fehlerfortpflanzung}
+\end{equation}
+Ein relativer Fehler von \qty{0.4}{\percent} in $\Fr$ entspricht bei
+$\zOne = \qty{250}{\milli\metre}$ etwa \qty{1}{\milli\metre}; die
+Zielgenauigkeit von \qty{0.1}{\milli\metre}, das Abbruchkriterium des
+modellbasierten Autofokus \cite{dora2025autofocus}, verlangt
+\qty{0.04}{\percent} in $\Fr$.
+
+% -----------------------------------------------------------------------------
+\section{\lang{Kontrastübertragung schwacher Objekte}{Contrast Transfer of Weak Objects}}
+\label{sec:grundlagen:ctf}
+
+Für schwache Objekte, $\abs{\varphi}, \mu \ll 1$, und ebene Beleuchtung
+$P = 1$ lässt sich die Austrittswelle linearisieren,
+$\mathrm{e}^{\mathrm{i}\tilde O} \approx 1 + \mathrm{i}\varphi - \mu$. Mit
+$\prop{\Fr}(1) = 1$ und der Abkürzung $u = \xi^2 + \eta^2$ folgt für den
+Kontrast $I - 1$ in erster Ordnung die \ac{ctf}
+\cite{cloetens1999holotomography,zabler2005optimization,paganin2006coherent}:
+\begin{equation}
+  \mathcal{F}\big[I - 1\big](\xi,\eta)
+  = 2\sin\!\Big(\frac{\pi u}{\Fr}\Big)\,\mathcal{F}[\varphi]
+  - 2\cos\!\Big(\frac{\pi u}{\Fr}\Big)\,\mathcal{F}[\mu] .
+  \label{eq:grundlagen:ctf}
+\end{equation}
+Die Herleitung nutzt, dass $\varphi$ und $\mu$ reell sind, sodass sich die
+Kernanteile $\mathrm{e}^{\mp\mathrm{i}\pi u/\Fr}$ zu Sinus und Kosinus
+kombinieren. Phasenkontrast wird also mit $\sin(\pi u/\Fr)$ übertragen und
+verschwindet bei
+\begin{equation}
+  \xi^2 + \eta^2 = n\,\Fr, \qquad n = 0, 1, 2, \dots,
+  \label{eq:grundlagen:ctf-nullstellen}
+\end{equation}
+Absorptionskontrast mit $\cos(\pi u/\Fr)$ und Nullstellen bei
+$u = (n+\tfrac12)\Fr$ (\cref{fig:grundlagen:ctf}). Insbesondere ist die Phase
+bei $u = 0$ unsichtbar: Ohne Propagation ($\Fr \to \infty$) zeigt das Bild nur
+die Absorption, und niedrige Ortsfrequenzen der Phase werden erst bei großer
+Propagation sichtbar. Dieses Verhalten bestimmt die Wahl der Abstände in der
+Phasenkontrastbildgebung \cite{zabler2005optimization} und ist der Grund, warum
+die Einzelabstands-Inversion von \cref{eq:grundlagen:ctf} schlecht gestellt ist:
+An den Nullstellen fehlt Information, die nur durch weitere Abstände
+(Holotomographie \cite{cloetens1999holotomography}) oder durch A-priori-Wissen
+ersetzt werden kann (\cref{sec:grundlagen:pr}).
+
+\input{figures/grundlagen/ctf_kurven}
+
+Für den Autofokus ist \cref{eq:grundlagen:ctf-nullstellen} von zentraler
+Bedeutung. Für ein reines Phasenobjekt ist das Leistungsspektrum des Kontrasts
+\begin{equation}
+  \abs{\mathcal{F}[I-1]}^2 = 4\sin^2\!\Big(\frac{\pi u}{\Fr}\Big)\,\abs{\mathcal{F}[\varphi]}^2 ,
+  \label{eq:grundlagen:leistungsspektrum}
+\end{equation}
+also das Objektspektrum, moduliert mit einem Ringsystem, dessen Radienquadrate
+äquidistant im Abstand $\Fr$ liegen. Die Fresnel-Zahl ist damit unmittelbar als
+Periode des Spektrums in der Koordinate $u$ ablesbar -- unabhängig vom Objekt,
+solange dessen Spektrum die betreffenden Frequenzen überhaupt enthält.
+\Cref{fig:grundlagen:hologramm} zeigt dies an simulierten Hologrammen: Mit
+kleinerem $\Fr$ (größerer effektiver Propagation) reichen die Fresnel-Säume
+einer Kugel weiter über den geometrischen Schatten hinaus, und die Ringe im
+Spektrum eines texturierten Objekts rücken zu kleineren Frequenzen. Diese
+Signatur motiviert spektrale Eingaberepräsentationen für ein lernendes
+Verfahren (\cref{ch:methoden}) und besitzt eine direkte Analogie in der
+Defokusbestimmung der Kryo-Elektronenmikroskopie aus Thon-Ringen
+(\cref{sec:stand:spektral}).
+
+\input{figures/grundlagen/hologramm_spektrum}
+
+Wie viele Ringe ein Bild auflöst, hängt von seiner Größe ab. Benachbarte
+Nullstellen bei der Frequenz $\xi$ haben den Abstand
+$\Delta\xi \approx \Fr/(2\xi)$; bei einer Frequenzauflösung von $1/N$ sind sie
+nur für $\xi < N\,\Fr/2$ getrennt. Für $N = 2048$ und $\Fr = \num{2.4e-4}$ ist
+das bis $\xi \approx 0.24$ nahezu das gesamte Band, für Ausschnitte von
+$N = 256$ Pixeln dagegen nur bis $\xi \approx 0.03$, also die ersten etwa vier
+Ringe. Kleine Bildausschnitte tragen demnach deutlich weniger Information über
+$\Fr$ als das volle Detektorbild.
+
+Die Linearisierung gilt nur für schwache Objekte. Für die in
+\cite{dora2025autofocus} untersuchten Proben mit Phasenschüben von mehreren
+$\pi$ enthält das Hologramm Terme höherer Ordnung, und \cref{eq:grundlagen:ctf}
+beschreibt den Kontrast nicht mehr quantitativ
+\cite{moosmann2011single,dora2024asrm}. Die Lage der Nullstellen des
+linearen Anteils bleibt dennoch eine $\Fr$-abhängige Struktur im Spektrum; ob
+sie für stark wechselwirkende Objekte robust auswertbar ist, wird in dieser
+Arbeit empirisch untersucht.
+
+% -----------------------------------------------------------------------------
+\section{\lang{Das Phasenproblem und Phase Retrieval}{The Phase Problem and Phase Retrieval}}
 \label{sec:grundlagen:pr}
-\todo{\lang{Fienup \cite{fienup1982phase}, Paganin \cite{paganin2002phase}, CTF, ASRM \cite{dora2024asrm}.}{Fienup \cite{fienup1982phase}, Paganin \cite{paganin2002phase}, CTF, ASRM \cite{dora2024asrm}.}}
 
+\subsection{Problemstellung}
+
+Gemessen wird nach \cref{eq:grundlagen:propagation} und
+\cref{eq:grundlagen:exitwave} die Intensität
+\begin{equation}
+  I = \abs{\prop{\Fr}\big(\mathrm{e}^{\mathrm{i}\tilde O}P\big)}^2 ,
+  \label{eq:grundlagen:vorwaertsmodell}
+\end{equation}
+gesucht ist $\tilde O$, also zwei reelle Felder $\varphi$ und $\mu$ aus einem
+reellen Feld $I$. Das Problem ist unterbestimmt, durch das Betragsquadrat
+nichtlinear und wegen der Nullstellen der \ac{ctf} schlecht gestellt. Dies ist
+das \ac{pr}-Problem \cite{fienup1982phase}. Eindeutigkeit und Stabilität
+entstehen erst durch A-priori-Wissen: Vorzeichenbedingungen wie $\Omega_P$,
+räumliche Trägerbeschränkungen (\emph{Support}), Glattheit, die Annahme eines
+homogenen Materials mit bekanntem $\delta/\beta$, mehrere Abstände oder
+Regularisierung. \cite{maretzke2020constrained} zeigen, dass das
+Phasenproblem der propagationsbasierten Röntgenbildgebung unter
+Supportbedingungen eindeutig lösbar und im linearisierten Modell sogar stabil
+ist; die dort bewiesenen Stabilitätsabschätzungen begründen, warum
+Nebenbedingungen Rekonstruktionen wirksam stabilisieren.
+
+\subsection{Direkte Verfahren: CTF-Inversion und Transport-of-Intensity}
+
+Für schwache Objekte lässt sich \cref{eq:grundlagen:ctf} direkt invertieren.
+Mit der Annahme eines homogenen Objekts, $\mu = (\beta/\delta)\abs{\varphi}$,
+oder mit Aufnahmen bei mehreren Abständen wird aus
+\cref{eq:grundlagen:ctf} ein lineares Gleichungssystem je Frequenz, das
+Tikhonov-regularisiert gelöst wird
+\cite{cloetens1999holotomography,zabler2005optimization,langer2008quantitative}.
+Die zweite Klasse direkter Verfahren geht von der \ac{tie} aus
+\cite{teague1983deterministic,zuo2020tie}, die die Intensitätsänderung entlang
+der Ausbreitung mit der Phase verknüpft:
+\begin{equation}
+  \frac{\partial I}{\partial z} = -\frac{\wl}{2\pi}\,\nabla_\perp\!\cdot\big(I\,\nabla_\perp\varphi\big) .
+  \label{eq:grundlagen:tie}
+\end{equation}
+\cite{paganin2002phase} lösen die \ac{tie} für ein homogenes Objekt, dessen
+Phase und Absorption beide proportional zur projizierten Dicke $T$ sind, für
+einen einzigen kurzen Abstand geschlossen:
+\begin{equation}
+  T(x,y) = -\frac{1}{\mu_{\mathrm{lin}}}\,
+  \ln\!\left(\mathcal{F}^{-1}\!\left[\frac{\mathcal{F}[I/I_0]}{1 + \pi\wl z\,(\delta/\beta)\,(f_x^2+f_y^2)}\right]\right),
+  \label{eq:grundlagen:paganin}
+\end{equation}
+in Pixeleinheiten mit dem Nenner $1 + \pi(\delta/\beta)\,u/\Fr$. Das
+Paganin-Verfahren ist ein stabiler Tiefpass aus einem einzigen
+Fourier-Transformationspaar und deshalb außerordentlich schnell; quantitativ
+gilt es nur für homogene Objekte und im \ac{tie}-Regime, in dem die erste
+Nullstelle der \ac{ctf} jenseits der relevanten Frequenzen liegt
+\cite{paganin2002phase,burvall2011phase}. Für diese Arbeit ist vor allem die
+Rolle von $\Fr$ bemerkenswert: Die Fresnel-Zahl steht direkt im Filterkern,
+und ein falscher Wert verschiebt die Grenzfrequenz des Tiefpasses und damit
+Schärfe und Quantitativität der Rekonstruktion.
+
+\subsection{Iterative Projektionsverfahren}
+
+Jenseits der Linearisierung werden Phasenprobleme iterativ gelöst.
+\cite{fienup1982phase} vergleicht Algorithmen, die abwechselnd
+Nebenbedingungen im Objektraum (Support, Nichtnegativität) und im Messraum (der
+gemessene Betrag, hier $\sqrt{I}$) erzwingen. Der \ac{er}-Algorithmus ist die
+reine alternierende Projektion; sein Fehler fällt monoton, der Algorithmus ist
+eng mit dem Verfahren des steilsten Abstiegs auf dem Messraumfehler verwandt,
+stagniert aber häufig. Der \ac{hio}-Algorithmus ersetzt die Projektion im
+Objektraum außerhalb des Supports durch eine Rückkopplung mit Parameter
+$\beta_{\mathrm{HIO}}$ und konvergiert in der Praxis deutlich schneller
+\cite{fienup1982phase}. Für die \ac{nfh} wurden diese Ideen zu Varianten der
+alternierenden Projektion und zu \ac{raar} weiterentwickelt, die in der
+HoloTomoToolbox neben \ac{ctf}- und \ac{tie}-Verfahren implementiert sind
+\cite{lohse2020toolbox}. Zwei Konzepte aus \cite{fienup1982phase} tragen
+unmittelbar in diese Arbeit: Nebenbedingungen stellen Eindeutigkeit her, und
+der Fehler im Messraum ist ein natürliches Maß dafür, wie gut eine Lösung
+Modell und Daten vereinbart -- die Grundidee des in \cref{sec:grundlagen:autofokus}
+beschriebenen Fokuskriteriums.
+
+\subsection{Gradientenverfahren und Regularisierung}
+
+Moderne Rekonstruktionsverfahren der \ac{nfh} formulieren das Phasenproblem
+als Minimierung eines Funktionals
+\begin{equation}
+  \mathcal{L}(\tilde O) = \tfrac12\,\norm{\,\abs{\prop{\Fr}\big(\mathrm{e}^{\mathrm{i}\tilde O}P\big)} - \sqrt{I}\,}_2^2 + \mathcal{R}(\tilde O)
+  \label{eq:grundlagen:funktional}
+\end{equation}
+mit einem Regularisierungsterm $\mathcal{R}$ und lösen es mit
+Gradientenverfahren, deren Gradient über den Wirtinger-Kalkül analytisch
+vorliegt: Fehler in der Detektorebene, Rückpropagation, Multiplikation mit
+$-\mathrm{i}\,\overline{\mathrm{e}^{\mathrm{i}\tilde O}}\,\overline{P}$
+\cite{dora2024asrm}. Der Datenterm vergleicht Amplituden
+($\sqrt{I}$), nicht Intensitäten; HoloWizard bildet gemessene Intensitäten
+deshalb vor der Rekonstruktion durch Wurzelziehen in Amplituden ab.
+Nebenbedingungen werden durch Projektion nach jedem Gradientenschritt
+berücksichtigt, was auf ein \ac{pgd} führt:
+\begin{equation}
+  \tilde O_{k+1} = \mathcal{P}_{\Omega_P}\big(\tilde O_k - \eta_k\,\nabla\mathcal{L}(\tilde O_k)\big) .
+  \label{eq:grundlagen:pgd}
+\end{equation}
+\cite{huhn2022tikhonov} verfolgen alternativ eine nichtlineare
+Tikhonov-Regularisierung des vollen Vorwärtsmodells mit Nebenbedingungen und
+erreichen damit für stark wechselwirkende Objekte konkurrenzfähige
+Rechenzeiten. Allen genannten Verfahren ist gemeinsam, dass $\Fr$ als bekannt
+vorausgesetzt wird.
+
+\subsection{Die Artifact-Suppressing Reconstruction Method}
+
+Die \ac{asrm} \cite{dora2024asrm} ist der Rekonstruktionsalgorithmus von
+HoloWizard und zugleich der innere Löser des modellbasierten Autofokus
+\cite{dora2025autofocus}. Sie erweitert ein \ac{pgd}-Verfahren, das den
+projizierten Brechungsindex $\tilde O$ direkt rekonstruiert und so die
+$2\pi$-Mehrdeutigkeit der Phase vermeidet, um folgende Elemente:
+\begin{itemize}
+  \item Verzicht auf einen räumlichen Support zugunsten der
+        Nebenbedingungsmenge $\Omega_P$ aus \cref{eq:grundlagen:omegaP} mit
+        Intensitätsoffset $A_0$, sodass Objekte den Bildrand überschreiten
+        dürfen;
+  \item Spiegel-Padding des Hologramms und Fensterung der Daten zum Rand hin,
+        um die Abtastbedingung \cref{eq:grundlagen:abtastung} ohne
+        Randartefakte zu erfüllen;
+  \item getrennte Regularisierung von Phase und Absorption (quadratische
+        Strafe auf $\operatorname{Im}\tilde O$) und Stabilisierung hoher
+        Frequenzen durch Gauß-Filterung des Updates;
+  \item Nesterov-Beschleunigung mit hochfrequenzunterdrücktem Momentum;
+  \item ein Multigrid-Schema, das auf einem 16-fach heruntergetasteten Gitter
+        beginnt und über 4-fache Heruntertastung verfeinert; die Fresnel-Zahl
+        wird auf jeder Stufe mit der heruntergetasteten Pixelgröße neu
+        berechnet ($\Fr \propto \dx^2$).
+\end{itemize}
+Gegenüber dem unmodifizierten Ausgangsverfahren erreicht die \ac{asrm} deutlich
+weniger Artefakte bei kürzerer Rechenzeit und wurde auf mehreren Datensätzen der
+\ac{p05} mit Phasenschüben weit jenseits $2\pi$ demonstriert
+\cite{dora2024asrm}. In dieser Arbeit dient sie als Referenzrekonstruktion,
+mit der die Auswirkung einer geschätzten Fresnel-Zahl auf das Rekonstruktionsergebnis
+bewertet wird.
+
+% -----------------------------------------------------------------------------
 \section{\lang{Das Autofokus-Problem}{The Autofocus Problem}}
 \label{sec:grundlagen:autofokus}
-\todo{\lang{Modellbasierter Autofokus nach \cite{dora2025autofocus}: Zielfunktion, Optimierer, Laufzeit.}{Model-based autofocus following \cite{dora2025autofocus}: objective, optimiser, runtime.}}
 
-\section{\lang{Deep Learning für Regressionsaufgaben}{Deep Learning for Regression}}
+\subsection{Definition}
+
+Alle Verfahren aus \cref{sec:grundlagen:pr} setzen voraus, dass das
+Vorwärtsmodell \cref{eq:grundlagen:vorwaertsmodell} exakt parametrisiert ist.
+Nach \cref{sec:grundlagen:fresnelzahl} ist der einzige kritische und zugleich
+nicht präzise messbare Parameter der Abstand $\zOne$, der die Fresnel-Zahl
+festlegt. \emph{Autofokus} bezeichnet die Bestimmung von $\zOne$ beziehungsweise
+$\Fr$ aus dem gemessenen Hologramm selbst. In Anlehnung an
+\cite{dora2025autofocus} sei ein Hologramm $I$, eine Schätzung
+$\zOne^{\mathrm{est}}$ und eine Unsicherheit $\Delta_M$ gegeben (an der
+\ac{p05}: $\Delta_M = \pm\qty{5}{\milli\metre}$). Gesucht ist
+\begin{equation}
+  \zOne^\ast = \argmin_{\hat z \in \Omega_z} f(\hat z),
+  \qquad
+  \Omega_z = \big[\zOne^{\mathrm{est}} - \Delta_M,\ \zOne^{\mathrm{est}} + \Delta_M\big],
+  \label{eq:grundlagen:autofokus}
+\end{equation}
+mit einem Fokuskriterium $f$, das sein Minimum beim wahren Abstand annimmt und
+mit dem Abstand vom Optimum wächst. Der modellbasierte Ansatz zerlegt $f$ in
+ein Bewertungskriterium $G$ und die Rekonstruktion bei hypothetischem Abstand
+$\hat z$ und erhält das geschachtelte Problem
+\begin{equation}
+  \zOne^\ast = \argmin_{\hat z \in \Omega_z}\ G\Big(\argmin_{\tilde O \in \Omega_P} \mathcal{L}(\tilde O, \hat z)\Big)
+  \label{eq:grundlagen:geschachtelt}
+\end{equation}
+mit der regularisierten Datenanpassung
+\begin{equation}
+  \mathcal{L}(\tilde O, \hat z) = \tfrac12\,\norm{\,\abs{\prop{\Fr(\hat z)}\big(\mathrm{e}^{\mathrm{i}\tilde O}P\big)} - \sqrt{I}\,}_2^2 + \beta\,\norm{\operatorname{Im}\tilde O}_2^2 ,
+  \label{eq:grundlagen:geschachtelt-loss}
+\end{equation}
+in dem jede Auswertung der äußeren Zielfunktion eine vollständige innere
+Rekonstruktion erfordert \cite{dora2025autofocus}.
+
+\subsection{Auswirkung einer falschen Fresnel-Zahl}
+
+Wird mit einem falschen Abstand $\hat z = \zOne + \Delta_{01}$ rekonstruiert, so
+landet die Rückpropagation nicht in der Objektebene, sondern in einer um
+$\Delta_{01}$ defokussierten Ebene. Die rekonstruierte Welle enthält dann
+Fresnel-Säume an Kanten, erscheint unscharf, verliert Auflösung und verletzt
+die physikalischen Nebenbedingungen: Es treten positive Phasen und negative
+Absorptionen auf, und der Datenfehler nach \cref{eq:grundlagen:funktional}
+steigt \cite{dora2025autofocus}. Da $\Fr$ bei $\zOne = \qty{250}{\milli\metre}$
+um \qty{0.4}{\percent} pro Millimeter variiert
+(\cref{eq:grundlagen:sensitivitaet}), sind Fehler von wenigen Millimetern in
+der Rekonstruktion deutlich sichtbar; \cite{dora2025autofocus} setzen die
+Zielgenauigkeit auf \qty{0.1}{\milli\metre}. Diese Zahl ist zugleich der Maßstab,
+an dem sich ein lernbasierter Autofokus messen lassen muss.
+
+\subsection{Anforderungen an Genauigkeit und Laufzeit}
+
+Aus dem Einsatzszenario folgen die Anforderungen an ein Autofokusverfahren.
+HoloWizard enthält mit dem Livereco-Server eine Infrastruktur zur
+Online-Rekonstruktion während der Messung \cite{dora2024framework,dora2026holowizard};
+$\zOne$ muss dafür vor der ersten Rekonstruktion vorliegen. Der modellbasierte
+Autofokus benötigt pro Datensatz einige Minuten (\cref{sec:stand:modellbasiert}),
+was für Tomographie-Serien mit Driften, In-situ-Experimente und
+Probenwechsel einen Engpass darstellt. Ein lernbasiertes Verfahren soll
+daher
+\begin{enumerate}
+  \item eine Genauigkeit erreichen, die den modellbasierten Autofokus ersetzt
+        ($\le \qty{0.1}{\milli\metre}$) oder zumindest dessen Suchintervall von
+        $\pm\qty{5}{\milli\metre}$ auf etwa $\pm\qty{1}{\milli\metre}$ verengt;
+  \item eine Latenz deutlich unterhalb einer einzelnen Rekonstruktion
+        besitzen, also im Bereich von Millisekunden auf einer \ac{gpu};
+  \item gegenüber Objektklasse, Rauschen, Beleuchtungsstruktur und
+        Flatfield-Fehlern robust sein und den Energie- und $\zOne$-Bereich der
+        \ac{p05} abdecken;
+  \item neben einer Punktschätzung eine Unsicherheit liefern, anhand derer
+        entschieden werden kann, ob der Wert direkt verwendet oder modellbasiert
+        verfeinert wird.
+\end{enumerate}
+
+\subsection{Fokuskriterien}
+
+Klassische Fokuskriterien aus der digitalen Holographie und Mikroskopie
+bewerten die Schärfe des rekonstruierten Bildes: die Varianz, Statistiken des
+Gradienten erster und zweiter Ordnung (Laplace), gewichtete Spektralmaße
+sowie Sparsity-Maße wie der Tamura-Koeffizient oder der Gini-Index des
+Gradienten \cite{langehanenberg2008autofocusing,memmolo2011automatic,zhang2017edge}.
+\cite{dora2025autofocus} formulieren vier Anforderungen, die ein Kriterium
+erfüllen muss, damit es sich mit einem lokalen Optimierer über $\Omega_z$
+minimieren lässt: einen deutlichen Peak, eine innerhalb des Kriteriums
+konsistente Peakrichtung, einen v- oder u-förmigen Verlauf über das gesamte
+Unsicherheitsintervall und möglichst große Glattheit. Auf Messdaten der
+\ac{p05} erfüllt keines der sechs untersuchten Bildkriterien diese
+Anforderungen vollständig \cite{dora2025autofocus}. Der dort eingeführte
+\ac{mfe} bewertet stattdessen die Konsistenz zwischen Modell und Messung: Die
+mit falschem Abstand rekonstruierte und auf $\Omega_P$ projizierte Welle
+$\hat\psi_P$ wird zum Detektor propagiert und mit dem Hologramm verglichen,
+\begin{equation}
+  \mathrm{MFE}(\hat z) = \norm{\,\abs{\prop{\Fr(\hat z)}(\hat\psi_P)} - \sqrt{I}\,}_2^2 .
+  \label{eq:grundlagen:mfe}
+\end{equation}
+Weil die Projektion die unphysikalischen Fresnel-Säume einer defokussierten
+Welle unwiderruflich löscht, passt die propagierte Welle genau dann zum
+Hologramm, wenn der Abstand stimmt. In der Praxis ist $\hat\psi_P$ das
+Ergebnis der \ac{asrm}-Rekonstruktion mit dem hypothetischen Abstand, und der
+\ac{mfe} ist der Datenterm nach der letzten Iteration. Eine ausführliche
+Darstellung des Verfahrens, seiner Ergebnisse und Grenzen gibt
+\cref{sec:stand:modellbasiert}.
+
+% -----------------------------------------------------------------------------
+\section{\lang{Grundlagen des maschinellen Lernens für Regression}{Machine Learning Fundamentals for Regression}}
 \label{sec:grundlagen:dl}
-\todo{\lang{CNN-Bausteine, Verlustfunktionen, Zielgrößen-Normierung; Software: PyTorch \cite{paszke2019pytorch}.}{CNN building blocks, loss functions, target normalisation; software: PyTorch \cite{paszke2019pytorch}.}}
 
+\subsection{Überwachte Regression und Faltungsnetze}
+
+Der lernbasierte Autofokus ist eine überwachte Regressionsaufgabe: Gesucht ist
+eine Abbildung $f_\theta: \R^{N\times N} \to \R$, die einem Hologramm $I$ eine
+Zielgröße $y$ zuordnet, etwa $y = \ln\Fr$. Die Parameter $\theta$ werden durch
+Minimierung des empirischen Risikos auf Trainingspaaren $(I_i, y_i)$ bestimmt,
+\begin{equation}
+  \theta^\ast = \argmin_\theta\ \frac{1}{n}\sum_{i=1}^{n} \ell\big(f_\theta(I_i), y_i\big),
+  \label{eq:grundlagen:erm}
+\end{equation}
+mit einer Verlustfunktion $\ell$; die Verallgemeinerung auf ungesehene Daten
+wird an getrennten Validierungs- und Testmengen gemessen
+\cite{bishop2006pattern,goodfellow2016deep}. Für Bilddaten sind
+\acp{cnn} der Standard \cite{lecun1998gradient,goodfellow2016deep}. Sie
+bestehen aus Faltungsschichten mit gelernten, räumlich geteilten Filtern,
+punktweisen Nichtlinearitäten wie der \ac{relu}, Normierungsschichten
+\cite{ioffe2015batchnorm} sowie Pooling- oder gestrideten Faltungen, die die
+räumliche Auflösung schrittweise verringern und das rezeptive Feld vergrößern.
+Residualverbindungen \cite{he2016resnet} erlauben tiefe Netze ohne
+Optimierungsprobleme. Für die Regression eines Skalars wird die letzte
+Merkmalskarte räumlich gemittelt (\emph{global average pooling}) und durch
+eine lineare Schicht auf die Ausgabe abgebildet. Die Faltung ist
+translationsäquivariant, was zur Translationsinvarianz der Fresnel-Zahl passt
+(\cref{sec:grundlagen:propagation}). Physikalisch bedeutsam ist das rezeptive
+Feld: Es muss die Streifenskala $N_\ast = 1/\sqrt{\Fr}$ aus
+\cref{eq:grundlagen:nstern} überdecken, um die Periode der Fresnel-Säume
+auflösen zu können -- bei voller Detektorauflösung und $\Fr = \num{2.4e-4}$
+also rund 65 Pixel, bei achtfach gebinnten Daten entsprechend weniger.
+Trainiert wird mit stochastischen Gradientenverfahren, typischerweise Adam
+\cite{kingma2015adam}.
+
+\subsection{Verlustfunktionen}
+
+Für Regressionsaufgaben sind der \ac{mse} $\ell(\hat y, y) = (\hat y - y)^2$
+und der \ac{mae} $\ell(\hat y, y) = \abs{\hat y - y}$ gebräuchlich. Der
+\ac{mse} schätzt den bedingten Erwartungswert, bestraft Ausreißer jedoch
+quadratisch; der \ac{mae} schätzt den bedingten Median und ist robuster, besitzt
+aber am Ursprung keinen stetigen Gradienten. Der Huber-Verlust
+\cite{huber1964robust}
+\begin{equation}
+  \ell_\delta(r) =
+  \begin{cases}
+    \tfrac12 r^2, & \abs{r} \le \delta, \\
+    \delta\big(\abs{r} - \tfrac12\delta\big), & \abs{r} > \delta,
+  \end{cases}
+  \qquad r = \hat y - y,
+  \label{eq:grundlagen:huber}
+\end{equation}
+verbindet beide: quadratisch für kleine Residuen, linear für große. In der
+Autofokus-Anwendung ist er attraktiv, weil einzelne Hologramme mit wenig
+Objektsignal (sehr kleine oder sehr glatte Objekte) kaum Information über
+$\Fr$ tragen und als Ausreißer das Training nicht dominieren sollten.
+
+\subsection{Zielgröße und Normierung}
+
+Die Wahl der Zielgröße bestimmt, welche Fehler das Netz gleich gewichtet.
+$\Fr$ selbst ist die physikalisch natürliche Größe
+(\cref{sec:grundlagen:propagation}), überstreicht aber zwei Größenordnungen und
+ist dadurch schlecht skaliert. Der Logarithmus
+\begin{equation}
+  y = \ln\Fr
+  \label{eq:grundlagen:logfr}
+\end{equation}
+linearisiert die Skala: Ein konstanter Fehler in $\ln\Fr$ ist ein konstanter
+relativer Fehler in $\Fr$ und nach \cref{eq:grundlagen:sensitivitaet} wegen
+$\zOne \ll \zTwo$ näherungsweise ein konstanter relativer Fehler in $\zOne$.
+Der Abstand $\zOne$ in Millimetern ist unmittelbar interpretierbar, aber nur
+dann eine sinnvolle Zielgröße, wenn $\zTwo$, $E$ und $\dx$ in Training und
+Anwendung übereinstimmen oder dem Netz als Zusatzeingabe mitgegeben werden --
+andernfalls lernt das Netz eine Geometrie, die im Bild nicht enthalten ist. In
+allen Fällen wird die Zielgröße vor dem Training standardisiert (z-Transformation
+mit Mittelwert und Standardabweichung der Trainingsmenge) und die Vorhersage
+anschließend zurücktransformiert. Die Eingabe wird auf das Flatfield normiert
+($I/\langle I\rangle$) und je nach Repräsentation logarithmiert oder als
+Amplitude $\sqrt{I}$ verwendet. Letzteres ist auch aus Konsistenzgründen
+relevant: HoloForge speichert simulierte Hologramme als Amplituden
+$\abs{\psi}$, während Messdaten Intensitäten sind; vor der Anwendung auf
+Messdaten müssen diese daher radiziert (oder die Simulationen quadriert)
+werden, damit die Statistiken übereinstimmen.
+
+\subsection{Zulässige und unzulässige Augmentierungen}
+
+Datenaugmentierung vergrößert die effektive Trainingsmenge durch
+Transformationen, die das Label unverändert lassen. Welche Transformationen
+zulässig sind, folgt aus den Symmetrien des Vorwärtsmodells
+(\cref{sec:grundlagen:propagation}): Der Fresnel-Kern ist translationsinvariant
+und isotrop, daher lassen Verschiebungen, Spiegelungen und Drehungen um
+Vielfache von \qty{90}{\degree} die Fresnel-Zahl unverändert. Auch
+Bildausschnitte (\emph{Crops}) tragen dasselbe $\Fr$, enthalten aber nach
+\cref{sec:grundlagen:ctf} weniger auflösbare Ringe. Multiplikative und additive
+Störungen -- Rauschen, Verstärkungsschwankungen, langsame Gradienten der
+Beleuchtung -- verändern $\Fr$ ebenfalls nicht und erhöhen die Robustheit.
+
+Unzulässig ist dagegen jede Skalierung des Bildes. Wird ein Hologramm um den
+Faktor $s$ neu abgetastet (Binning oder Interpolation auf ein Gitter mit
+Pixelgröße $s\,\dx$), so beschreibt dasselbe physikalische Muster nun Pixel der
+Größe $s\,\dx$, und nach \cref{eq:grundlagen:fresnelzahl} gilt
+\begin{equation}
+  \Fr' = s^2\,\Fr .
+  \label{eq:grundlagen:resize}
+\end{equation}
+Ein Resize ohne Anpassung des Labels lehrt das Netz eine falsche Zuordnung;
+ebenso verbieten sich Zoom-Augmentierungen, elastische Verformungen und
+Drehungen um beliebige Winkel, die die Streifen interpolieren und verzerren.
+Heruntertasten ist nur mit korrekt umgerechnetem Label erlaubt -- HoloWizard
+berechnet $\Fr$ in diesem Fall mit der gebinnten Pixelgröße
+$\dx\cdot s$. Dieselbe Überlegung erklärt, warum vortrainierte
+Bildklassifikationsnetze, die Eingaben auf eine feste Größe skalieren, für den
+Autofokus problematisch sind (\cref{sec:stand:dl-autofokus}).
+
+\subsection{Metriken}
+
+Die Güte einer Schätzung $\hat y_i$ für $n$ Testhologramme wird mit
+\begin{equation}
+  \MAE = \frac{1}{n}\sum_i \abs{\hat y_i - y_i},
+  \qquad
+  \mathrm{RMSE} = \sqrt{\frac{1}{n}\sum_i (\hat y_i - y_i)^2},
+  \qquad
+  \mathrm{Bias} = \frac{1}{n}\sum_i (\hat y_i - y_i)
+  \label{eq:grundlagen:metriken}
+\end{equation}
+sowie dem 95-\%-Quantil $p_{95}$ der absoluten Fehler angegeben; $p_{95}$
+erfasst die Ausreißer, auf die es im Betrieb ankommt, der Bias systematische
+Abweichungen, etwa an den Rändern des Trainingsbereichs. Damit die Werte mit dem
+modellbasierten Autofokus vergleichbar sind, werden Fehler in $\ln\Fr$ über
+\cref{eq:grundlagen:fehlerfortpflanzung} in Millimeter umgerechnet,
+$\delta\zOne \approx \zOne(1-\zOne/\zTwo)\,\delta\ln\Fr$, und zusätzlich der
+relative $\Fr$-Fehler in Prozent berichtet. Ergänzend wird der Anteil der
+Testfälle mit $\abs{\delta\zOne} \le \qty{1}{\milli\metre}$ beziehungsweise
+$\le \qty{0.1}{\milli\metre}$ ausgewiesen.
+
+% -----------------------------------------------------------------------------
 \section{\lang{Simulationsbasierte Inferenz}{Simulation-based Inference}}
 \label{sec:grundlagen:sbi}
-\todo{\lang{\ac{sbi}-Grundidee, \ac{npe}; Toolkit \cite{tejerocantero2020sbi,boelts2025sbireloaded}; Praxisleitfaden \cite{deistler2025sbi}.}{\Ac{sbi} basics, \ac{npe}; toolkit \cite{tejerocantero2020sbi,boelts2025sbireloaded}; practical guide \cite{deistler2025sbi}.}}
+
+\subsection{Bayessche Formulierung mit implizitem Likelihood}
+
+Eine Punktschätzung von $\zOne$ genügt den Anforderungen aus
+\cref{sec:grundlagen:autofokus} nicht, wenn nicht zugleich ihre Zuverlässigkeit
+beziffert wird. Der bayessche Rahmen liefert dafür die A-posteriori-Verteilung
+\begin{equation}
+  p(\theta \mid x) = \frac{p(x \mid \theta)\,p(\theta)}{p(x)}
+  \label{eq:grundlagen:bayes}
+\end{equation}
+des Parameters $\theta$ (hier $\zOne$ oder $\ln\Fr$) gegeben die Beobachtung
+$x$ (das Hologramm). Die Likelihood $p(x\mid\theta)$ ist für die \ac{nfh} nicht
+geschlossen angebbar: Ein Hologramm entsteht aus einem zufälligen Objekt, einer
+zufälligen Beleuchtung und Rauschen, und die Marginalisierung über diese
+Störgrößen ist analytisch unzugänglich. Verfügbar ist jedoch ein Simulator --
+HoloForge --, der für gegebenes $\theta$ Stichproben $x \sim p(x\mid\theta)$
+erzeugt. Verfahren, die Inferenz allein aus solchen Simulationen betreiben,
+werden als \ac{sbi} bezeichnet \cite{cranmer2020frontier,deistler2025sbi}.
+
+\subsection{Neuronale Posterior-, Likelihood- und Ratio-Schätzung}
+
+Die drei Grundfamilien der neuronalen \ac{sbi} unterscheiden sich darin, welche
+Größe aus den simulierten Paaren $(\theta_i, x_i)$ mit
+$\theta_i \sim p(\theta)$ und $x_i \sim p(x\mid\theta_i)$ gelernt wird
+\cite{cranmer2020frontier,lueckmann2021benchmarking}. Bei der \ac{npe}
+\cite{papamakarios2016fast,greenberg2019apt} approximiert ein bedingter
+Dichteschätzer $q_\phi(\theta\mid x)$ -- ein \ac{mdn} oder ein Normalizing Flow
+\cite{rezende2015variational,papamakarios2021flows} -- direkt die Posterior,
+indem die erwartete negative Log-Likelihood der Trainingsparameter minimiert
+wird:
+\begin{equation}
+  \phi^\ast = \argmin_\phi\ \E_{(\theta, x)\sim p(\theta)\,p(x\mid\theta)}\big[-\ln q_\phi(\theta\mid x)\big] .
+  \label{eq:grundlagen:npe}
+\end{equation}
+Für hinreichend flexible $q_\phi$ wird das Minimum bei
+$q_\phi(\theta\mid x) = p(\theta\mid x)$ angenommen, da \cref{eq:grundlagen:npe}
+bis auf eine Konstante der erwarteten Kullback-Leibler-Divergenz zwischen wahrer
+und approximierter Posterior entspricht. Die \ac{nle} lernt stattdessen
+$q_\phi(x\mid\theta)$ und benötigt zur Inferenz anschließend Sampling-Verfahren,
+die \ac{nre} trainiert einen Klassifikator, dessen Ausgabe das
+Likelihood-Verhältnis liefert \cite{cranmer2020frontier}. Für hochdimensionale
+Beobachtungen wie Bilder ist die \ac{npe} mit einem \emph{Embedding-Netz} die
+naheliegende Wahl: Ein \ac{cnn} komprimiert das Hologramm auf wenige Merkmale,
+auf die der Dichteschätzer konditioniert wird, und beide werden gemeinsam
+trainiert \cite{deistler2025sbi,boelts2025sbireloaded}. Die Inferenz ist
+\emph{amortisiert}: Nach dem Training kostet die Posterior für ein neues
+Hologramm einen Vorwärtsdurchlauf und das Ziehen von Stichproben -- im Gegensatz
+zur klassischen bayesschen Inferenz, die pro Beobachtung neu optimiert oder
+sampelt. Die Bibliothek \texttt{sbi} \cite{tejerocantero2020sbi,boelts2025sbireloaded}
+stellt diese Verfahren einschließlich Embedding-Netzen und Diagnostiken in
+PyTorch \cite{paszke2019pytorch} bereit.
+
+\subsection{Diagnostik: Kalibrierung und Abdeckung}
+
+Eine approximierte Posterior ist nur dann nützlich, wenn sie \emph{kalibriert}
+ist. Für amortisierte Schätzer lassen sich dafür Diagnostiken rein aus
+Simulationen berechnen \cite{deistler2025sbi}. Die \ac{sbc}
+\cite{talts2018sbc} nutzt, dass für $\theta_i \sim p(\theta)$,
+$x_i \sim p(x\mid\theta_i)$ und Stichproben $\theta_i^{(1)},\dots,\theta_i^{(L)} \sim q_\phi(\theta\mid x_i)$
+der Rang von $\theta_i$ unter den Stichproben gleichverteilt sein muss, wenn
+$q_\phi$ die wahre Posterior ist; Abweichungen von der Gleichverteilung zeigen
+systematische Verzerrung oder falsche Breite an. Die \emph{erwartete Abdeckung}
+\cite{hermans2022trust} prüft, ob die $(1-\alpha)$-\ac{hpd}-Regionen der
+approximierten Posterior den wahren Parameter in einem Anteil $1-\alpha$ der
+Fälle enthalten; liegt der beobachtete Anteil darunter, ist der Schätzer
+überkonfident. \cite{hermans2022trust} zeigen, dass gängige \ac{sbi}-Verfahren
+zu Überkonfidenz neigen, und empfehlen unter anderem Ensembles mehrerer
+Schätzer. \ac{tarp} \cite{lemos2023tarp} verallgemeinert den Abdeckungstest
+auf beliebige Posteriorformen, lokale Tests wie L-C2ST
+\cite{linhart2023lc2st} prüfen die Kalibrierung für einzelne Beobachtungen
+statt im Mittel über den Prior. Ergänzend werden Prior- und
+Posterior-Predictive-Checks empfohlen, bei denen aus Prior beziehungsweise
+Posterior simulierte Hologramme mit den beobachteten verglichen werden
+\cite{deistler2025sbi}.
+
+\subsection{Einfachere Unsicherheitsmodelle}
+
+Als Vergleichsbasis zur \ac{npe} dienen Unsicherheitsmodelle, die ohne
+Dichteschätzer auskommen. Bei der heteroskedastischen Regression
+\cite{nix1994estimating,kendall2017uncertainties} gibt das Netz Mittelwert
+$\mu_\theta(x)$ und Varianz $\sigma_\theta^2(x)$ aus und wird mit der
+Gauß-\ac{nll}
+\begin{equation}
+  \ell(x, y) = \frac{\big(y - \mu_\theta(x)\big)^2}{2\sigma_\theta^2(x)} + \tfrac12\ln\sigma_\theta^2(x)
+  \label{eq:grundlagen:nll}
+\end{equation}
+trainiert; $\sigma_\theta$ erfasst die datenabhängige (aleatorische)
+Unsicherheit, etwa bei Hologrammen mit wenig Objektsignal. Die Unsicherheit des
+Modells selbst (epistemisch) wird durch Monte-Carlo-Dropout
+\cite{gal2016dropout} oder durch Deep Ensembles unabhängig trainierter Netze
+\cite{lakshminarayanan2017ensembles} approximiert. Die Gauß-\ac{nll} ist eine
+strikt eigentliche Bewertungsregel \cite{gneiting2007strictly}, sodass ihre
+Minimierung kalibrierte Vorhersagen begünstigt; die Kalibrierung ist dennoch
+mit denselben Abdeckungsdiagnostiken wie bei der \ac{npe} zu prüfen
+\cite{guo2017calibration,lakshminarayanan2017ensembles}.
+
+\subsection{Relevanz für die Schätzung von \texorpdfstring{$\zOne$}{z01}}
+
+Für den Autofokus liefert die \ac{sbi} den formalen Rahmen, die in der
+Aufgabenstellung geforderte Schätzung von $\zOne$ \emph{mit Unsicherheit}
+umzusetzen. Der Prior $p(\zOne)$ bildet das Vorwissen der Messung ab -- eine
+Gleichverteilung über den Betriebsbereich der \ac{p05} oder, bei vorhandener
+Schätzung, über $\zOne^{\mathrm{est}} \pm \Delta_M$. Die Breite der Posterior
+entscheidet, ob die Schätzung direkt verwendet oder als Startintervall an den
+modellbasierten Autofokus übergeben wird; HoloWizard nimmt ein solches
+Intervall über die Parameter \texttt{Measurement.z01} und
+\texttt{z01\_confidence} unmittelbar entgegen. Das Hauptrisiko ist die
+Modellfehlspezifikation: Weichen Messdaten systematisch vom Simulator ab
+(Beleuchtungsstruktur, Detektorunschärfe, unbekannte Objektklassen), so ist die
+gelernte Posterior außerhalb ihres Gültigkeitsbereichs, ohne dass die
+simulationsbasierten Diagnostiken dies anzeigen \cite{deistler2025sbi}.
+Domänenrandomisierung der Simulationsparameter \cite{tobin2017domain} und der
+Vergleich von Simulations- und Messdatenstatistiken sind die in dieser Arbeit
+verfolgten Gegenmaßnahmen (\cref{ch:methoden} und \cref{ch:diskussion}).
