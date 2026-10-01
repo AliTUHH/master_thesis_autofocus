@@ -124,7 +124,9 @@ def _frequency_grid_cached(height: int, width: int, device: str, dtype: torch.dt
     return torch.meshgrid(xi, eta, indexing="ij")
 
 
-def frequency_grid(height: int, width: int, device: torch.device | str = "cpu", dtype: torch.dtype = torch.float32) -> tuple[torch.Tensor, torch.Tensor]:
+def frequency_grid(
+    height: int, width: int, device: torch.device | str = "cpu", dtype: torch.dtype = torch.float32
+) -> tuple[torch.Tensor, torch.Tensor]:
     """fftshifted ``(xi, eta)`` grids in cycles/pixel matching the output of :func:`power_spectrum`."""
     return _frequency_grid_cached(int(height), int(width), str(torch.device(device)), dtype)
 
@@ -167,11 +169,22 @@ def _log_scale_factor(spectrum: torch.Tensor, log_scale: float | str) -> torch.T
     return float(log_scale)
 
 
+def _pool_spectrum(spectrum: torch.Tensor, pool: int) -> torch.Tensor:
+    """Average-pool the power spectrum by an integer factor (noise reduction: 4 exponentially distributed
+    power values per output pixel for ``pool=2``); the ring geometry in pixels shrinks by the same factor."""
+    if pool <= 1:
+        return spectrum
+    shape = spectrum.shape
+    pooled = torch.nn.functional.avg_pool2d(spectrum.reshape(-1, 1, shape[-2], shape[-1]), kernel_size=int(pool))
+    return pooled.reshape(*shape[:-2], pooled.shape[-2], pooled.shape[-1])
+
+
 def log_power_spectrum(
     x: torch.Tensor,
     window: bool = True,
     log_scale: float | str = "auto",
     standardize: bool = True,
+    pool: int = 1,
 ) -> torch.Tensor:
     """``log1p(scale * P)`` of the fftshifted power spectrum, optionally standardised per image.
 
@@ -183,14 +196,18 @@ def log_power_spectrum(
             (median power at ``|xi| > 0.4``) maps to ``log1p(1)`` -- values below the floor are compressed,
             the signal above it is log-compressed.
         standardize: Zero mean / unit variance per image after the log.
+        pool: Integer average pooling of the *power* before the log (``1`` = none); output is ``[..., H/pool, W/pool]``.
     """
     spectrum = power_spectrum(x, window=window)
-    out = torch.log1p(_log_scale_factor(spectrum, log_scale) * spectrum)
+    scale = _log_scale_factor(spectrum, log_scale)
+    out = torch.log1p(scale * _pool_spectrum(spectrum, pool))
     return _standardize(out, (-2, -1)) if standardize else out
 
 
 @lru_cache(maxsize=16)
-def _radial_bins_cached(height: int, width: int, n_bins: int, axis: str, max_value: float, device: str) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+def _radial_bins_cached(
+    height: int, width: int, n_bins: int, axis: str, max_value: float, device: str
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Bin index per spectrum pixel (``n_bins`` = outside the range), pixel counts per bin and bin centres."""
     xi, eta = frequency_grid(height, width, device, torch.float64)
     coord = xi**2 + eta**2 if axis == "freq_sq" else torch.sqrt(xi**2 + eta**2)
@@ -296,12 +313,17 @@ class RepresentationTransform:
     log_scale: float | str = "auto"
     n_bins: int = 256
     axis: str = "freq_sq"
+    pool: int = 1
 
     def __post_init__(self) -> None:
         if self.axis not in RADIAL_AXES:
             raise ValueError(f"axis must be one of {RADIAL_AXES}, got {self.axis!r}")
         if self.n_bins < 1:
             raise ValueError(f"n_bins must be positive, got {self.n_bins}")
+        if self.pool < 1 or int(self.pool) != self.pool:
+            raise ValueError(f"pool must be a positive integer, got {self.pool!r}")
+        if self.pool > 1 and self.representation is Representation.HOLOGRAM_SPECTRUM:
+            raise ValueError("pool > 1 is only supported for 'log_power_spectrum' (channels of 'hologram+spectrum' must match)")
         _log_scale_factor(torch.ones(1, 8, 8), self.log_scale)  # validates the value
 
     @property
@@ -317,6 +339,8 @@ class RepresentationTransform:
         _, height, width = image_shape
         if self.is_1d:
             return (self.n_bins,)
+        if self.representation is Representation.LOG_POWER_SPECTRUM:
+            return (1, height // self.pool, width // self.pool)
         return (self.channels, height, width)
 
     def __call__(self, raw: torch.Tensor, normalized: torch.Tensor) -> torch.Tensor:
@@ -324,7 +348,7 @@ class RepresentationTransform:
         if rep is Representation.HOLOGRAM:
             return normalized
         if rep is Representation.LOG_POWER_SPECTRUM:
-            return log_power_spectrum(raw, window=self.window, log_scale=self.log_scale)
+            return log_power_spectrum(raw, window=self.window, log_scale=self.log_scale, pool=self.pool)
         if rep is Representation.HOLOGRAM_SPECTRUM:
             spectrum = log_power_spectrum(raw, window=self.window, log_scale=self.log_scale)
             return torch.cat([normalized, spectrum], dim=-3)
@@ -338,20 +362,21 @@ class RepresentationTransform:
             "log_scale": self.log_scale,
             "n_bins": self.n_bins,
             "axis": self.axis,
+            "pool": self.pool,
         }
 
 
 def build_representation(name: str | Representation = "hologram", **kwargs: Any) -> RepresentationTransform:
     """Factory: ``build_representation("hologram+spectrum", window=False, log_scale=1e3)``.
 
-    Accepted keyword arguments: ``window`` (bool), ``log_scale`` (float or ``"auto"``), ``n_bins`` and
-    ``axis`` (radial profile only).
+    Accepted keyword arguments: ``window`` (bool), ``log_scale`` (float or ``"auto"``), ``pool`` (integer,
+    ``log_power_spectrum`` only), ``n_bins`` and ``axis`` (radial profile only).
     """
     try:
         representation = Representation(name)
     except ValueError as exc:
         raise ValueError(f"unknown representation {name!r}; expected one of {REPRESENTATIONS}") from exc
-    allowed = {"window", "log_scale", "n_bins", "axis"}
+    allowed = {"window", "log_scale", "n_bins", "axis", "pool"}
     unknown = set(kwargs) - allowed
     if unknown:
         raise ValueError(f"unknown representation option(s) {sorted(unknown)}; allowed: {sorted(allowed)}")
