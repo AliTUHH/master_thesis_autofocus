@@ -1,0 +1,77 @@
+% =============================================================================
+% Kapitel 5: Experimente und Ergebnisse
+% -----------------------------------------------------------------------------
+% Was hinein gehört (Richtwert 15--25 Seiten):
+%  5.1 Versuchsaufbau: Datensätze (Tabelle: Name | #Samples | z01-Bereich |
+%      Rauschen | meta.json-Hash), Hardware, Software-Versionen, Seeds
+%  5.2 Simulation -- Baseline-CNN: Lernkurven, Scatter z01_pred vs. z01_true,
+%      Fehler über z01 (systematisch?), MAE/rel. Fr-Fehler (Tabelle)
+%  5.3 Vergleich mit modellbasiertem Autofokus: Genauigkeit UND Laufzeit
+%      (Tabelle; Laufzeit mit Hardware-Angabe), Fehlerfälle
+%  5.4 Ablationen: Zielgröße (z01/Fr/log Fr), Eingabedarstellung (Bild/|FFT|),
+%      Architektur, Datensatzgröße, Rauschen, Augmentierung -- je eine Tabelle/Abb.
+%  5.5 Robustheit: Verteilungsverschiebung (andere Phantome, Energie, Rauschen)
+%  5.6 SBI/NPE: Posterior-Beispiele, Kalibrierung (Coverage), Vergleich zur
+%      Punktschätzung
+%  5.7 Messdaten (P05): Referenz-Fr aus modellbasiertem Autofokus, Ergebnisse,
+%      Sim-to-Real-Gap
+% Konventionen:
+%  - Jede Abbildung/Tabelle hat eine reproduzierende Quelle: Run-Name + Commit-SHA
+%    (steht als Kommentar im Snippet aus tools/export_figures.py und im Logbuch
+%    docs/notizen/experimente.md).
+%  - Zahlen in Tabellen mit siunitx-S-Spalten, Einheiten in der Kopfzeile.
+%  - Ergebnisse berichten, nicht interpretieren (Interpretation -> Kapitel 6).
+% =============================================================================
+\chapter{\lang{Experimente und Ergebnisse}{Experiments and Results}}
+\label{ch:experimente}
+
+\section{\lang{Versuchsaufbau}{Experimental Setup}}
+\label{sec:experimente:setup}
+\todo{\lang{Datensätze, Hardware, Software-Versionen, Seeds.}{Datasets, hardware, software versions, seeds.}}
+
+\section{\lang{Simulationsdaten: Baseline}{Simulated Data: Baseline}}
+\label{sec:experimente:baseline}
+
+% Beispiel: Ergebnistabelle. Werte sind Platzhalter; echte Werte aus
+% runs/<run>/results.json (test_metrics.physical) bzw. runs/<run>/eval_<split>/eval_results.json
+% (metrics.physical) übernehmen und den Run im Tabellen-Kommentar vermerken:
+% Quelle: runs/2026-10-15_cnn-baseline_s0  Commit: <sha>
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{\lang{Genauigkeit auf dem Testdatensatz (Platzhalterwerte). Mittelwert $\pm$ Standardabweichung über drei Seeds.}{Accuracy on the test set (placeholder values). Mean $\pm$ standard deviation over three seeds.}}
+  \label{tab:experimente:baseline}
+  \begin{tabular}{@{}l S[table-format=1.2(2)] S[table-format=1.2(2)] S[table-format=4.0]@{}}
+    \toprule
+    \lang{Modell}{Model} & {$\MAE_{\zOne}$ / \unit{\milli\metre}} & {$\delta\Fr$ / \unit{\percent}} & {$t_{\mathrm{inf}}$ / \unit{\milli\second}} \\
+    \midrule
+    \lang{Modellbasiert}{Model-based} \cite{dora2025autofocus} & 0.10(2) & 0.20(4) & 9000 \\
+    \acs{cnn}-Baseline                                        & 0.85(9) & 1.70(18) & 5 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+\lang{Dabei bezeichnet $\delta\Fr$ den relativen Fehler der Fresnel-Zahl und $t_{\mathrm{inf}}$ die Laufzeit pro Hologramm.}{Here $\delta\Fr$ denotes the relative error of the Fresnel number and $t_{\mathrm{inf}}$ the runtime per hologram.}
+
+% Beispiel: Abbildung aus einem Trainingslauf einbinden (Figurnamen = Dateistamm der Pipeline-Plots,
+% siehe `python tools/export_figures.py --run runs/<run> --list`).
+% 1) python tools/export_figures.py --run runs/<run> --chapter experimente --names loss_curves test_scatter_z01_mm
+% 2) erzeugte Snippets einbinden (Datei existiert erst nach Schritt 1):
+% \input{figures/experimente/loss_curves}
+% \input{figures/experimente/test_scatter_z01_mm}
+\todo{\lang{Lernkurven (\texttt{loss\_curves}) und Scatter-Plot (\texttt{test\_scatter\_z01\_mm}) einbinden.}{Include learning curves (\texttt{loss\_curves}) and the scatter plot (\texttt{test\_scatter\_z01\_mm}).}}
+
+\section{\lang{Vergleich mit dem modellbasierten Autofokus}{Comparison with Model-based Autofocus}}
+\label{sec:experimente:vergleich}
+\todo{\lang{Genauigkeit und Laufzeit; Fehlerfälle.}{Accuracy and runtime; failure cases.}}
+
+\section{\lang{Ablationen}{Ablations}}
+\label{sec:experimente:ablationen}
+\todo{\lang{Zielgröße, Eingabedarstellung, Architektur, Datensatzgröße, Rauschen.}{Target, input representation, architecture, dataset size, noise.}}
+
+\section{\lang{Simulationsbasierte Inferenz}{Simulation-based Inference}}
+\label{sec:experimente:sbi}
+\todo{\lang{Posterior-Beispiele, Kalibrierung.}{Posterior examples, calibration.}}
+
+\section{\lang{Messdaten}{Measured Data}}
+\label{sec:experimente:messdaten}
+\todo{\lang{P05-Daten, Referenz-$\Fr$, Sim-to-Real-Gap.}{P05 data, reference $\Fr$, sim-to-real gap.}}

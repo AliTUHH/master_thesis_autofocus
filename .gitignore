@@ -39,3 +39,43 @@ events.out.tfevents.*
 .idea/
 *.swp
 *.swo
+
+# Jupyter / Colab (Notebooks ohne Ausgaben committen)
+.ipynb_checkpoints/
+
+# Notizen: optionale Obsidian-Oberfläche auf docs/
+.obsidian/
+
+# LaTeX-Build-Artefakte (thesis/); thesis/figures/**/*.pdf bleibt versioniert
+thesis/*.pdf
+thesis/*.aux
+thesis/**/*.aux
+thesis/*.out
+thesis/*.toc
+thesis/*.lof
+thesis/*.lot
+thesis/*.loa
+thesis/*.lol
+thesis/*.bbl
+thesis/*.bcf
+thesis/*.blg
+thesis/*.run.xml
+thesis/*.fls
+thesis/*.fdb_latexmk
+thesis/*.synctex.gz
+thesis/*.synctex(busy)
+thesis/*.xdv
+thesis/*.acn
+thesis/*.acr
+thesis/*.alg
+thesis/*.glg
+thesis/*.glo
+thesis/*.gls
+thesis/*.ist
+thesis/*.nav
+thesis/*.snm
+thesis/*.vrb
+thesis/_minted*/
+thesis/build/
+# Overleaf-ZIP-Exporte nicht versionieren
+thesis/*.zip

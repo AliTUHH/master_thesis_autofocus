@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Werkzeuge & Workflow (Doku)
+    url: https://github.com/AliTUHH/master_thesis_autofocus/blob/main/docs/04_werkzeuge_und_workflow.md
+    about: Wie Branches, Issues, Experimente, Literatur und Thesis-Skelett zusammenspielen.

@@ -1,0 +1,167 @@
+% ---------------------------------------------------------------------------
+% references.bib -- Literaturdatenbank der Masterarbeit
+%
+% Citekey-Schema: <erstautor><jahr><kurzwort>   (z. B. dora2025autofocus)
+%   - erstautor: Nachname klein, ohne Umlaute/Sonderzeichen
+%   - kurzwort:  ein prägendes Wort aus Titel/Thema, klein
+%
+% Alle Einträge wurden am 2026-10-01 per DOI-Content-Negotiation geprüft:
+%   curl -sL -H "Accept: application/x-bibtex" https://doi.org/<DOI>
+% Seitenbereiche, die Crossref nur als Startseite liefert, stammen aus der
+% Aufgabenstellung (Project-Thesis-PDF) bzw. der Verlagsseite.
+%
+% Pflege: Diese Datei wird später von Zotero + Better BibTeX automatisch
+% exportiert ("Keep updated"). Händisch gepflegte Einträge dann in Zotero
+% übernehmen (Citekey per "Citation Key: ..." im Extra-Feld pinnen), sonst
+% werden sie beim nächsten Export überschrieben.
+% ---------------------------------------------------------------------------
+
+% ===== Referenzen aus der Aufgabenstellung (6 Stück) =======================
+
+@article{dora2024asrm,
+  title     = {Artifact-suppressing reconstruction of strongly interacting objects in {X}-ray near-field holography without a spatial support constraint},
+  author    = {Dora, Johannes and M{\"o}ddel, Martin and Flenner, Silja and Schroer, Christian G. and Knopp, Tobias and Hagemann, Johannes},
+  journal   = {Optics Express},
+  volume    = {32},
+  number    = {7},
+  pages     = {10801--10828},
+  year      = {2024},
+  month     = mar,
+  publisher = {Optica Publishing Group},
+  issn      = {1094-4087},
+  doi       = {10.1364/OE.514641},
+  url       = {https://doi.org/10.1364/OE.514641},
+  note      = {Open Access (CC BY)}
+}
+
+@article{dora2025autofocus,
+  title     = {Model-based autofocus for near-field phase retrieval},
+  author    = {Dora, Johannes and M{\"o}ddel, Martin and Flenner, Silja and Reimers, Jan and Zeller-Plumhoff, Berit and Schroer, Christian G. and Knopp, Tobias and Hagemann, Johannes},
+  journal   = {Optics Express},
+  volume    = {33},
+  number    = {4},
+  pages     = {6641--6657},
+  year      = {2025},
+  month     = feb,
+  publisher = {Optica Publishing Group},
+  issn      = {1094-4087},
+  doi       = {10.1364/OE.544573},
+  url       = {https://doi.org/10.1364/OE.544573},
+  note      = {Open Access (CC BY)}
+}
+
+@article{paganin2002phase,
+  title     = {Simultaneous phase and amplitude extraction from a single defocused image of a homogeneous object},
+  author    = {Paganin, D. and Mayo, S. C. and Gureyev, T. E. and Miller, P. R. and Wilkins, S. W.},
+  journal   = {Journal of Microscopy},
+  volume    = {206},
+  number    = {1},
+  pages     = {33--40},
+  year      = {2002},
+  month     = apr,
+  publisher = {Wiley},
+  issn      = {1365-2818},
+  doi       = {10.1046/j.1365-2818.2002.01010.x},
+  url       = {https://doi.org/10.1046/j.1365-2818.2002.01010.x}
+}
+
+@article{fienup1982phase,
+  title     = {Phase retrieval algorithms: a comparison},
+  author    = {Fienup, J. R.},
+  journal   = {Applied Optics},
+  volume    = {21},
+  number    = {15},
+  pages     = {2758--2769},
+  year      = {1982},
+  month     = aug,
+  publisher = {Optica Publishing Group},
+  issn      = {1539-4522},
+  doi       = {10.1364/AO.21.002758},
+  url       = {https://doi.org/10.1364/AO.21.002758}
+}
+
+% Referenz [5] der Aufgabenstellung: Zenodo-Record der Vorgängerversion
+% (Version 1.3.1, veröffentlicht 2024-11-01; Konzept-DOI 10.5281/zenodo.8349364).
+@software{dora2024framework,
+  title     = {A {P}ython framework for the online reconstruction of {X}-ray near-field holography data},
+  author    = {Dora, Johannes and Flenner, Silja and Lopes Marinho, Andr{\'e} and Hagemann, Johannes},
+  year      = {2024},
+  month     = nov,
+  publisher = {Zenodo},
+  version   = {1.3.1},
+  doi       = {10.5281/zenodo.14024980},
+  url       = {https://doi.org/10.5281/zenodo.14024980},
+  note      = {MIT-Lizenz}
+}
+
+@misc{deistler2025sbi,
+  title         = {Simulation-Based Inference: A Practical Guide},
+  author        = {Deistler, Michael and Boelts, Jan and Steinbach, Peter and Moss, Guy and Moreau, Thomas and Gloeckler, Manuel and Rodrigues, Pedro L. C. and Linhart, Julia and Lappalainen, Janne K. and Miller, Benjamin Kurt and Gon{\c{c}}alves, Pedro J. and Lueckmann, Jan-Matthis and Schr{\"o}der, Cornelius and Macke, Jakob H.},
+  year          = {2025},
+  month         = aug,
+  eprint        = {2508.12939},
+  eprinttype    = {arxiv},
+  eprintclass   = {stat.ML},
+  howpublished  = {arXiv:2508.12939},
+  url           = {https://arxiv.org/abs/2508.12939}
+}
+
+% ===== Software-Zitate =====================================================
+
+% HoloWizard 3.0.6 (die im Projekt installierte Version).
+% Konzept-DOI (alle Versionen): 10.5281/zenodo.16275927
+% Versions-DOI v3.0.6 (2026-07-13): 10.5281/zenodo.19560147
+@software{dora2026holowizard,
+  title     = {{HoloWizard}: A {P}ython framework for processing {X}-ray near-field holography data},
+  author    = {Dora, Johannes and Flenner, Silja and Lopes Marinho, Andr{\'e} and Cinar, Cem and Gr{\"u}n, Johannes and Hagemann, Johannes},
+  year      = {2026},
+  month     = jul,
+  publisher = {Zenodo},
+  version   = {3.0.6},
+  doi       = {10.5281/zenodo.19560147},
+  url       = {https://doi.org/10.5281/zenodo.16275927},
+  note      = {Konzept-DOI aller Versionen: 10.5281/zenodo.16275927; Quellcode: \url{https://github.com/DESY-FS-PETRA/holowizard}}
+}
+
+@inproceedings{paszke2019pytorch,
+  title     = {{PyTorch}: An Imperative Style, High-Performance Deep Learning Library},
+  author    = {Paszke, Adam and Gross, Sam and Massa, Francisco and Lerer, Adam and Bradbury, James and Chanan, Gregory and Killeen, Trevor and Lin, Zeming and Gimelshein, Natalia and Antiga, Luca and Desmaison, Alban and K{\"o}pf, Andreas and Yang, Edward and DeVito, Zach and Raison, Martin and Tejani, Alykhan and Chilamkurthy, Sasank and Steiner, Benoit and Fang, Lu and Bai, Junjie and Chintala, Soumith},
+  booktitle = {Advances in Neural Information Processing Systems 32 (NeurIPS 2019)},
+  pages     = {8024--8035},
+  year      = {2019},
+  publisher = {Curran Associates, Inc.},
+  eprint    = {1912.01703},
+  eprinttype = {arxiv},
+  doi       = {10.48550/arXiv.1912.01703},
+  url       = {https://arxiv.org/abs/1912.01703}
+}
+
+@article{tejerocantero2020sbi,
+  title     = {sbi: A toolkit for simulation-based inference},
+  author    = {Tejero-Cantero, Alvaro and Boelts, Jan and Deistler, Michael and Lueckmann, Jan-Matthis and Durkan, Conor and Gon{\c{c}}alves, Pedro J. and Greenberg, David S. and Macke, Jakob H.},
+  journal   = {Journal of Open Source Software},
+  volume    = {5},
+  number    = {52},
+  pages     = {2505},
+  year      = {2020},
+  month     = aug,
+  publisher = {The Open Journal},
+  issn      = {2475-9066},
+  doi       = {10.21105/joss.02505},
+  url       = {https://doi.org/10.21105/joss.02505}
+}
+
+@article{boelts2025sbireloaded,
+  title     = {sbi reloaded: a toolkit for simulation-based inference workflows},
+  author    = {Boelts, Jan and Deistler, Michael and Gloeckler, Manuel and Tejero-Cantero, {\'A}lvaro and Lueckmann, Jan-Matthis and Moss, Guy and Steinbach, Peter and Moreau, Thomas and Muratore, Fabio and Linhart, Julia and Durkan, Conor and Vetter, Julius and Miller, Benjamin Kurt and Herold, Maternus and Ziaeemehr, Abolfazl and Pals, Matthijs and Gruner, Theo and Bischoff, Sebastian and Krouglova, Nastya and Gao, Richard and Lappalainen, Janne K. and Mucs{\'a}nyi, B{\'a}lint and Pei, Felix and Schulz, Auguste and Stefanidi, Zinovia and Rodrigues, Pedro and Schr{\"o}der, Cornelius and Abu Zaid, Faried and Beck, Jonas and Kapoor, Jaivardhan and Greenberg, David S. and Gon{\c{c}}alves, Pedro J. and Macke, Jakob H.},
+  journal   = {Journal of Open Source Software},
+  volume    = {10},
+  number    = {108},
+  pages     = {7754},
+  year      = {2025},
+  month     = apr,
+  publisher = {The Open Journal},
+  issn      = {2475-9066},
+  doi       = {10.21105/joss.07754},
+  url       = {https://doi.org/10.21105/joss.07754}
+}
