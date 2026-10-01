@@ -753,6 +753,9 @@ def run_baseline(
                 f"b={row['blur_px']:.2f} px evals={res.n_evals} t={res.runtime_s:.2f} s",
                 flush=True,
             )
+        # A full run takes minutes per hologram; keep the partial table on disk so an interrupted run is not lost.
+        write_samples_csv(rows, out / "samples.csv")
+        (out / "histories.json").write_text(json.dumps(histories), encoding="utf-8")
 
     per_method = summarize_by_method(rows)
     summary: dict[str, Any] = {
