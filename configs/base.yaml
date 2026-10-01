@@ -10,6 +10,8 @@ data:
   crop_size: null                     # zentraler Ausschnitt in Pixeln (null = kein Crop)
   downsample: 1                       # Average-Pooling-Faktor (z. B. 2 für CPU-Experimente)
   hologram_key: images/hologram       # alternativ images/gt_hologram (rauschfrei), falls gespeichert
+  representation: hologram            # Netzeingabe: hologram | log_power_spectrum | hologram+spectrum (2 Kanäle) | radial_profile (1D)
+  representation_kwargs: {}           # z. B. {window: true, log_scale: auto, n_bins: 256, axis: freq_sq} (siehe src/data/representations.py)
   batch_size: 32
   num_workers: 0                      # DataLoader-Prozesse (HDF5 wird pro Prozess lazy geöffnet)
 

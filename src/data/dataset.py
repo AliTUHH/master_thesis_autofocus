@@ -17,12 +17,14 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
+from src.data.representations import RepresentationTransform, build_representation
 from src.utils.config import require_keys, resolve_path
 from src.utils.physics import TARGET_MODES
 
 __all__ = [
     "NORMALIZATIONS",
     "HologramHDF5Dataset",
+    "dataset_kwargs_from_config",
     "make_dataloaders",
     "normalize_hologram",
 ]
@@ -69,6 +71,11 @@ class HologramHDF5Dataset(Dataset):
         crop_size: Optional centre crop (pixels, applied before downsampling).
         downsample: Integer average-pooling factor (1 = none).
         hologram_key: Dataset inside the file to use as input (``images/hologram`` or ``images/gt_hologram``).
+        representation: Network input derived from the preprocessed hologram, one of
+            :data:`src.data.representations.REPRESENTATIONS` (``hologram`` = unchanged behaviour,
+            ``log_power_spectrum``, ``hologram+spectrum`` (2 channels), ``radial_profile`` (1-D vector)).
+        representation_kwargs: Options forwarded to :func:`src.data.representations.build_representation`
+            (``window``, ``log_scale``, ``n_bins``, ``axis``).
     """
 
     def __init__(
@@ -79,6 +86,8 @@ class HologramHDF5Dataset(Dataset):
         crop_size: int | None = None,
         downsample: int = 1,
         hologram_key: str = "images/hologram",
+        representation: str = "hologram",
+        representation_kwargs: dict[str, Any] | None = None,
     ) -> None:
         self.path = Path(path)
         if not self.path.is_file():
@@ -97,6 +106,7 @@ class HologramHDF5Dataset(Dataset):
         self.crop_size = crop_size
         self.downsample = int(downsample)
         self.hologram_key = hologram_key
+        self.transform: RepresentationTransform = build_representation(representation, **(representation_kwargs or {}))
         self._h5: h5py.File | None = None
         self._pid: int | None = None
 
@@ -150,7 +160,8 @@ class HologramHDF5Dataset(Dataset):
         return image, torch.tensor(self.targets[index], dtype=torch.float32)
 
     def preprocess(self, image: torch.Tensor) -> torch.Tensor:
-        """Centre-crop, average-pool and normalise a ``[1, H, W]`` float tensor (also usable at inference)."""
+        """Centre-crop, average-pool, normalise and transform a ``[1, H, W]`` float tensor into the configured
+        representation (also usable at inference)."""
         if self.crop_size is not None:
             _, height, width = image.shape
             top = (height - self.crop_size) // 2
@@ -158,14 +169,25 @@ class HologramHDF5Dataset(Dataset):
             image = image[:, top : top + self.crop_size, left : left + self.crop_size]
         if self.downsample > 1:
             image = F.avg_pool2d(image.unsqueeze(0), kernel_size=self.downsample).squeeze(0)
-        return normalize_hologram(image, self.normalization)
+        return self.transform(image, normalize_hologram(image, self.normalization))
 
     @property
-    def output_shape(self) -> tuple[int, int, int]:
-        """Shape ``(1, H, W)`` of the tensors returned by ``__getitem__``."""
+    def representation(self) -> str:
+        """Name of the input representation (``hologram`` by default)."""
+        return self.transform.representation.value
+
+    @property
+    def image_shape(self) -> tuple[int, int, int]:
+        """Shape ``(1, H, W)`` of the cropped/downsampled hologram before the representation transform."""
         height = (self.crop_size if self.crop_size is not None else self._height) // self.downsample
         width = (self.crop_size if self.crop_size is not None else self._width) // self.downsample
         return (1, height, width)
+
+    @property
+    def output_shape(self) -> tuple[int, ...]:
+        """Shape of the tensors returned by ``__getitem__``: ``(C, H, W)`` for image representations
+        (``C`` = 1 or 2), ``(n_bins,)`` for the radial profile."""
+        return self.transform.output_shape(self.image_shape)
 
     @property
     def geometry(self) -> dict[str, np.ndarray]:
@@ -205,6 +227,7 @@ class HologramHDF5Dataset(Dataset):
             "output_shape": self.output_shape,
             "target_mode": self.target_mode,
             "normalization": self.normalization,
+            "representation": self.transform.to_dict(),
             "z01_mm_range": [float(self.z01_mm.min()), float(self.z01_mm.max())],
             "fr_range": [float(self.fr.min()), float(self.fr.max())],
         }
@@ -216,13 +239,16 @@ class HologramHDF5Dataset(Dataset):
         return state
 
 
-def _dataset_kwargs(data_cfg: dict[str, Any]) -> dict[str, Any]:
+def dataset_kwargs_from_config(data_cfg: dict[str, Any]) -> dict[str, Any]:
+    """Keyword arguments of :class:`HologramHDF5Dataset` from the ``data`` section of an experiment config."""
     return {
         "target_mode": data_cfg.get("target_mode", "log_fr"),
         "normalization": data_cfg.get("normalization", "standardize"),
         "crop_size": data_cfg.get("crop_size"),
         "downsample": data_cfg.get("downsample", 1),
         "hologram_key": data_cfg.get("hologram_key", "images/hologram"),
+        "representation": data_cfg.get("representation", "hologram"),
+        "representation_kwargs": data_cfg.get("representation_kwargs") or {},
     }
 
 
@@ -250,7 +276,7 @@ def make_dataloaders(
         raise FileNotFoundError(f"data directory not found: {directory}")
     batch_size = int(data_cfg.get("batch_size", 32))
     num_workers = int(data_cfg.get("num_workers", 0))
-    kwargs = _dataset_kwargs(data_cfg)
+    kwargs = dataset_kwargs_from_config(data_cfg)
 
     datasets: dict[str, HologramHDF5Dataset] = {}
     loaders: dict[str, DataLoader] = {}
