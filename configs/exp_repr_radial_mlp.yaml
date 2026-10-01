@@ -1,0 +1,38 @@
+# Experiment A(iv): MLP auf dem radialen log-Leistungsprofil (1-D Vektor, 256 Bins gleichmäßig in
+# u = |xi|², so dass die CTF-Nullstellen bei u = n·Fr äquidistant liegen; siehe src/data/representations.py).
+# Gleiche Trainingskonfiguration wie configs/base.yaml (30 Epochen, AdamW, Cosine, Seed 42), aber
+# arch: mlp_radial (RadialProfileMLP: LayerNorm -> 256 -> 128 -> 1, Dropout 0.1).
+#   python -m src.train --config configs/exp_repr_radial_mlp.yaml --data-dir data/processed/small --run-name repr_radial_mlp
+data:
+  dir: data/processed/small
+  target_mode: log_fr
+  standardize_target: true
+  normalization: standardize
+  crop_size: null
+  downsample: 1
+  hologram_key: images/hologram
+  representation: radial_profile
+  representation_kwargs: {window: true, log_scale: auto, n_bins: 256, axis: freq_sq}
+  batch_size: 32
+  num_workers: 0
+
+model:
+  arch: mlp_radial
+  hidden_units: [256, 128]
+  dropout_rate: 0.1
+
+train:
+  epochs: 30
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  loss: mse
+  scheduler: cosine
+  lr_min: 1.0e-5
+  early_stopping_patience: 10
+  grad_clip: null
+  seed: 42
+  device: cpu
+  deterministic: true
+
+paths:
+  runs_dir: runs

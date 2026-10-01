@@ -1,0 +1,40 @@
+# Experiment A(i): Kontrolle – Hologramm-Eingabe, exakt die Konfiguration des Referenzlaufs
+# (configs/base.yaml, AutofocusCNN, Target log_fr, 30 Epochen, Seed 42), nur mit device: cpu festgelegt.
+# Referenz (Code-Agent, data_small, CPU): Test z01-MAE 13.06 mm, RMSE 19.11 mm, p95 33.9 mm, Bias −5.4 mm,
+# rel. Fr-Fehler 7.85 % (Median 6.16 %).
+#   python -m src.train --config configs/exp_repr_hologram.yaml --data-dir data/processed/small --run-name repr_hologram
+data:
+  dir: data/processed/small
+  target_mode: log_fr
+  standardize_target: true
+  normalization: standardize
+  crop_size: null
+  downsample: 1
+  hologram_key: images/hologram
+  representation: hologram
+  representation_kwargs: {}
+  batch_size: 32
+  num_workers: 0
+
+model:
+  arch: cnn
+  conv_channels: [16, 32, 64, 128]
+  fc_units: 256
+  dropout_rate: 0.3
+  pool_size: 4
+
+train:
+  epochs: 30
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  loss: mse
+  scheduler: cosine
+  lr_min: 1.0e-5
+  early_stopping_patience: 10
+  grad_clip: null
+  seed: 42
+  device: cpu
+  deterministic: true
+
+paths:
+  runs_dir: runs
