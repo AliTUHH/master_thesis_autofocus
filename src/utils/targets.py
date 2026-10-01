@@ -24,7 +24,7 @@ class TargetScaler:
             raise ValueError(f"invalid scaler parameters mean={self.mean}, std={self.std}")
 
     @classmethod
-    def from_values(cls, values: ArrayLike) -> "TargetScaler":
+    def from_values(cls, values: ArrayLike) -> TargetScaler:
         """Fit mean and standard deviation on (training) targets; falls back to std=1 for constant targets."""
         arr = np.asarray(values, dtype=np.float64).reshape(-1)
         if arr.size == 0:
@@ -33,11 +33,11 @@ class TargetScaler:
         return cls(mean=float(arr.mean()), std=std if std > 0 else 1.0)
 
     @classmethod
-    def identity(cls) -> "TargetScaler":
+    def identity(cls) -> TargetScaler:
         return cls(0.0, 1.0)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TargetScaler":
+    def from_dict(cls, data: dict[str, Any]) -> TargetScaler:
         return cls(mean=float(data["mean"]), std=float(data["std"]))
 
     def to_dict(self) -> dict[str, float]:

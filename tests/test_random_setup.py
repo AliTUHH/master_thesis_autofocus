@@ -7,11 +7,10 @@ from pathlib import Path
 from typing import Any
 
 import h5py
+import holowizard.forge.experiment.setup as forge_setup_module
 import numpy as np
 import pytest
 import torch
-
-import holowizard.forge.experiment.setup as forge_setup_module
 from holowizard.forge.experiment.setup import NFHSetup
 from holowizard.forge.utils import calc_Fr
 
@@ -82,7 +81,7 @@ def test_invalid_arguments_raise() -> None:
 
 def test_registration_makes_type_resolvable() -> None:
     register_forge_setup()
-    assert getattr(forge_setup_module, "NFHRandomDistSetup") is NFHRandomDistSetup
+    assert forge_setup_module.NFHRandomDistSetup is NFHRandomDistSetup
 
 
 def test_build_forge_config_structure(tiny_config: dict[str, Any]) -> None:

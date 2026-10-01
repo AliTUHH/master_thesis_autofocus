@@ -33,11 +33,10 @@ from pathlib import Path
 from typing import Any
 
 import h5py
-import numpy as np
-import torch
-
 import holowizard.forge.generators as forge_generators
 import holowizard.forge.utils.torch_settings as torch_settings
+import numpy as np
+import torch
 from holowizard.forge.configs.parse_config import ConfigParser
 from holowizard.forge.generators import DataGenerator, HologramGenerator, PhantomGenerator, ProbeGenerator
 
@@ -372,7 +371,9 @@ def main(argv: list[str] | None = None) -> dict[str, Any]:
     else:
         require_keys(cfg, ("name", "output_dir"), "<root>")
         out_dir = resolve_path(cfg["output_dir"]) / str(cfg["name"])
-    return generate_dataset(cfg, out_dir, overwrite=args.overwrite, config_path=config_path.relative_to(PROJECT_ROOT) if config_path.is_relative_to(PROJECT_ROOT) else config_path)
+    if config_path.is_relative_to(PROJECT_ROOT):
+        config_path = config_path.relative_to(PROJECT_ROOT)
+    return generate_dataset(cfg, out_dir, overwrite=args.overwrite, config_path=config_path)
 
 
 if __name__ == "__main__":

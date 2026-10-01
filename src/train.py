@@ -128,13 +128,16 @@ def train(config: dict[str, Any], data_dir: str | Path | None = None, run_name: 
     patience = int(train_cfg.get("early_stopping_patience", 0))
     grad_clip = train_cfg.get("grad_clip")
 
+    sizes = "/".join(str(len(datasets[split])) for split in ("train", "val", "test"))
     print(
         f"run {run_name}: device={device}, params={count_parameters(model):,}, target={target_mode}, "
-        f"input={datasets['train'].output_shape}, train/val/test={len(datasets['train'])}/{len(datasets['val'])}/{len(datasets['test'])}",
+        f"input={datasets['train'].output_shape}, train/val/test={sizes}",
         flush=True,
     )
 
-    history: dict[str, list[float]] = {"train_loss": [], "val_loss": [], "lr": [], "epoch_time_s": [], "val_mae_target": [], "val_z01_mae_mm": []}
+    history: dict[str, list[float]] = {
+        key: [] for key in ("train_loss", "val_loss", "lr", "epoch_time_s", "val_mae_target", "val_z01_mae_mm")
+    }
     best_val, best_epoch, epochs_without_improvement = float("inf"), 0, 0
     checkpoint_path = run_dir / "best.pt"
     val_setup = setup_constants | {"z02_mm": datasets["val"].z02_mm}
@@ -142,11 +145,17 @@ def train(config: dict[str, Any], data_dir: str | Path | None = None, run_name: 
 
     for epoch in range(1, epochs + 1):
         epoch_start = time.perf_counter()
-        train_loss, _, _ = _run_epoch(model, loaders["train"], criterion, scaler, device, optimizer, grad_clip, f"epoch {epoch}/{epochs} train")
-        val_loss, val_pred, val_true = _run_epoch(model, loaders["val"], criterion, scaler, device, None, None, f"epoch {epoch}/{epochs} val")
+        train_loss, _, _ = _run_epoch(
+            model, loaders["train"], criterion, scaler, device, optimizer, grad_clip, f"epoch {epoch}/{epochs} train"
+        )
+        val_loss, val_pred, val_true = _run_epoch(
+            model, loaders["val"], criterion, scaler, device, None, None, f"epoch {epoch}/{epochs} val"
+        )
         lr = optimizer.param_groups[0]["lr"]
-        if scheduler is not None:
-            scheduler.step(val_loss) if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau) else scheduler.step()
+        if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+            scheduler.step(val_loss)
+        elif scheduler is not None:
+            scheduler.step()
         epoch_time = time.perf_counter() - epoch_start
 
         val_target = regression_metrics(val_pred, val_true)
@@ -200,9 +209,14 @@ def train(config: dict[str, Any], data_dir: str | Path | None = None, run_name: 
     writer.flush()
     writer.close()
     (run_dir / "history.json").write_text(json.dumps(history, indent=2), encoding="utf-8")
-    figures = {
-        "loss_curves": str(plot_loss_curves(history["train_loss"], history["val_loss"], run_dir / "loss_curves.png", history["lr"], f"{train_cfg.get('loss', 'mse')} (scaled target)")),
-    }
+    loss_figure = plot_loss_curves(
+        history["train_loss"],
+        history["val_loss"],
+        run_dir / "loss_curves.png",
+        history["lr"],
+        f"{train_cfg.get('loss', 'mse')} (scaled target)",
+    )
+    figures = {"loss_curves": str(loss_figure)}
 
     best = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     model.load_state_dict(best["model_state_dict"])

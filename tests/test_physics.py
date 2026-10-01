@@ -33,7 +33,7 @@ def test_fresnel_number_vectorised_matches_scalar() -> None:
     z01 = np.array([50.0, 150.0, 250.0])
     fr = physics.fresnel_number(z01, 20000.0, 11.0, 0.0065)
     assert fr.shape == (3,)
-    for value, z in zip(fr, z01):
+    for value, z in zip(fr, z01, strict=True):
         assert value == pytest.approx(calc_Fr(11.0, float(z), 20000.0, 0.0065), rel=1e-6)
 
 

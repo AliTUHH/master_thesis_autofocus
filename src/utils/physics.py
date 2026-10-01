@@ -140,7 +140,9 @@ def target_to_fr(values: ArrayLike, target_mode: str, z02_mm: ArrayLike, energy_
     return np.asarray(fresnel_number(vals, z02_mm, energy_kev, px_mm), dtype=np.float64)
 
 
-def target_to_z01_mm(values: ArrayLike, target_mode: str, z02_mm: ArrayLike, energy_kev: ArrayLike, px_mm: ArrayLike) -> NDArray[np.float64]:
+def target_to_z01_mm(
+    values: ArrayLike, target_mode: str, z02_mm: ArrayLike, energy_kev: ArrayLike, px_mm: ArrayLike
+) -> NDArray[np.float64]:
     """Convert regression targets/predictions of any supported mode to z01 in mm."""
     _check_target_mode(target_mode)
     vals = np.asarray(values, dtype=np.float64)

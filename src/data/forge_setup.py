@@ -12,15 +12,14 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
-import torch
-from torch import fft
-
 import holowizard.forge.experiment as forge_experiment
 import holowizard.forge.experiment.setup as forge_setup_module
 import holowizard.forge.utils.torch_settings as torch_settings
+import numpy as np
+import torch
 from holowizard.forge.experiment.setup import NFHSetup
 from holowizard.forge.utils import calc_Fr
+from torch import fft
 
 from src.utils.physics import DISTANCE_DECIMALS_MM
 
