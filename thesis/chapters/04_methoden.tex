@@ -1,0 +1,104 @@
+% =============================================================================
+% Kapitel 4: Methoden
+% -----------------------------------------------------------------------------
+% Was hinein gehört (Richtwert 12--18 Seiten):
+%  4.1 Problemformulierung
+%      - Eingabe: Hologramm I (ggf. flat-field-korrigiert, normiert, Größe NxN)
+%      - Ausgabe: z01 (oder Fr, oder log Fr) -- Begründung der Wahl, Umrechnung
+%        über Gl. (eq:grundlagen:fresnelzahl); Metriken: MAE z01 [mm], rel. Fr-Fehler [%]
+%  4.2 Datenerzeugung mit HoloWizard/HoloForge
+%      - Simulationspipeline: Phantome (Art, Material delta/beta, Größen),
+%        Beleuchtung/Probe, Geometrie (z01-Bereich, z02, Pixelgröße, Energie),
+%        Rauschen (Photonenstatistik, Detektor), Flat-Field
+%      - Datensatz-Versionen: configs/data_small.yaml (CPU/Smoke), configs/data_p05.yaml (GPU)
+%      - Splits train/val/test, Speicherformat HDF5 + meta.json (Hash notieren!)
+%      - Tabelle der Simulationsparameter (Beispiel unten)
+%  4.3 Modelle
+%      - Baseline: CNN-Regressor (Architektur-Skizze, Parameterzahl)
+%      - Varianten: ResNet-Backbone, Fourier-Eingabe (|FFT|), Multi-Skalen,
+%        Klassifikation + Verfeinerung
+%      - SBI: NPE mit Normalizing Flow (sbi-Toolkit), Prior über Fr
+%  4.4 Training
+%      - Verlust, Optimierer, LR-Schedule, Batchgröße, Epochen, Early Stopping,
+%        Augmentierung, Seeds; Hardware (CPU lokal / Colab T4 / Cluster)
+%      - Tabelle Hyperparameter (aus configs/base.yaml generieren)
+%  4.5 Evaluation
+%      - Metriken, Referenz: modellbasierter Autofokus (HoloWizard) als Baseline
+%      - Laufzeitmessung (Inferenz vs. Optimierung), Protokoll
+%  4.6 Implementierung & Reproduzierbarkeit
+%      - Repo-Struktur, CLI (src.data.generate_data / src.train / src.evaluate),
+%        Experiment-Logbuch, Commit-SHA je Ergebnis, Software-Zitate
+% =============================================================================
+\chapter{\lang{Methoden}{Methods}}
+\label{ch:methoden}
+
+\section{\lang{Problemformulierung}{Problem Formulation}}
+\label{sec:methoden:problem}
+
+% Beispiel: Gleichung mit argmin und Erwartungswert
+\lang{Gesucht ist eine Abbildung $f_\theta: \R^{N\times N} \to \R$, die aus einem Hologramm $I$ den Abstand $\zOne$ schätzt. Die Parameter $\theta$ werden durch Minimierung des erwarteten Verlusts bestimmt:}%
+{We seek a mapping $f_\theta: \R^{N\times N} \to \R$ that estimates the distance $\zOne$ from a hologram $I$. The parameters $\theta$ are obtained by minimising the expected loss:}
+\begin{equation}
+  \theta^\ast = \argmin_\theta\; \E_{(I,\zOne)\sim p_{\mathrm{sim}}}\big[\,\ell\big(f_\theta(I),\, \zOne\big)\big],
+  \qquad
+  \ell(\hat z, z) = \abs{\hat z - z}.
+  \label{eq:methoden:ziel}
+\end{equation}
+\todo{\lang{Wahl der Zielgröße ($\zOne$ vs.\ $\Fr$ vs.\ $\log\Fr$) begründen.}{Justify the choice of target ($\zOne$ vs.\ $\Fr$ vs.\ $\log\Fr$).}}
+
+\section{\lang{Datenerzeugung mit HoloWizard}{Data Generation with HoloWizard}}
+\label{sec:methoden:daten}
+
+\lang{%
+Die Trainingsdaten werden mit dem Simulationsmodul von HoloWizard
+\cite{dora2026holowizard} erzeugt; das zugrunde liegende Vorwärtsmodell entspricht
+\cref{eq:grundlagen:propagation}. \Cref{tab:methoden:simparams} fasst die
+Simulationsparameter zusammen.
+}{%
+Training data are generated with the simulation module of HoloWizard
+\cite{dora2026holowizard}; the underlying forward model corresponds to
+\cref{eq:grundlagen:propagation}. \Cref{tab:methoden:simparams} summarises the
+simulation parameters.
+}
+
+% Beispiel: Tabelle mit siunitx-Spalten (S) und Einheiten in der Kopfzeile
+\begin{table}[htbp]
+  \centering
+  \caption{\lang{Simulationsparameter des Datensatzes \texttt{data\_small} (Platzhalterwerte; aus \texttt{meta.json} übernehmen).}{Simulation parameters of the \texttt{data\_small} dataset (placeholder values; copy from \texttt{meta.json}).}}
+  \label{tab:methoden:simparams}
+  \begin{tabular}{@{}l S[table-format=2.3] S[table-format=2.3] l@{}}
+    \toprule
+    \lang{Parameter}{Parameter} & {\lang{min}{min}} & {\lang{max}{max}} & \lang{Einheit}{Unit} \\
+    \midrule
+    $\zOne$                      & 0.020 & 0.500 & \unit{\metre} \\
+    $\zTwo$                      & 20.000 & 20.000 & \unit{\metre} \\
+    \lang{Photonenenergie}{Photon energy} & 11.000 & 11.000 & \unit{\kilo\electronvolt} \\
+    \lang{Pixelgröße}{Pixel size} $\dx$ & 6.500 & 6.500 & \unit{\micro\metre} \\
+    \lang{Bildgröße}{Image size} & {128} & {128} & \lang{Pixel}{pixels} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\todo{\lang{Phantome, Rauschmodell, Flat-Field, Splits und \texttt{meta.json}-Hash dokumentieren.}{Document phantoms, noise model, flat field, splits and the \texttt{meta.json} hash.}}
+
+\section{\lang{Modelle}{Models}}
+\label{sec:methoden:modelle}
+\todo{\lang{Baseline-\ac{cnn}, Varianten, \ac{npe}-Modell \cite{boelts2025sbireloaded}.}{Baseline \ac{cnn}, variants, \ac{npe} model \cite{boelts2025sbireloaded}.}}
+
+\section{Training}
+\label{sec:methoden:training}
+\todo{\lang{Hyperparameter-Tabelle aus \texttt{configs/base.yaml}; Seeds; Hardware.}{Hyperparameter table from \texttt{configs/base.yaml}; seeds; hardware.}}
+
+\section{Evaluation}
+\label{sec:methoden:evaluation}
+
+\lang{Als Hauptmetrik dient der \ac{mae} des Abstands in Millimetern,}{The primary metric is the \ac{mae} of the distance in millimetres,}
+\begin{equation}
+  \MAE_{\zOne} = \frac{1}{K}\sum_{k=1}^{K}\abs{\hat z_{01}^{(k)} - z_{01}^{(k)}},
+  \label{eq:methoden:mae}
+\end{equation}
+\lang{ergänzt um den relativen Fehler der Fresnel-Zahl $\abs{\hat\Fr - \Fr}/\Fr$ in Prozent.}{complemented by the relative error of the Fresnel number $\abs{\hat\Fr - \Fr}/\Fr$ in per cent.}
+
+\section{\lang{Implementierung und Reproduzierbarkeit}{Implementation and Reproducibility}}
+\label{sec:methoden:implementierung}
+\todo{\lang{Repo-Struktur, CLI-Befehle, Logbuch, Commit-SHAs; Software: PyTorch \cite{paszke2019pytorch}, HoloWizard \cite{dora2026holowizard}, sbi \cite{tejerocantero2020sbi}.}{Repository structure, CLI commands, logbook, commit SHAs; software: PyTorch \cite{paszke2019pytorch}, HoloWizard \cite{dora2026holowizard}, sbi \cite{tejerocantero2020sbi}.}}
