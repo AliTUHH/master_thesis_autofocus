@@ -50,6 +50,7 @@ from src.sbi.calibration import (
 )
 from src.sbi.npe import (
     PriorSpec,
+    embedding_net_of,
     find_focus_bounds,
     leakage_acceptance,
     load_posterior,
@@ -57,6 +58,7 @@ from src.sbi.npe import (
     log_prob_grid,
     parameter_grid,
     point_estimates,
+    posterior_members,
     posterior_to_find_focus_init,
     sample_posterior,
 )
@@ -98,32 +100,41 @@ def measure_inference_time(
     n = min(num_holograms, len(dataset), x.shape[0])
     with h5py.File(dataset.path, "r") as handle:
         raws = [np.asarray(handle[dataset.hologram_key][i], dtype=np.float32) for i in range(n)]
-    embedding = posterior.posterior_estimator.embedding_net
+    embedding = embedding_net_of(posterior)
+    members = posterior_members(posterior)
     theta_grid = torch.as_tensor(grid, dtype=torch.float32).reshape(-1, 1)
     timings: dict[str, list[float]] = {"representation": [], "embedding": [], "sampling": [], "map_grid": []}
+
+    def _map_grid(xi: torch.Tensor) -> None:
+        # unnormalised member densities: the MAP timing excludes the leakage estimate (see log_prob_grid)
+        for member in members:
+            member.log_prob(theta_grid, x=xi, norm_posterior=False)
+
     for i in range(n):
         raw = torch.from_numpy(raws[i]).unsqueeze(0)
+        xi = x[i : i + 1]
         for _ in range(warmup if i == 0 else 0):
             dataset.preprocess(raw)
-            embedding(x[i : i + 1])
-            posterior.sample((n_samples,), x=x[i : i + 1], show_progress_bars=False)
-            posterior.log_prob(theta_grid, x=x[i : i + 1], norm_posterior=False)
+            embedding(xi)
+            posterior.sample((n_samples,), x=xi, show_progress_bars=False)
+            _map_grid(xi)
         start = time.perf_counter()
         dataset.preprocess(raw)
         timings["representation"].append(time.perf_counter() - start)
         start = time.perf_counter()
-        embedding(x[i : i + 1])
+        embedding(xi)
         timings["embedding"].append(time.perf_counter() - start)
         start = time.perf_counter()
-        posterior.sample((n_samples,), x=x[i : i + 1], show_progress_bars=False)
+        posterior.sample((n_samples,), x=xi, show_progress_bars=False)
         timings["sampling"].append(time.perf_counter() - start)
         start = time.perf_counter()
-        posterior.log_prob(theta_grid, x=x[i : i + 1], norm_posterior=False)
+        _map_grid(xi)
         timings["map_grid"].append(time.perf_counter() - start)
     result = {f"ms_{key}": float(np.median(values) * 1e3) for key, values in timings.items()}
     result["ms_total_representation_and_sampling"] = result["ms_representation"] + result["ms_sampling"]
     result["n_posterior_samples"] = int(n_samples)
     result["grid_points"] = int(len(grid))
+    result["ensemble_size"] = len(members)
     result["torch_num_threads"] = torch.get_num_threads()
     result["num_holograms_timed"] = int(n)
     return result
@@ -262,6 +273,7 @@ def evaluate_posterior(
         "posterior": _portable(posterior_path),
         "data": dataset.summary() | {"path": _portable(data_path)},
         "prior": prior.to_dict(),
+        "ensemble_size": len(posterior_members(posterior)),
         "n_posterior_samples": int(n_posterior_samples),
         "grid_points": int(grid_points),
         "seed": int(seed),

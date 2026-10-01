@@ -38,7 +38,7 @@ from typing import Any
 import numpy as np
 import torch
 import torch.nn as nn
-from sbi.inference import NPE
+from sbi.inference import NPE, EnsemblePosterior
 from sbi.inference.posteriors.direct_posterior import DirectPosterior
 from sbi.neural_nets import posterior_nn
 from sbi.utils import BoxUniform
@@ -70,6 +70,8 @@ __all__ = [
     "fit_npe",
     "save_posterior",
     "load_posterior",
+    "posterior_members",
+    "embedding_net_of",
     "sample_posterior",
     "log_prob_grid",
     "parameter_grid",
@@ -365,12 +367,15 @@ class FixedSplitNPE(NPE):
 class NPETrainingResult:
     """Outcome of :func:`fit_npe`."""
 
-    posterior: DirectPosterior
+    posterior: DirectPosterior | EnsemblePosterior
+    """Amortised posterior; an ``EnsemblePosterior`` (equal-weight mixture) when ``train.ensemble_size > 1``."""
+    members: list[DirectPosterior]
     density_estimator: nn.Module
     inference: NPE
     prior: PriorSpec
     summary: dict[str, Any]
-    """``sbi`` training summary: epochs trained, best validation loss, per-epoch losses and durations."""
+    """Training summary: ``epochs_trained``/``best_validation_loss`` (lists, one entry per member), per-epoch
+    ``training_loss``/``validation_loss``/``epoch_durations_sec`` of every member under ``members``."""
     train_time_s: float
     num_simulations: dict[str, int]
     setup_constants: dict[str, Any]
@@ -378,6 +383,7 @@ class NPETrainingResult:
     input_shape: tuple[int, ...]
     num_parameters: dict[str, int]
     validation_split: str
+    ensemble_size: int
     datasets: dict[str, HologramHDF5Dataset] = field(repr=False)
 
 
@@ -439,38 +445,63 @@ def fit_npe(
     validation_fraction = float(train_cfg.get("validation_fraction", 0.2))
 
     input_shape = tuple(datasets["train"].output_shape)
-    embedding_net = build_embedding_net(config["embedding"], input_shape)
-    builder = build_density_estimator(config["density_estimator"], embedding_net)
-    inference = FixedSplitNPE(
-        prior=prior.build(device),
-        density_estimator=builder,
-        device=str(device),
-        summary_writer=summary_writer,
-        show_progress_bars=bool(train_cfg.get("show_progress_bars", False)),
-        val_indices=val_indices,
-    )
-    inference.append_simulations(theta, x)
+    ensemble_size = int(train_cfg.get("ensemble_size", 1))
+    if ensemble_size < 1:
+        raise ValueError(f"train.ensemble_size must be >= 1, got {ensemble_size}")
 
+    members: list[DirectPosterior] = []
+    member_summaries: list[dict[str, Any]] = []
+    inference: FixedSplitNPE | None = None
+    density_estimator: nn.Module | None = None
+    embedding_net: nn.Module | None = None
     start = time.perf_counter()
-    density_estimator = inference.train(
-        training_batch_size=int(train_cfg.get("training_batch_size", 50)),
-        learning_rate=float(train_cfg.get("learning_rate", 5e-4)),
-        validation_fraction=validation_fraction,
-        stop_after_epochs=int(train_cfg.get("stop_after_epochs", 20)),
-        max_num_epochs=int(train_cfg.get("max_num_epochs", 500)),
-        clip_max_norm=train_cfg.get("clip_max_norm", 5.0),
-        show_train_summary=False,
-    )
+    for member in range(ensemble_size):
+        # every member gets its own initialisation (and, for a random split, its own split)
+        seed_everything(seed + member, deterministic=bool(train_cfg.get("deterministic", False)))
+        embedding_net = build_embedding_net(config["embedding"], input_shape)
+        builder = build_density_estimator(config["density_estimator"], embedding_net)
+        inference = FixedSplitNPE(
+            prior=prior.build(device),
+            density_estimator=builder,
+            device=str(device),
+            summary_writer=summary_writer if member == 0 else None,
+            show_progress_bars=bool(train_cfg.get("show_progress_bars", False)),
+            val_indices=val_indices,
+        )
+        inference.append_simulations(theta, x)
+        density_estimator = inference.train(
+            training_batch_size=int(train_cfg.get("training_batch_size", 50)),
+            learning_rate=float(train_cfg.get("learning_rate", 5e-4)),
+            validation_fraction=validation_fraction,
+            stop_after_epochs=int(train_cfg.get("stop_after_epochs", 20)),
+            max_num_epochs=int(train_cfg.get("max_num_epochs", 500)),
+            clip_max_norm=train_cfg.get("clip_max_norm", 5.0),
+            show_train_summary=False,
+        )
+        density_estimator.eval()
+        members.append(inference.build_posterior(density_estimator))
+        member_summary = {key: _to_builtin(value) for key, value in inference.summary.items()}
+        for key in ("epochs_trained", "best_validation_loss"):
+            if isinstance(member_summary.get(key), list) and len(member_summary[key]) == 1:
+                member_summary[key] = member_summary[key][0]
+        member_summaries.append(member_summary)
     train_time = time.perf_counter() - start
-    density_estimator.eval()
-    posterior = inference.build_posterior(density_estimator)
+    assert inference is not None and density_estimator is not None and embedding_net is not None
 
-    summary = {key: _to_builtin(value) for key, value in inference.summary.items()}
-    for key in ("epochs_trained", "best_validation_loss"):
-        if isinstance(summary.get(key), list) and len(summary[key]) == 1:
-            summary[key] = summary[key][0]
+    posterior: DirectPosterior | EnsemblePosterior = members[0] if ensemble_size == 1 else EnsemblePosterior(members)
+    summary: dict[str, Any] = {
+        "ensemble_size": ensemble_size,
+        "epochs_trained": [s.get("epochs_trained") for s in member_summaries],
+        "best_validation_loss": [s.get("best_validation_loss") for s in member_summaries],
+        "members": member_summaries,
+        # per-epoch curves of the first member for backwards-compatible consumers
+        "training_loss": member_summaries[0].get("training_loss", []),
+        "validation_loss": member_summaries[0].get("validation_loss", []),
+        "epoch_durations_sec": member_summaries[0].get("epoch_durations_sec", []),
+    }
     return NPETrainingResult(
         posterior=posterior,
+        members=members,
         density_estimator=density_estimator,
         inference=inference,
         prior=prior,
@@ -480,8 +511,13 @@ def fit_npe(
         setup_constants=datasets["train"].setup_constants,
         dataset_kwargs=kwargs,
         input_shape=input_shape,
-        num_parameters={"embedding": count_parameters(embedding_net), "total": count_parameters(density_estimator)},
+        num_parameters={
+            "embedding": count_parameters(embedding_net),
+            "per_member": count_parameters(density_estimator),
+            "total": count_parameters(density_estimator) * ensemble_size,
+        },
         validation_split=split,
+        ensemble_size=ensemble_size,
         datasets=datasets,
     )
 
@@ -507,14 +543,27 @@ def save_posterior(path: str | Path, result: NPETrainingResult, config: dict[str
         "num_simulations": result.num_simulations,
         "num_parameters": result.num_parameters,
         "validation_split": result.validation_split,
+        "ensemble_size": result.ensemble_size,
         "versions": {"sbi": sbi.__version__, "torch": torch.__version__, "numpy": np.__version__, "python": sys.version.split()[0]},
     }
     torch.save(bundle, path)
     return path
 
 
+def posterior_members(posterior: DirectPosterior | EnsemblePosterior) -> list[DirectPosterior]:
+    """The ``DirectPosterior`` members of an ensemble, or ``[posterior]`` for a single posterior."""
+    if isinstance(posterior, EnsemblePosterior):
+        return list(posterior.posteriors)
+    return [posterior]
+
+
+def embedding_net_of(posterior: DirectPosterior | EnsemblePosterior) -> nn.Module:
+    """Embedding network of the (first) density estimator."""
+    return posterior_members(posterior)[0].posterior_estimator.embedding_net
+
+
 def load_posterior(path: str | Path) -> dict[str, Any]:
-    """Load a bundle written by :func:`save_posterior`; ``bundle['posterior']`` is the ``DirectPosterior``."""
+    """Load a bundle written by :func:`save_posterior`; ``bundle['posterior']`` is the (ensemble) posterior."""
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(f"posterior file not found: {path}")
@@ -522,7 +571,8 @@ def load_posterior(path: str | Path) -> dict[str, Any]:
     for key in ("posterior", "config", "prior", "dataset_kwargs"):
         if key not in bundle:
             raise KeyError(f"{path} lacks {key!r}; was it written by src.sbi.npe.save_posterior?")
-    bundle["posterior"].posterior_estimator.eval()
+    for member in posterior_members(bundle["posterior"]):
+        member.posterior_estimator.eval()
     return bundle
 
 
@@ -531,7 +581,7 @@ def load_posterior(path: str | Path) -> dict[str, Any]:
 # --------------------------------------------------------------------------------------------------
 @torch.no_grad()
 def sample_posterior(
-    posterior: DirectPosterior,
+    posterior: DirectPosterior | EnsemblePosterior,
     x: torch.Tensor,
     n_samples: int = 1000,
     chunk_size: int = 25,
@@ -539,8 +589,9 @@ def sample_posterior(
 ) -> np.ndarray:
     """Posterior samples for a batch of observations: ``x`` ``[N, *shape]`` -> ``[N, n_samples]`` (mm).
 
-    Uses ``DirectPosterior.sample_batched`` in chunks of observations; samples outside the prior are
-    rejected by ``sbi`` (leakage correction), so all returned values lie inside the prior bounds.
+    Uses ``sample_batched`` in chunks of observations; samples outside the prior are rejected by ``sbi``
+    (leakage correction), so all returned values lie inside the prior bounds.  For an ensemble the
+    samples are drawn from the equal-weight mixture of the members.
     """
     if n_samples < 2:
         raise ValueError(f"n_samples must be >= 2, got {n_samples}")
@@ -562,16 +613,25 @@ def parameter_grid(prior: PriorSpec, num_points: int = 1001) -> np.ndarray:
 
 
 @torch.no_grad()
-def log_prob_grid(posterior: DirectPosterior, x: torch.Tensor, grid: np.ndarray) -> np.ndarray:
-    """Unnormalised posterior log-density on ``grid`` for every observation: ``[N, len(grid)]``.
+def log_prob_grid(
+    posterior: DirectPosterior | EnsemblePosterior,
+    x: torch.Tensor,
+    grid: np.ndarray,
+    normalize: bool | None = None,
+) -> np.ndarray:
+    """Posterior log-density on ``grid`` for every observation: ``[N, len(grid)]``.
 
-    ``norm_posterior=False`` skips the leakage normalisation, which does not change the shape of the
-    density (the MAP and the plotted curves are normalised numerically on the grid).
+    For a single posterior the leakage normalisation is skipped by default (``norm_posterior=False``): it
+    does not change the shape of the density, and MAP and plotted curves are normalised numerically on the
+    grid.  For an ensemble the members are normalised (``norm_posterior=True``) before mixing, otherwise
+    members with different leakage would be weighted inconsistently.
     """
+    if normalize is None:
+        normalize = isinstance(posterior, EnsemblePosterior)
     theta = torch.as_tensor(np.asarray(grid, dtype=np.float32)).reshape(-1, 1)
     rows = []
     for i in range(x.shape[0]):
-        logp = posterior.log_prob(theta, x=x[i : i + 1], norm_posterior=False)
+        logp = posterior.log_prob(theta, x=x[i : i + 1], norm_posterior=bool(normalize))
         rows.append(logp.cpu().numpy().astype(np.float64))
     return np.stack(rows, axis=0)
 
@@ -611,16 +671,20 @@ def point_estimates(samples: np.ndarray, grid: np.ndarray | None = None, logp: n
 
 
 @torch.no_grad()
-def leakage_acceptance(posterior: DirectPosterior, x: torch.Tensor, num_samples: int = 10_000) -> np.ndarray:
-    """Fraction of flow samples inside the prior support per observation (1 = no leakage).
+def leakage_acceptance(posterior: DirectPosterior | EnsemblePosterior, x: torch.Tensor, num_samples: int = 10_000) -> np.ndarray:
+    """Fraction of flow samples inside the prior support per observation (1 = no leakage; ensemble: mean over members).
 
     A low acceptance means the flow places mass outside the prior, which for a well-trained estimator
     happens mainly for observations unlike the training data (misspecification / out-of-range z01).
     """
+    members = posterior_members(posterior)
     values = []
     for i in range(x.shape[0]):
-        acceptance = posterior.leakage_correction(x[i : i + 1], num_rejection_samples=int(num_samples), force_update=True)
-        values.append(float(torch.as_tensor(acceptance).reshape(-1)[0]))
+        acceptances = [
+            float(torch.as_tensor(member.leakage_correction(x[i : i + 1], num_rejection_samples=int(num_samples), force_update=True)).reshape(-1)[0])
+            for member in members
+        ]
+        values.append(float(np.mean(acceptances)))
     return np.asarray(values, dtype=np.float64)
 
 

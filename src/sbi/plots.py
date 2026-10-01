@@ -37,19 +37,33 @@ def _finish(fig: plt.Figure, path: str | Path) -> Path:
     return path
 
 
-def plot_npe_loss_curves(train_loss: Sequence[float], val_loss: Sequence[float], path: str | Path, best_epoch: int | None = None) -> Path:
-    """Negative log-probability per epoch (linear scale: NPE losses may be negative)."""
-    epochs = np.arange(1, len(train_loss) + 1)
+def plot_npe_loss_curves(
+    train_loss: Sequence[float] | Sequence[Sequence[float]],
+    val_loss: Sequence[float] | Sequence[Sequence[float]],
+    path: str | Path,
+    best_epoch: int | Sequence[int | None] | None = None,
+) -> Path:
+    """Negative log-probability per epoch (linear scale: NPE losses may be negative).
+
+    Accepts one curve pair or a list of curve pairs (ensemble members, drawn in matching colours).
+    """
+    train_curves = [list(c) for c in train_loss] if train_loss and isinstance(train_loss[0], (list, tuple)) else [list(train_loss)]
+    val_curves = [list(c) for c in val_loss] if val_loss and isinstance(val_loss[0], (list, tuple)) else [list(val_loss)]
+    best_epochs = list(best_epoch) if isinstance(best_epoch, (list, tuple)) else [best_epoch] * len(train_curves)
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(epochs, train_loss, label="train")
-    ax.plot(epochs[: len(val_loss)], val_loss, label="validation")
-    if best_epoch is not None:
-        ax.axvline(best_epoch, color="gray", linestyle="--", linewidth=0.8, label=f"best epoch {best_epoch}")
+    colours = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    for k, (tr, va) in enumerate(zip(train_curves, val_curves, strict=True)):
+        colour = colours[k % len(colours)]
+        suffix = f" (member {k})" if len(train_curves) > 1 else ""
+        ax.plot(np.arange(1, len(tr) + 1), tr, color=colour, alpha=0.8, label=f"train{suffix}")
+        ax.plot(np.arange(1, len(va) + 1), va, color=colour, linestyle="--", label=f"validation{suffix}")
+        if k < len(best_epochs) and best_epochs[k] is not None:
+            ax.axvline(best_epochs[k], color=colour, linestyle=":", linewidth=0.8)
     ax.set_xlabel("epoch")
     ax.set_ylabel("−log q(θ | x)  (z-scored θ)")
-    ax.set_title("NPE training history")
+    ax.set_title("NPE training history (dotted: best validation epoch)")
     ax.grid(True, alpha=0.3)
-    ax.legend(loc="upper right")
+    ax.legend(loc="upper right", fontsize=7, ncol=2)
     return _finish(fig, path)
 
 

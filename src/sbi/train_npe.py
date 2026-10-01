@@ -56,21 +56,25 @@ def train(config: dict[str, Any], data_dir: str | Path | None = None, run_name: 
     posterior_path = save_posterior(run_dir / "posterior.pt", result, config)
 
     summary = result.summary
+    members = summary["members"]
     history = {
-        "train_loss": summary.get("training_loss", []),
-        "val_loss": summary.get("validation_loss", []),
-        "epoch_time_s": summary.get("epoch_durations_sec", []),
+        "train_loss": [m.get("training_loss", []) for m in members],
+        "val_loss": [m.get("validation_loss", []) for m in members],
+        "epoch_time_s": [m.get("epoch_durations_sec", []) for m in members],
     }
     (run_dir / "history.json").write_text(json.dumps(history, indent=2), encoding="utf-8")
-    best_epoch = _best_epoch(history["val_loss"])
-    figures = {"loss_curves": str(plot_npe_loss_curves(history["train_loss"], history["val_loss"], run_dir / "loss_curves.png", best_epoch))}
+    best_epochs = [_best_epoch(curve) for curve in history["val_loss"]]
+    figures = {"loss_curves": str(plot_npe_loss_curves(history["train_loss"], history["val_loss"], run_dir / "loss_curves.png", best_epochs))}
+    epochs_trained = summary["epochs_trained"]
+    best_val = summary["best_validation_loss"]
+    max_epochs = int(config["train"].get("max_num_epochs", 500))
     print(
         f"run {run_name}: prior z01 in [{result.prior.low}, {result.prior.high}] mm ({result.prior.source}), "
         f"input={result.input_shape}, embedding={config['embedding'].get('type', 'mlp')} ({result.num_parameters['embedding']:,} params), "
-        f"estimator={config['density_estimator'].get('model', 'nsf')} ({result.num_parameters['total']:,} params total), "
-        f"train/val={result.num_simulations['train']}/{result.num_simulations['val']} ({result.validation_split} split) | "
-        f"{summary.get('epochs_trained')} epochs (best {best_epoch}), best val loss {summary.get('best_validation_loss'):.4f}, "
-        f"{result.train_time_s:.1f} s",
+        f"estimator={config['density_estimator'].get('model', 'nsf')} ({result.num_parameters['per_member']:,} params per member, "
+        f"ensemble of {result.ensemble_size}), train/val={result.num_simulations['train']}/{result.num_simulations['val']} "
+        f"({result.validation_split} split) | epochs {epochs_trained} (best {best_epochs}), best val loss "
+        f"{', '.join(f'{v:.4f}' for v in best_val)}, {result.train_time_s:.1f} s",
         flush=True,
     )
 
@@ -84,10 +88,11 @@ def train(config: dict[str, Any], data_dir: str | Path | None = None, run_name: 
         "num_parameters": result.num_parameters,
         "num_simulations": result.num_simulations,
         "validation_split": result.validation_split,
-        "epochs_trained": summary.get("epochs_trained"),
-        "best_epoch": best_epoch,
-        "best_validation_loss": summary.get("best_validation_loss"),
-        "early_stopped": bool(summary.get("epochs_trained", 0) < int(config["train"].get("max_num_epochs", 500))),
+        "ensemble_size": result.ensemble_size,
+        "epochs_trained": epochs_trained,
+        "best_epoch": best_epochs,
+        "best_validation_loss": best_val,
+        "early_stopped": [bool(e < max_epochs) for e in epochs_trained],
         "train_time_s": result.train_time_s,
         "datasets": {split: ds.summary() for split, ds in result.datasets.items()},
         "figures": figures,
