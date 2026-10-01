@@ -1,0 +1,152 @@
+{
+  "run_name": "repr_radial_mlp",
+  "run_dir": "/tmp/wt-spectral/runs/repr_radial_mlp",
+  "device": "cpu",
+  "num_parameters": 99329,
+  "target_mode": "log_fr",
+  "target_scaler": {
+    "mean": -4.659174013137817,
+    "std": 0.4790462767906446
+  },
+  "setup_constants": {
+    "energy_kev": 11.0,
+    "px_mm": 0.052,
+    "detector_size": 256,
+    "padding_factor": 2,
+    "downsample_factor": 8,
+    "z02_mm": 20000.0
+  },
+  "epochs_run": 30,
+  "epochs_configured": 30,
+  "early_stopped": false,
+  "best_epoch": 23,
+  "best_val_loss": 0.1550994735956192,
+  "train_time_s": 70.0563662550012,
+  "mean_epoch_time_s": 2.332490552433228,
+  "test_metrics": {
+    "target_space": {
+      "mae": 0.1264049768447876,
+      "rmse": 0.16800165457503227,
+      "p95_abs_err": 0.3583858251571655,
+      "bias": -0.01280041217803955,
+      "median_abs_err": 0.10236001014709473,
+      "r2": 0.8878598117307588,
+      "n": 100
+    },
+    "physical": {
+      "z01_mae_mm": 17.38260595168838,
+      "z01_rmse_mm": 22.18556196556101,
+      "z01_p95_abs_err_mm": 44.32790667275609,
+      "z01_bias_mm": -5.38182739152817,
+      "z01_median_abs_err_mm": 13.447677153392682,
+      "fr_rel_err_mean_pct": 12.818576318622197,
+      "fr_rel_err_median_pct": 10.070687705478605,
+      "fr_rel_err_p95_pct": 38.526019395275156,
+      "fr_rel_bias_pct": 0.1652806129320968,
+      "n": 100
+    }
+  },
+  "inference_time": {
+    "ms_per_hologram_batch_1": 0.04309599989937851,
+    "ms_per_hologram_batch_32": 0.002295093736393028,
+    "device": "cpu",
+    "torch_num_threads": 2,
+    "input_shape": [
+      256
+    ]
+  },
+  "datasets": {
+    "train": {
+      "path": "/tmp/wt-spectral/data/processed/small/train.hdf5",
+      "num_samples": 400,
+      "hologram_shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        256
+      ],
+      "target_mode": "log_fr",
+      "normalization": "standardize",
+      "representation": {
+        "representation": "radial_profile",
+        "window": true,
+        "log_scale": "auto",
+        "n_bins": 256,
+        "axis": "freq_sq"
+      },
+      "z01_mm_range": [
+        50.722,
+        299.818
+      ],
+      "fr_range": [
+        0.003049909370020032,
+        0.01825598254799843
+      ]
+    },
+    "val": {
+      "path": "/tmp/wt-spectral/data/processed/small/val.hdf5",
+      "num_samples": 100,
+      "hologram_shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        256
+      ],
+      "target_mode": "log_fr",
+      "normalization": "standardize",
+      "representation": {
+        "representation": "radial_profile",
+        "window": true,
+        "log_scale": "auto",
+        "n_bins": 256,
+        "axis": "freq_sq"
+      },
+      "z01_mm_range": [
+        50.563,
+        290.365
+      ],
+      "fr_range": [
+        0.003040324430912733,
+        0.01767190732061863
+      ]
+    },
+    "test": {
+      "path": "/tmp/wt-spectral/data/processed/small/test.hdf5",
+      "num_samples": 100,
+      "hologram_shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        256
+      ],
+      "target_mode": "log_fr",
+      "normalization": "standardize",
+      "representation": {
+        "representation": "radial_profile",
+        "window": true,
+        "log_scale": "auto",
+        "n_bins": 256,
+        "axis": "freq_sq"
+      },
+      "z01_mm_range": [
+        50.814,
+        293.252
+      ],
+      "fr_range": [
+        0.003055455395951867,
+        0.017850227653980255
+      ]
+    }
+  },
+  "figures": {
+    "loss_curves": "/tmp/wt-spectral/runs/repr_radial_mlp/loss_curves.png",
+    "scatter_target": "/tmp/wt-spectral/runs/repr_radial_mlp/test_scatter_target.png",
+    "scatter_z01": "/tmp/wt-spectral/runs/repr_radial_mlp/test_scatter_z01_mm.png",
+    "error_vs_z01": "/tmp/wt-spectral/runs/repr_radial_mlp/test_error_vs_z01.png",
+    "examples": "/tmp/wt-spectral/runs/repr_radial_mlp/test_examples.png"
+  },
+  "checkpoint": "/tmp/wt-spectral/runs/repr_radial_mlp/best.pt"
+}

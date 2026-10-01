@@ -185,6 +185,7 @@ def train(config: dict[str, Any], data_dir: str | Path | None = None, run_name: 
                     "config": config,
                     "target_mode": target_mode,
                     "normalization": datasets["train"].normalization,
+                    "representation": datasets["train"].transform.to_dict(),
                     "target_scaler": scaler.to_dict(),
                     "setup_constants": setup_constants,
                     "input_shape": list(datasets["train"].output_shape),

@@ -1,0 +1,40 @@
+# Experiment A(ii): CNN auf dem log-Leistungsspektrum statt auf dem Hologramm.
+# Identisch zu configs/base.yaml (Referenzlauf: hologram, AutofocusCNN, log_fr, 30 Epochen) bis auf
+# data.representation. Das Spektrum wird pro Hologramm im Dataset berechnet (|FFT(x/mean-1 · Hann)|²,
+# log1p mit automatischer Skalierung auf den Rauschboden, Standardisierung), siehe src/data/representations.py.
+#   python -m src.train --config configs/exp_repr_spectrum.yaml --data-dir data/processed/small --run-name repr_spectrum
+data:
+  dir: data/processed/small
+  target_mode: log_fr
+  standardize_target: true
+  normalization: standardize
+  crop_size: null
+  downsample: 1
+  hologram_key: images/hologram
+  representation: log_power_spectrum
+  representation_kwargs: {window: true, log_scale: auto}
+  batch_size: 32
+  num_workers: 0
+
+model:
+  arch: cnn
+  conv_channels: [16, 32, 64, 128]
+  fc_units: 256
+  dropout_rate: 0.3
+  pool_size: 4
+
+train:
+  epochs: 30
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  loss: mse
+  scheduler: cosine
+  lr_min: 1.0e-5
+  early_stopping_patience: 10
+  grad_clip: null
+  seed: 42
+  device: cpu
+  deterministic: true
+
+paths:
+  runs_dir: runs

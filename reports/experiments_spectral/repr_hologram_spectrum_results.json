@@ -1,0 +1,163 @@
+{
+  "run_name": "repr_hologram_spectrum",
+  "run_dir": "/tmp/wt-spectral/runs/repr_hologram_spectrum",
+  "device": "cpu",
+  "num_parameters": 622337,
+  "target_mode": "log_fr",
+  "target_scaler": {
+    "mean": -4.659174013137817,
+    "std": 0.4790462767906446
+  },
+  "setup_constants": {
+    "energy_kev": 11.0,
+    "px_mm": 0.052,
+    "detector_size": 256,
+    "padding_factor": 2,
+    "downsample_factor": 8,
+    "z02_mm": 20000.0
+  },
+  "epochs_run": 30,
+  "epochs_configured": 30,
+  "early_stopped": false,
+  "best_epoch": 28,
+  "best_val_loss": 0.049676234498620034,
+  "train_time_s": 415.7428927910005,
+  "mean_epoch_time_s": 13.853810468700187,
+  "test_metrics": {
+    "target_space": {
+      "mae": 0.07249143600463867,
+      "rmse": 0.10411136804945455,
+      "p95_abs_err": 0.1724072456359863,
+      "bias": -0.00946554183959961,
+      "median_abs_err": 0.060314178466796875,
+      "r2": 0.9569344032465127,
+      "n": 100
+    },
+    "physical": {
+      "z01_mae_mm": 11.41922827809245,
+      "z01_rmse_mm": 18.551206424084512,
+      "z01_p95_abs_err_mm": 33.11480129280273,
+      "z01_bias_mm": -3.5628643657282324,
+      "z01_median_abs_err_mm": 7.233272398233019,
+      "fr_rel_err_mean_pct": 7.102729065629242,
+      "fr_rel_err_median_pct": 5.945493345863863,
+      "fr_rel_err_p95_pct": 17.22122995803564,
+      "fr_rel_bias_pct": -0.4284872197339904,
+      "n": 100
+    }
+  },
+  "inference_time": {
+    "ms_per_hologram_batch_1": 6.310598500931519,
+    "ms_per_hologram_batch_32": 11.113340500003233,
+    "device": "cpu",
+    "torch_num_threads": 2,
+    "input_shape": [
+      2,
+      256,
+      256
+    ]
+  },
+  "datasets": {
+    "train": {
+      "path": "/tmp/wt-spectral/data/processed/small/train.hdf5",
+      "num_samples": 400,
+      "hologram_shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        2,
+        256,
+        256
+      ],
+      "target_mode": "log_fr",
+      "normalization": "standardize",
+      "representation": {
+        "representation": "hologram+spectrum",
+        "window": true,
+        "log_scale": "auto",
+        "n_bins": 256,
+        "axis": "freq_sq",
+        "pool": 1
+      },
+      "z01_mm_range": [
+        50.722,
+        299.818
+      ],
+      "fr_range": [
+        0.003049909370020032,
+        0.01825598254799843
+      ]
+    },
+    "val": {
+      "path": "/tmp/wt-spectral/data/processed/small/val.hdf5",
+      "num_samples": 100,
+      "hologram_shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        2,
+        256,
+        256
+      ],
+      "target_mode": "log_fr",
+      "normalization": "standardize",
+      "representation": {
+        "representation": "hologram+spectrum",
+        "window": true,
+        "log_scale": "auto",
+        "n_bins": 256,
+        "axis": "freq_sq",
+        "pool": 1
+      },
+      "z01_mm_range": [
+        50.563,
+        290.365
+      ],
+      "fr_range": [
+        0.003040324430912733,
+        0.01767190732061863
+      ]
+    },
+    "test": {
+      "path": "/tmp/wt-spectral/data/processed/small/test.hdf5",
+      "num_samples": 100,
+      "hologram_shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        2,
+        256,
+        256
+      ],
+      "target_mode": "log_fr",
+      "normalization": "standardize",
+      "representation": {
+        "representation": "hologram+spectrum",
+        "window": true,
+        "log_scale": "auto",
+        "n_bins": 256,
+        "axis": "freq_sq",
+        "pool": 1
+      },
+      "z01_mm_range": [
+        50.814,
+        293.252
+      ],
+      "fr_range": [
+        0.003055455395951867,
+        0.017850227653980255
+      ]
+    }
+  },
+  "figures": {
+    "loss_curves": "/tmp/wt-spectral/runs/repr_hologram_spectrum/loss_curves.png",
+    "scatter_target": "/tmp/wt-spectral/runs/repr_hologram_spectrum/test_scatter_target.png",
+    "scatter_z01": "/tmp/wt-spectral/runs/repr_hologram_spectrum/test_scatter_z01_mm.png",
+    "error_vs_z01": "/tmp/wt-spectral/runs/repr_hologram_spectrum/test_error_vs_z01.png",
+    "examples": "/tmp/wt-spectral/runs/repr_hologram_spectrum/test_examples.png"
+  },
+  "checkpoint": "/tmp/wt-spectral/runs/repr_hologram_spectrum/best.pt"
+}

@@ -1,4 +1,9 @@
-"""Regression networks mapping a single-channel hologram to one scalar (log Fr, Fr or z01)."""
+"""Regression networks mapping a hologram representation to one scalar (log Fr, Fr or z01).
+
+Image inputs (``[B, C, H, W]``, ``C`` = 1 for a hologram or spectrum, 2 for ``hologram+spectrum``) are
+handled by :class:`AutofocusCNN` and the ResNet-18 variant; the 1-D radial power profile
+(``[B, n_bins]``) by :class:`RadialProfileMLP` (``arch: mlp_radial``).
+"""
 
 from __future__ import annotations
 
@@ -8,9 +13,23 @@ from typing import Any
 import torch
 import torch.nn as nn
 
-__all__ = ["AutofocusCNN", "build_model", "ARCHITECTURES"]
+from src.data.representations import Representation
+
+__all__ = [
+    "AutofocusCNN",
+    "RadialProfileMLP",
+    "build_model",
+    "input_channels_from_config",
+    "ARCHITECTURES",
+    "PROFILE_ARCHITECTURES",
+    "ALL_ARCHITECTURES",
+]
 
 ARCHITECTURES: tuple[str, ...] = ("cnn", "resnet18")
+"""Image architectures (input ``[B, C, H, W]``)."""
+PROFILE_ARCHITECTURES: tuple[str, ...] = ("mlp_radial",)
+"""Architectures for the 1-D radial profile representation (input ``[B, n_bins]``)."""
+ALL_ARCHITECTURES: tuple[str, ...] = ARCHITECTURES + PROFILE_ARCHITECTURES
 
 
 class AutofocusCNN(nn.Module):
@@ -86,8 +105,60 @@ class _ResNet18Regressor(nn.Module):
         return self.backbone(x).squeeze(-1)
 
 
+class RadialProfileMLP(nn.Module):
+    """MLP regressor for the 1-D radial log-power profile (``[B, n_bins] -> [B]``).
+
+    The profile is already standardised per sample; a ``LayerNorm`` on the input keeps the first layer
+    well conditioned when ``n_bins`` is large.
+
+    Args:
+        n_bins: Length of the input vector (``data.representation_kwargs.n_bins``).
+        hidden_units: Width of each hidden layer, e.g. ``[256, 128]``.
+        dropout_rate: Dropout after every hidden layer.
+    """
+
+    def __init__(self, n_bins: int = 256, hidden_units: Sequence[int] = (256, 128), dropout_rate: float = 0.1) -> None:
+        super().__init__()
+        if n_bins < 1:
+            raise ValueError(f"n_bins must be positive, got {n_bins}")
+        if len(hidden_units) == 0:
+            raise ValueError("hidden_units must contain at least one entry")
+        if not 0.0 <= dropout_rate < 1.0:
+            raise ValueError(f"dropout_rate must be in [0, 1), got {dropout_rate}")
+        layers: list[nn.Module] = [nn.LayerNorm(n_bins)]
+        width_in = n_bins
+        for width_out in hidden_units:
+            layers += [nn.Linear(width_in, width_out), nn.ReLU(inplace=True), nn.Dropout(dropout_rate)]
+            width_in = width_out
+        layers.append(nn.Linear(width_in, 1))
+        self.net = nn.Sequential(*layers)
+        self.n_bins = int(n_bins)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """``[B, n_bins]`` (or ``[B, 1, n_bins]``) ``-> [B]``."""
+        if x.ndim == 3 and x.shape[1] == 1:
+            x = x.squeeze(1)
+        if x.ndim != 2 or x.shape[-1] != self.n_bins:
+            raise ValueError(f"expected input [B, {self.n_bins}], got {tuple(x.shape)}")
+        return self.net(x).squeeze(-1)
+
+
+def input_channels_from_config(config: dict[str, Any]) -> int:
+    """``model.in_channels`` if given, otherwise derived from ``data.representation`` (1 or 2)."""
+    model_cfg = config.get("model", config)
+    if model_cfg.get("in_channels") is not None:
+        return int(model_cfg["in_channels"])
+    representation = config.get("data", {}).get("representation", "hologram") if "model" in config else "hologram"
+    return Representation(representation).channels
+
+
 def build_model(config: dict[str, Any]) -> nn.Module:
-    """Instantiate the architecture described by ``config['model']`` (``arch: cnn | resnet18``)."""
+    """Instantiate the architecture described by ``config['model']`` (``arch: cnn | resnet18 | mlp_radial``).
+
+    For image architectures the number of input channels follows ``data.representation`` unless
+    ``model.in_channels`` is set explicitly; ``mlp_radial`` reads ``n_bins`` from
+    ``data.representation_kwargs.n_bins`` (default 256) unless ``model.n_bins`` is given.
+    """
     model_cfg = config.get("model", config)
     arch = str(model_cfg.get("arch", "cnn"))
     if arch == "cnn":
@@ -96,11 +167,19 @@ def build_model(config: dict[str, Any]) -> nn.Module:
             fc_units=int(model_cfg.get("fc_units", 256)),
             dropout_rate=float(model_cfg.get("dropout_rate", 0.3)),
             pool_size=int(model_cfg.get("pool_size", 4)),
-            in_channels=int(model_cfg.get("in_channels", 1)),
+            in_channels=input_channels_from_config(config),
         )
     if arch == "resnet18":
         return _ResNet18Regressor(
-            in_channels=int(model_cfg.get("in_channels", 1)),
+            in_channels=input_channels_from_config(config),
             dropout_rate=float(model_cfg.get("dropout_rate", 0.0)),
         )
-    raise ValueError(f"unknown model.arch {arch!r}; expected one of {ARCHITECTURES}")
+    if arch == "mlp_radial":
+        data_cfg = config.get("data", {}) if "model" in config else {}
+        n_bins = model_cfg.get("n_bins", (data_cfg.get("representation_kwargs") or {}).get("n_bins", 256))
+        return RadialProfileMLP(
+            n_bins=int(n_bins),
+            hidden_units=model_cfg.get("hidden_units", (256, 128)),
+            dropout_rate=float(model_cfg.get("dropout_rate", 0.1)),
+        )
+    raise ValueError(f"unknown model.arch {arch!r}; expected one of {ALL_ARCHITECTURES}")

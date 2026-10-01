@@ -1,0 +1,86 @@
+{
+  "data": "data/processed/small_weak/test.hdf5",
+  "hologram_key": "images/hologram",
+  "num_samples": 100,
+  "hologram_shape": [
+    256,
+    256
+  ],
+  "downsample": 1,
+  "search_fr_range": [
+    0.003006386876549623,
+    0.018267233965634
+  ],
+  "search_z01_range_mm": [
+    50.0,
+    300.0
+  ],
+  "config": {
+    "fr_min": 0.003006386876549623,
+    "fr_max": 0.018267233965634,
+    "grid_step": 0.01,
+    "n_bins": null,
+    "u_max": 0.25,
+    "u_min": 0.001,
+    "window": "tukey",
+    "tukey_alpha": 0.2,
+    "template": "cos",
+    "comb_eps": 0.1,
+    "snr_weights": true,
+    "presmooth_bins": 1.0,
+    "matched_detrend": true,
+    "refine": true,
+    "minima": true,
+    "minima_min_depth": 0.05
+  },
+  "fr_rel_err_pct": {
+    "mae": 14.597221359383607,
+    "median": 4.671146658299398,
+    "p95": 71.58704826712756,
+    "rmse": 26.74757392064533,
+    "bias": -8.61915628562563
+  },
+  "z01_err_mm": {
+    "mae": 27.51578648841406,
+    "median": 6.777813344949081,
+    "p95": 140.42207432729342,
+    "rmse": 56.533490978982464,
+    "bias": -19.272982166883622
+  },
+  "fraction_within_2pct": 0.25,
+  "fraction_within_5pct": 0.53,
+  "fraction_within_10pct": 0.67,
+  "minima_method": {
+    "num_valid": 16,
+    "fr_rel_err_pct": {
+      "mae": 22.049660030746978,
+      "median": 5.721526826488006,
+      "p95": 73.73356604828031,
+      "rmse": 36.36667660258599,
+      "bias": -17.59762517812457
+    },
+    "agreement_within_2pct": 0.1875
+  },
+  "ms_per_hologram": {
+    "mean": 22.39432392996605,
+    "median": 21.757778499704727
+  },
+  "resolution": {
+    "fr_limit_full_circle": 0.00390625,
+    "rings_resolvable_at_fr_min": 49,
+    "rings_resolvable_at_fr_max": 13
+  },
+  "setup": {
+    "energy_kev": 11.0,
+    "px_mm": 0.052000001072883606,
+    "z02_mm_range": [
+      20000.0,
+      20000.0
+    ]
+  },
+  "figures": {
+    "scatter": "scatter.png",
+    "example_000": "example_000.png",
+    "example_001": "example_001.png"
+  }
+}

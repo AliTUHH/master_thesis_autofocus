@@ -1,0 +1,87 @@
+{
+  "data": "data/processed/small/test.hdf5",
+  "hologram_key": "images/hologram",
+  "num_samples": 100,
+  "hologram_shape": [
+    256,
+    256
+  ],
+  "downsample": 1,
+  "search_fr_range": [
+    0.003006386876549623,
+    0.018267233965634
+  ],
+  "search_z01_range_mm": [
+    50.0,
+    300.0
+  ],
+  "config": {
+    "fr_min": 0.003006386876549623,
+    "fr_max": 0.018267233965634,
+    "grid_step": 0.01,
+    "n_bins": null,
+    "u_max": 0.25,
+    "u_min": 0.001,
+    "window": "tukey",
+    "tukey_alpha": 0.2,
+    "template": "cos",
+    "comb_eps": 0.1,
+    "snr_weights": true,
+    "presmooth_bins": 1.0,
+    "matched_detrend": true,
+    "refine": true,
+    "minima": true,
+    "minima_min_depth": 0.05
+  },
+  "fr_rel_err_pct": {
+    "mae": 26.796726711830907,
+    "median": 5.577549454263368,
+    "p95": 103.85978837189369,
+    "rmse": 51.518280401657414,
+    "bias": -3.726270681921481
+  },
+  "z01_err_mm": {
+    "mae": 38.22281255283246,
+    "median": 6.478847926006374,
+    "p95": 150.3399332723205,
+    "rmse": 65.64986813010343,
+    "bias": -17.636474387704688
+  },
+  "fraction_within_2pct": 0.43,
+  "fraction_within_5pct": 0.49,
+  "fraction_within_10pct": 0.55,
+  "minima_method": {
+    "num_valid": 100,
+    "fr_rel_err_pct": {
+      "mae": 26.519711712340637,
+      "median": 3.474944992604544,
+      "p95": 104.42629396046723,
+      "rmse": 51.737583624043715,
+      "bias": -3.851454082695719
+    },
+    "agreement_within_2pct": 0.85
+  },
+  "ms_per_hologram": {
+    "mean": 22.04060309995839,
+    "median": 21.30042649969255
+  },
+  "resolution": {
+    "fr_limit_full_circle": 0.00390625,
+    "rings_resolvable_at_fr_min": 49,
+    "rings_resolvable_at_fr_max": 13
+  },
+  "setup": {
+    "energy_kev": 11.0,
+    "px_mm": 0.052000001072883606,
+    "z02_mm_range": [
+      20000.0,
+      20000.0
+    ]
+  },
+  "figures": {
+    "scatter": "scatter.png",
+    "example_000": "example_000.png",
+    "example_001": "example_001.png",
+    "example_002": "example_002.png"
+  }
+}

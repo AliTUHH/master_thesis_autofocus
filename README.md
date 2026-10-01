@@ -25,7 +25,9 @@ src/
   data/forge_setup.py  NFHRandomDistSetup: HoloForge-Setup mit zufälligem z01 (und optional z02) pro Hologramm
   data/generate_data.py  CLI: YAML -> HoloForge-Konfiguration -> train/val/test.hdf5 + meta.json
   data/dataset.py      HologramHDF5Dataset (Target-Modi, Normalisierung, Crop/Downsample), make_dataloaders
-  models/cnn.py        AutofocusCNN (beliebige Auflösung via AdaptiveAvgPool2d), ResNet-18-Variante, build_model
+  data/representations.py  Eingaberepräsentationen: Hologramm, log-Leistungsspektrum, 2-Kanal, Radialprofil (data.representation)
+  baseline/ctf_ringfit.py  Lernfreie Baseline: Fr aus den CTF-Ringen im Radialspektrum (CLI, Bericht in reports/ringfit/)
+  models/cnn.py        AutofocusCNN (beliebige Auflösung via AdaptiveAvgPool2d), ResNet-18-Variante, RadialProfileMLP, build_model
   train.py             CLI: Training mit Early Stopping, bestem Checkpoint, TensorBoard, Test-Evaluation
   evaluate.py          CLI: Checkpoint auf beliebiger HDF5-Datei auswerten (Metriken, Plots, Inferenzzeit)
   utils/physics.py     Fresnel-Zahl, Umkehrung nach z01, effektive Geometrie (identisch zu holowizard calc_Fr)

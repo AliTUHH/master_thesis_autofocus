@@ -1,0 +1,160 @@
+{
+  "run_name": "repr_spectrum",
+  "run_dir": "/tmp/wt-spectral/runs/repr_spectrum",
+  "device": "cpu",
+  "num_parameters": 622193,
+  "target_mode": "log_fr",
+  "target_scaler": {
+    "mean": -4.659174013137817,
+    "std": 0.4790462767906446
+  },
+  "setup_constants": {
+    "energy_kev": 11.0,
+    "px_mm": 0.052,
+    "detector_size": 256,
+    "padding_factor": 2,
+    "downsample_factor": 8,
+    "z02_mm": 20000.0
+  },
+  "epochs_run": 26,
+  "epochs_configured": 30,
+  "early_stopped": true,
+  "best_epoch": 16,
+  "best_val_loss": 0.8721662867069244,
+  "train_time_s": 583.707132096999,
+  "mean_epoch_time_s": 22.4455464958076,
+  "test_metrics": {
+    "target_space": {
+      "mae": 0.37211328506469726,
+      "rmse": 0.4332547026844575,
+      "p95_abs_err": 0.737097668647766,
+      "bias": 0.06587258338928223,
+      "median_abs_err": 0.36699628829956055,
+      "r2": 0.25420282527841553,
+      "n": 100
+    },
+    "physical": {
+      "z01_mae_mm": 56.85669802162703,
+      "z01_rmse_mm": 66.80508930079782,
+      "z01_p95_abs_err_mm": 117.35917037544999,
+      "z01_bias_mm": -3.2722782954882415,
+      "z01_median_abs_err_mm": 50.92293915237441,
+      "fr_rel_err_mean_pct": 41.170552388160765,
+      "fr_rel_err_median_pct": 34.56848102961792,
+      "fr_rel_err_p95_pct": 108.63573783086187,
+      "fr_rel_bias_pct": 16.793436126176132,
+      "n": 100
+    }
+  },
+  "inference_time": {
+    "ms_per_hologram_batch_1": 6.546785499267571,
+    "ms_per_hologram_batch_32": 12.26925909375609,
+    "device": "cpu",
+    "torch_num_threads": 2,
+    "input_shape": [
+      1,
+      256,
+      256
+    ]
+  },
+  "datasets": {
+    "train": {
+      "path": "/tmp/wt-spectral/data/processed/small/train.hdf5",
+      "num_samples": 400,
+      "hologram_shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        1,
+        256,
+        256
+      ],
+      "target_mode": "log_fr",
+      "normalization": "standardize",
+      "representation": {
+        "representation": "log_power_spectrum",
+        "window": true,
+        "log_scale": "auto",
+        "n_bins": 256,
+        "axis": "freq_sq"
+      },
+      "z01_mm_range": [
+        50.722,
+        299.818
+      ],
+      "fr_range": [
+        0.003049909370020032,
+        0.01825598254799843
+      ]
+    },
+    "val": {
+      "path": "/tmp/wt-spectral/data/processed/small/val.hdf5",
+      "num_samples": 100,
+      "hologram_shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        1,
+        256,
+        256
+      ],
+      "target_mode": "log_fr",
+      "normalization": "standardize",
+      "representation": {
+        "representation": "log_power_spectrum",
+        "window": true,
+        "log_scale": "auto",
+        "n_bins": 256,
+        "axis": "freq_sq"
+      },
+      "z01_mm_range": [
+        50.563,
+        290.365
+      ],
+      "fr_range": [
+        0.003040324430912733,
+        0.01767190732061863
+      ]
+    },
+    "test": {
+      "path": "/tmp/wt-spectral/data/processed/small/test.hdf5",
+      "num_samples": 100,
+      "hologram_shape": [
+        256,
+        256
+      ],
+      "output_shape": [
+        1,
+        256,
+        256
+      ],
+      "target_mode": "log_fr",
+      "normalization": "standardize",
+      "representation": {
+        "representation": "log_power_spectrum",
+        "window": true,
+        "log_scale": "auto",
+        "n_bins": 256,
+        "axis": "freq_sq"
+      },
+      "z01_mm_range": [
+        50.814,
+        293.252
+      ],
+      "fr_range": [
+        0.003055455395951867,
+        0.017850227653980255
+      ]
+    }
+  },
+  "figures": {
+    "loss_curves": "/tmp/wt-spectral/runs/repr_spectrum/loss_curves.png",
+    "scatter_target": "/tmp/wt-spectral/runs/repr_spectrum/test_scatter_target.png",
+    "scatter_z01": "/tmp/wt-spectral/runs/repr_spectrum/test_scatter_z01_mm.png",
+    "error_vs_z01": "/tmp/wt-spectral/runs/repr_spectrum/test_error_vs_z01.png",
+    "examples": "/tmp/wt-spectral/runs/repr_spectrum/test_examples.png"
+  },
+  "checkpoint": "/tmp/wt-spectral/runs/repr_spectrum/best.pt"
+}

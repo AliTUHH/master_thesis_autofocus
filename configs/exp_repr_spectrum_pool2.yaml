@@ -1,0 +1,41 @@
+# Experiment A(ii-b), Diagnose: CNN auf dem 2x2-gemittelten log-Leistungsspektrum (128x128 statt 256x256).
+# Das ungepoolte Spektrum-CNN (exp_repr_spectrum.yaml) lernt auf data_small praktisch nichts. Hypothese: die
+# per-Pixel exponentialverteilte Rauschtextur des Periodogramms (Var = Mittelwert²) überdeckt die Ringe.
+# pool=2 mittelt vor dem Logarithmus 4 Leistungswerte pro Pixel (Rauschvarianz /4) und halbiert die Ringabstände
+# in Pixeln; alles andere ist identisch zu exp_repr_spectrum.yaml.
+#   python -m src.train --config configs/exp_repr_spectrum_pool2.yaml --data-dir data/processed/small --run-name repr_spectrum_pool2
+data:
+  dir: data/processed/small
+  target_mode: log_fr
+  standardize_target: true
+  normalization: standardize
+  crop_size: null
+  downsample: 1
+  hologram_key: images/hologram
+  representation: log_power_spectrum
+  representation_kwargs: {window: true, log_scale: auto, pool: 2}
+  batch_size: 32
+  num_workers: 0
+
+model:
+  arch: cnn
+  conv_channels: [16, 32, 64, 128]
+  fc_units: 256
+  dropout_rate: 0.3
+  pool_size: 4
+
+train:
+  epochs: 30
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  loss: mse
+  scheduler: cosine
+  lr_min: 1.0e-5
+  early_stopping_patience: 10
+  grad_clip: null
+  seed: 42
+  device: cpu
+  deterministic: true
+
+paths:
+  runs_dir: runs

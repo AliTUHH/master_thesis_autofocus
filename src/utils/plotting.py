@@ -18,6 +18,7 @@ __all__ = [
     "plot_true_vs_pred",
     "plot_error_vs_z01",
     "plot_example_holograms",
+    "plot_radial_profiles",
 ]
 
 _DPI = 150
@@ -151,4 +152,31 @@ def plot_example_holograms(
         ax.set_title(labels[idx], fontsize=9)
     if suptitle:
         fig.suptitle(suptitle)
+    return _finish(fig, path)
+
+
+def plot_radial_profiles(
+    profiles: ArrayLike,
+    labels: Sequence[str],
+    path: str | Path,
+    title: str | None = None,
+    xlabel: str = "radial bin (uniform in |xi|^2)",
+) -> Path:
+    """Overlay of 1-D radial profiles (``[N, n_bins]``), one curve per sample, legend from ``labels``."""
+    arr = np.asarray(profiles, dtype=np.float64)
+    if arr.ndim == 3 and arr.shape[1] == 1:
+        arr = arr[:, 0]
+    if arr.ndim != 2:
+        raise ValueError(f"expected profiles of shape [N, n_bins], got {arr.shape}")
+    if len(labels) != arr.shape[0]:
+        raise ValueError(f"got {len(labels)} labels for {arr.shape[0]} profiles")
+    fig, ax = plt.subplots(figsize=(9, 5))
+    for profile, label in zip(arr, labels, strict=True):
+        ax.plot(profile, lw=0.9, label=label.replace("\n", ", "))
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("standardised log power")
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=7, ncol=2)
+    if title:
+        ax.set_title(title)
     return _finish(fig, path)

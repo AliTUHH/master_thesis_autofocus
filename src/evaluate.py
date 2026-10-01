@@ -22,11 +22,11 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from src.data.dataset import HologramHDF5Dataset
+from src.data.dataset import HologramHDF5Dataset, dataset_kwargs_from_config
 from src.models.cnn import build_model
 from src.utils.config import PROJECT_ROOT, resolve_path
 from src.utils.metrics import metrics_in_physical_units, physical_errors, regression_metrics
-from src.utils.plotting import plot_error_vs_z01, plot_example_holograms, plot_true_vs_pred
+from src.utils.plotting import plot_error_vs_z01, plot_example_holograms, plot_radial_profiles, plot_true_vs_pred
 from src.utils.targets import TargetScaler
 from src.utils.torch_utils import count_parameters, select_device
 
@@ -111,11 +111,16 @@ def make_figures(
 
 
 def example_figure(dataset: HologramHDF5Dataset, out_dir: Path, num: int = 8, prefix: str = "") -> str:
-    """Save a grid of the first ``num`` (preprocessed) holograms labelled with their z01 and Fr."""
+    """Save a grid of the first ``num`` network inputs (first channel) labelled with their z01 and Fr;
+    1-D radial profiles are drawn as curves."""
     num = min(num, len(dataset))
-    images = torch.stack([dataset[i][0] for i in range(num)]).numpy()
+    inputs = torch.stack([dataset[i][0] for i in range(num)]).numpy()
     labels = [f"z01={dataset.z01_mm[i]:.1f} mm\nFr={dataset.fr[i]:.3e}" for i in range(num)]
-    path = plot_example_holograms(images, labels, out_dir / f"{prefix}examples.png", suptitle=f"{dataset.normalization} input")
+    title = f"{dataset.representation} ({dataset.normalization}) input"
+    if inputs.ndim == 2:
+        path = plot_radial_profiles(inputs, labels, out_dir / f"{prefix}examples.png", title=title)
+    else:
+        path = plot_example_holograms(inputs, labels, out_dir / f"{prefix}examples.png", suptitle=title)
     return str(path)
 
 
@@ -133,7 +138,7 @@ def measure_inference_time(
     sample = dataset[0][0]
     results: dict[str, float] = {}
     for label, bsz in (("batch_1", 1), (f"batch_{batch_size}", batch_size)):
-        batch = sample.unsqueeze(0).repeat(bsz, 1, 1, 1).to(device)
+        batch = sample.unsqueeze(0).expand(bsz, *sample.shape).contiguous().to(device)
         for _ in range(warmup):
             model(batch)
         if device.type == "cuda":
@@ -177,14 +182,11 @@ def evaluate_checkpoint(
     target_mode = checkpoint["target_mode"]
     scaler = TargetScaler.from_dict(checkpoint["target_scaler"])
 
-    dataset = HologramHDF5Dataset(
-        data_path,
-        target_mode=target_mode,
-        normalization=checkpoint.get("normalization", data_cfg.get("normalization", "standardize")),
-        crop_size=data_cfg.get("crop_size"),
-        downsample=data_cfg.get("downsample", 1),
-        hologram_key=data_cfg.get("hologram_key", "images/hologram"),
-    )
+    kwargs = dataset_kwargs_from_config(data_cfg) | {
+        "target_mode": target_mode,
+        "normalization": checkpoint.get("normalization", data_cfg.get("normalization", "standardize")),
+    }
+    dataset = HologramHDF5Dataset(data_path, **kwargs)
     bsz = int(batch_size or data_cfg.get("batch_size", 32))
     workers = int(num_workers if num_workers is not None else data_cfg.get("num_workers", 0))
     loader = DataLoader(dataset, batch_size=bsz, shuffle=False, num_workers=workers)
