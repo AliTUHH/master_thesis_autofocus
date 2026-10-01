@@ -1,0 +1,926 @@
+{
+  "geometries": {
+    "small": {
+      "geometry": "small (2048/8 -> 256, pad 2): detector 2048 px / 8 -> N = 256 px, px_eff = 0.0520 mm, padding 2 -> grid 512, Fr in [3.609e-03, 1.765e-02] (sampling limit 1/grid = 1.953e-03)",
+      "n_pixels": 256,
+      "grid": 512,
+      "num_samples": 16,
+      "propagation_rel_l2_max": 1.273153800366148e-07,
+      "propagation_fr_fit_minus_1_max_abs": 1.2285427297697993e-07,
+      "ringfit": {
+        "forge gt_hologram (phi_max 0.33)": {
+          "mean_pct": -0.0968662632928892,
+          "sd_pct": 0.4428013100649761,
+          "per_fr_mean_pct": {
+            "3.609e-03": -0.21496476004035092,
+            "7.970e-03": -0.06434505447931727,
+            "1.212e-02": -0.19440793390609057,
+            "1.765e-02": 0.08625269525420198
+          },
+          "minus_linear_mean_pct": -0.14756523670151067,
+          "minus_linear_sd_pct": 0.4469335846268998,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": -0.4454935793309883,
+            "7.970e-03": -0.09610451624698646,
+            "1.212e-02": -0.08007917245297369,
+            "1.765e-02": 0.031416321224905785
+          }
+        },
+        "exact model, phi_max 0.02": {
+          "mean_pct": 0.048637891144383966,
+          "sd_pct": 0.4935329969228639,
+          "per_fr_mean_pct": {
+            "3.609e-03": 0.23310925679697614,
+            "7.970e-03": 0.024902812026675325,
+            "1.212e-02": -0.1177134458588247,
+            "1.765e-02": 0.054252941612709105
+          },
+          "minus_linear_mean_pct": -0.0020610822642375126,
+          "minus_linear_sd_pct": 0.004789453632696729,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": 0.0025804375063387397,
+            "7.970e-03": -0.00685664974099387,
+            "1.212e-02": -0.0033846844057078274,
+            "1.765e-02": -0.000583432416587093
+          }
+        },
+        "exact model, phi_max 0.33": {
+          "mean_pct": -0.0968801314891965,
+          "sd_pct": 0.4428144899135872,
+          "per_fr_mean_pct": {
+            "3.609e-03": -0.21497341574517603,
+            "7.970e-03": -0.06433907610649825,
+            "1.212e-02": -0.1944825382621196,
+            "1.765e-02": 0.08627450415700788
+          },
+          "minus_linear_mean_pct": -0.14757910489781798,
+          "minus_linear_sd_pct": 0.44693178095028274,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": -0.44550223503581343,
+            "7.970e-03": -0.09609853787416744,
+            "1.212e-02": -0.08015377680900271,
+            "1.765e-02": 0.03143813012771168
+          }
+        },
+        "exact model, phi_max 0.66": {
+          "mean_pct": -0.50688520873908,
+          "sd_pct": 1.3534242428542893,
+          "per_fr_mean_pct": {
+            "3.609e-03": -0.6611397446934841,
+            "7.970e-03": 0.001549256475497085,
+            "1.212e-02": -1.5547077114050318,
+            "1.765e-02": 0.18675736466669812
+          },
+          "minus_linear_mean_pct": -0.5575841821477016,
+          "minus_linear_sd_pct": 1.379250650698132,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": -0.8916685639841215,
+            "7.970e-03": -0.03021020529217211,
+            "1.212e-02": -1.4403789499519148,
+            "1.765e-02": 0.13192099063740192
+          }
+        },
+        "linearised CTF model (first order)": {
+          "mean_pct": 0.05069897340862148,
+          "sd_pct": 0.49308239182625674,
+          "per_fr_mean_pct": {
+            "3.609e-03": 0.2305288192906374,
+            "7.970e-03": 0.031759461767669195,
+            "1.212e-02": -0.11432876145311688,
+            "1.765e-02": 0.0548363740292962
+          }
+        }
+      },
+      "linear_scaling_eps_from_forge_offset": -0.00048433131646444597,
+      "scaling_candidates": {
+        "1/N": 0.00390625,
+        "1/(N-1)": 0.00392156862745098,
+        "1/grid": 0.001953125,
+        "1/(grid-1)": 0.0019569471624266144,
+        "1/(s*N)": 0.00048828125
+      }
+    },
+    "nodown": {
+      "geometry": "nodown (512/1 -> 512 @ 52 um, pad 2): detector 512 px / 1 -> N = 512 px, px_eff = 0.0520 mm, padding 2 -> grid 1024, Fr in [3.609e-03, 1.765e-02] (sampling limit 1/grid = 9.766e-04)",
+      "n_pixels": 512,
+      "grid": 1024,
+      "num_samples": 16,
+      "propagation_rel_l2_max": 1.1902059727131534e-07,
+      "propagation_fr_fit_minus_1_max_abs": 3.919813251762605e-08,
+      "ringfit": {
+        "forge gt_hologram (phi_max 0.33)": {
+          "mean_pct": -0.03163115708437955,
+          "sd_pct": 0.07728514376329475,
+          "per_fr_mean_pct": {
+            "3.609e-03": -0.05965035375894434,
+            "7.970e-03": -0.0452302948672656,
+            "1.212e-02": -0.010807163631382233,
+            "1.765e-02": -0.010836816079926037
+          },
+          "minus_linear_mean_pct": -0.008220139873701265,
+          "minus_linear_sd_pct": 0.04950797731937765,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": -0.053916796651470866,
+            "7.970e-03": 0.006461474206459483,
+            "1.212e-02": 0.01608065672452641,
+            "1.765e-02": -0.0015058937743200884
+          }
+        },
+        "exact model, phi_max 0.02": {
+          "mean_pct": -0.02492663911888779,
+          "sd_pct": 0.05225478206658176,
+          "per_fr_mean_pct": {
+            "3.609e-03": -0.00932176195020118,
+            "7.970e-03": -0.05277459732783707,
+            "1.212e-02": -0.02642839832321664,
+            "1.765e-02": -0.011181798874296267
+          },
+          "minus_linear_mean_pct": -0.0015156219082095024,
+          "minus_linear_sd_pct": 0.003658147633502664,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": -0.0035882048427277047,
+            "7.970e-03": -0.0010828282541119894,
+            "1.212e-02": 0.0004594220326920029,
+            "1.765e-02": -0.0018508765686903184
+          }
+        },
+        "exact model, phi_max 0.33": {
+          "mean_pct": -0.0316183115210214,
+          "sd_pct": 0.07728950395434502,
+          "per_fr_mean_pct": {
+            "3.609e-03": -0.05965058670562573,
+            "7.970e-03": -0.04521346502644741,
+            "1.212e-02": -0.010783600412894723,
+            "1.765e-02": -0.01082559393911775
+          },
+          "minus_linear_mean_pct": -0.008207294310343116,
+          "minus_linear_sd_pct": 0.04951540591611372,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": -0.053917029598152255,
+            "7.970e-03": 0.006478304047277672,
+            "1.212e-02": 0.01610421994301392,
+            "1.765e-02": -0.0014946716335118015
+          }
+        },
+        "exact model, phi_max 0.66": {
+          "mean_pct": 0.0004834228108624439,
+          "sd_pct": 0.10860414242024519,
+          "per_fr_mean_pct": {
+            "3.609e-03": -0.08861700412127471,
+            "7.970e-03": 0.009216140768289471,
+            "1.212e-02": 0.04704843112581791,
+            "1.765e-02": 0.0342861234706171
+          },
+          "minus_linear_mean_pct": 0.02389444002154073,
+          "minus_linear_sd_pct": 0.09820247981972645,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": -0.08288344701380124,
+            "7.970e-03": 0.06090790984201455,
+            "1.212e-02": 0.07393625148172656,
+            "1.765e-02": 0.04361704577622305
+          }
+        },
+        "linearised CTF model (first order)": {
+          "mean_pct": -0.023411017210678287,
+          "sd_pct": 0.0509601130855283,
+          "per_fr_mean_pct": {
+            "3.609e-03": -0.005733557107473475,
+            "7.970e-03": -0.05169176907372508,
+            "1.212e-02": -0.026887820355908643,
+            "1.765e-02": -0.009330922305605949
+          }
+        }
+      },
+      "linear_scaling_eps_from_forge_offset": -0.00015815578542189776,
+      "scaling_candidates": {
+        "1/N": 0.001953125,
+        "1/(N-1)": 0.0019569471624266144,
+        "1/grid": 0.0009765625,
+        "1/(grid-1)": 0.0009775171065493646,
+        "1/(s*N)": 0.001953125
+      }
+    },
+    "ds4": {
+      "geometry": "ds4 (2048/4 -> 512, pad 2): detector 2048 px / 4 -> N = 512 px, px_eff = 0.0260 mm, padding 2 -> grid 1024, Fr in [1.507e-03, 4.412e-03] (sampling limit 1/grid = 9.766e-04)",
+      "n_pixels": 512,
+      "grid": 1024,
+      "num_samples": 12,
+      "propagation_rel_l2_max": 1.3544038069276557e-07,
+      "propagation_fr_fit_minus_1_max_abs": 3.487657407319489e-08,
+      "ringfit": {
+        "forge gt_hologram (phi_max 0.33)": {
+          "mean_pct": -0.03406461271436197,
+          "sd_pct": 0.04701000190118651,
+          "per_fr_mean_pct": {
+            "1.507e-03": 0.028078191137131947,
+            "3.029e-03": -0.0748151543703085,
+            "4.412e-03": -0.05545687490990936
+          },
+          "minus_linear_mean_pct": -0.025696205305290414,
+          "minus_linear_sd_pct": 0.032816353609903544,
+          "minus_linear_per_fr_pct": {
+            "1.507e-03": 0.01590026238198483,
+            "3.029e-03": -0.054950526034580616,
+            "4.412e-03": -0.038038352263275454
+          }
+        },
+        "exact model, phi_max 0.02": {
+          "mean_pct": -0.010041947295920858,
+          "sd_pct": 0.021282317656662893,
+          "per_fr_mean_pct": {
+            "1.507e-03": 0.013059597562858904,
+            "3.029e-03": -0.02299834962426195,
+            "4.412e-03": -0.020187089826359528
+          },
+          "minus_linear_mean_pct": -0.0016735398868492994,
+          "minus_linear_sd_pct": 0.0020470453585083566,
+          "minus_linear_per_fr_pct": {
+            "1.507e-03": 0.0008816688077117885,
+            "3.029e-03": -0.0031337212885340637,
+            "4.412e-03": -0.002768567179725623
+          }
+        },
+        "exact model, phi_max 0.33": {
+          "mean_pct": -0.03405306376467835,
+          "sd_pct": 0.04702423935214743,
+          "per_fr_mean_pct": {
+            "1.507e-03": 0.028110683512461154,
+            "3.029e-03": -0.07480363142772783,
+            "4.412e-03": -0.055466243378768376
+          },
+          "minus_linear_mean_pct": -0.025684656355606794,
+          "minus_linear_sd_pct": 0.032828831076601325,
+          "minus_linear_per_fr_pct": {
+            "1.507e-03": 0.015932754757314038,
+            "3.029e-03": -0.05493900309199995,
+            "4.412e-03": -0.03804772073213447
+          }
+        },
+        "exact model, phi_max 0.66": {
+          "mean_pct": -0.06267815739148253,
+          "sd_pct": 0.07607991664529212,
+          "per_fr_mean_pct": {
+            "1.507e-03": 0.037600008334665036,
+            "3.029e-03": -0.13025897362733962,
+            "4.412e-03": -0.09537550688177299
+          },
+          "minus_linear_mean_pct": -0.05430974998241097,
+          "minus_linear_sd_pct": 0.06271298197275392,
+          "minus_linear_per_fr_pct": {
+            "1.507e-03": 0.02542207957951792,
+            "3.029e-03": -0.11039434529161174,
+            "4.412e-03": -0.07795698423513908
+          }
+        },
+        "linearised CTF model (first order)": {
+          "mean_pct": -0.008368407409071557,
+          "sd_pct": 0.019973096766209408,
+          "per_fr_mean_pct": {
+            "1.507e-03": 0.012177928755147116,
+            "3.029e-03": -0.019864628335727885,
+            "4.412e-03": -0.017418522646633905
+          }
+        }
+      },
+      "linear_scaling_eps_from_forge_offset": -0.00017032306357180987,
+      "scaling_candidates": {
+        "1/N": 0.001953125,
+        "1/(N-1)": 0.0019569471624266144,
+        "1/grid": 0.0009765625,
+        "1/(grid-1)": 0.0009775171065493646,
+        "1/(s*N)": 0.00048828125
+      }
+    },
+    "pad4": {
+      "geometry": "pad4 (2048/8 -> 256, pad 4): detector 2048 px / 8 -> N = 256 px, px_eff = 0.0520 mm, padding 4 -> grid 1024, Fr in [3.609e-03, 1.765e-02] (sampling limit 1/grid = 9.766e-04)",
+      "n_pixels": 256,
+      "grid": 1024,
+      "num_samples": 16,
+      "propagation_rel_l2_max": 1.247357920560379e-07,
+      "propagation_fr_fit_minus_1_max_abs": 9.957263213955514e-08,
+      "ringfit": {
+        "forge gt_hologram (phi_max 0.33)": {
+          "mean_pct": -0.09671160891942393,
+          "sd_pct": 0.44273398833753014,
+          "per_fr_mean_pct": {
+            "3.609e-03": -0.21474975087526216,
+            "7.970e-03": -0.06443495403205823,
+            "1.212e-02": -0.1941939873378401,
+            "1.765e-02": 0.08653225656746477
+          },
+          "minus_linear_mean_pct": -0.14746625475788866,
+          "minus_linear_sd_pct": 0.4469597856413675,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": -0.445420165123947,
+            "7.970e-03": -0.09605791172854761,
+            "1.212e-02": -0.07999239370996836,
+            "1.765e-02": 0.031605451530908324
+          }
+        },
+        "exact model, phi_max 0.02": {
+          "mean_pct": 0.04870256924289565,
+          "sd_pct": 0.4934549117624133,
+          "per_fr_mean_pct": {
+            "3.609e-03": 0.23325810136484437,
+            "7.970e-03": 0.024769957503481543,
+            "1.212e-02": -0.11758091138644178,
+            "1.765e-02": 0.05436312948969846
+          },
+          "minus_linear_mean_pct": -0.00205207659556908,
+          "minus_linear_sd_pct": 0.004785212165727679,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": 0.0025876871161595316,
+            "7.970e-03": -0.00685300019300783,
+            "1.212e-02": -0.003379317758570033,
+            "1.765e-02": -0.000563675546857989
+          }
+        },
+        "exact model, phi_max 0.33": {
+          "mean_pct": -0.09674154460384207,
+          "sd_pct": 0.4427366893128745,
+          "per_fr_mean_pct": {
+            "3.609e-03": -0.2147509826553845,
+            "7.970e-03": -0.06443712645533561,
+            "1.212e-02": -0.1942534585767458,
+            "1.765e-02": 0.08647538927209764
+          },
+          "minus_linear_mean_pct": -0.1474961904423068,
+          "minus_linear_sd_pct": 0.4469528413439854,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": -0.44542139690406934,
+            "7.970e-03": -0.09606008415182499,
+            "1.212e-02": -0.08005186494887406,
+            "1.765e-02": 0.03154858423554119
+          }
+        },
+        "exact model, phi_max 0.66": {
+          "mean_pct": -0.5066402339675882,
+          "sd_pct": 1.3531810372146522,
+          "per_fr_mean_pct": {
+            "3.609e-03": -0.6607950085823044,
+            "7.970e-03": 0.0016049888833497006,
+            "1.212e-02": -1.5544128650471833,
+            "1.765e-02": 0.18704194887578518
+          },
+          "minus_linear_mean_pct": -0.5573948798060528,
+          "minus_linear_sd_pct": 1.3791092984437865,
+          "minus_linear_per_fr_pct": {
+            "3.609e-03": -0.8914654228309893,
+            "7.970e-03": -0.030017968813139673,
+            "1.212e-02": -1.4402112714193116,
+            "1.765e-02": 0.13211514383922873
+          }
+        },
+        "linearised CTF model (first order)": {
+          "mean_pct": 0.05075464583846473,
+          "sd_pct": 0.49300587238413984,
+          "per_fr_mean_pct": {
+            "3.609e-03": 0.23067041424868484,
+            "7.970e-03": 0.03162295769648937,
+            "1.212e-02": -0.11420159362787174,
+            "1.765e-02": 0.05492680503655645
+          }
+        }
+      },
+      "linear_scaling_eps_from_forge_offset": -0.00048355804459711965,
+      "scaling_candidates": {
+        "1/N": 0.00390625,
+        "1/(N-1)": 0.00392156862745098,
+        "1/grid": 0.0009765625,
+        "1/(grid-1)": 0.0009775171065493646,
+        "1/(s*N)": 0.00048828125
+      }
+    }
+  },
+  "stages": {
+    "small/linear-regime object, phi_max 0.02 rad": {
+      "propagation": {
+        "rel_l2_psi": 1.1888754785107309e-07,
+        "max_abs_amplitude_diff": 5.867711116991359e-07,
+        "rel_l2_hologram_contrast": 9.694678597331264e-05,
+        "crop_is_centred_integer": true,
+        "crop_max_abs_diff": 5.960257110082523e-08,
+        "crop_start": 128,
+        "kernel_max_abs_diff": 1.41939107814929e-05,
+        "scan": {
+          "-0.4%": 1.5180104291298286e-05,
+          "-0.1%": 3.787624665705653e-06,
+          "+0.0%": 1.1888754785107309e-07,
+          "+0.1%": 3.779947334699662e-06,
+          "+0.4%": 1.5059184966283496e-05
+        },
+        "fr_fit_over_label_minus_1": 1.6238987265992932e-08,
+        "min_rel_l2": 1.1888753326951692e-07
+      },
+      "stages": [
+        {
+          "stage": "reference float64 |psi| on the full padded grid",
+          "template_pct": -0.0613707621783921,
+          "minima_pct": 0.002387174990259311
+        },
+        {
+          "stage": "Forge |psi_det| on the full padded grid (float32 FFT)",
+          "template_pct": -0.06145625980411573,
+          "minima_pct": 0.001938349062768907
+        },
+        {
+          "stage": "crop_center -> images/gt_hologram (N px)",
+          "template_pct": 0.024922154549789077,
+          "minima_pct": 0.21212518592994556
+        },
+        {
+          "stage": "intensity convention |psi|^2 after crop (not used by Forge)",
+          "template_pct": 0.02411557041117618,
+          "minima_pct": 0.21232491027922684
+        },
+        {
+          "stage": "float32 HDF5 round trip of gt_hologram",
+          "template_pct": 0.024922154549789077,
+          "minima_pct": 0.21212518592994556
+        },
+        {
+          "stage": "+ Gaussian noise std 1.2e-04 (= 10% of the fringe rms) on the amplitude, clip < 0: mean / sd of 4",
+          "template_pct": -0.1129764333840183,
+          "minima_pct": 0.10996999230527175
+        }
+      ]
+    },
+    "small/nominal object, phi_max 0.33 rad (Mg 2 um)": {
+      "propagation": {
+        "rel_l2_psi": 1.1381596951978822e-07,
+        "max_abs_amplitude_diff": 5.831753673302131e-07,
+        "rel_l2_hologram_contrast": 5.764772317715637e-06,
+        "crop_is_centred_integer": true,
+        "crop_max_abs_diff": 5.960117888115235e-08,
+        "crop_start": 128,
+        "kernel_max_abs_diff": 1.41939107814929e-05,
+        "scan": {
+          "-0.4%": 0.00025202817302491797,
+          "-0.1%": 6.285335545175255e-05,
+          "+0.0%": 1.1381596951978822e-07,
+          "+0.1%": 6.273142712616551e-05,
+          "+0.4%": 0.0002500260784084618
+        },
+        "fr_fit_over_label_minus_1": -2.4887979677146177e-08,
+        "min_rel_l2": 1.1380166059861294e-07
+      },
+      "stages": [
+        {
+          "stage": "reference float64 |psi| on the full padded grid",
+          "template_pct": -0.18916921537307507,
+          "minima_pct": 0.13129305676660152
+        },
+        {
+          "stage": "Forge |psi_det| on the full padded grid (float32 FFT)",
+          "template_pct": -0.1891694216930584,
+          "minima_pct": 0.13127612193610805
+        },
+        {
+          "stage": "crop_center -> images/gt_hologram (N px)",
+          "template_pct": -0.016423282055810784,
+          "minima_pct": -0.007534131227249219
+        },
+        {
+          "stage": "intensity convention |psi|^2 after crop (not used by Forge)",
+          "template_pct": -0.02931168721443944,
+          "minima_pct": -0.004041641412522168
+        },
+        {
+          "stage": "float32 HDF5 round trip of gt_hologram",
+          "template_pct": -0.016423282055810784,
+          "minima_pct": -0.007534131227249219
+        },
+        {
+          "stage": "+ Gaussian noise std 2.0e-03 (= 10% of the fringe rms) on the amplitude, clip < 0: mean / sd of 4",
+          "template_pct": -0.23718697127677046,
+          "minima_pct": 0.10652935186527492
+        }
+      ]
+    },
+    "nodown/linear-regime object, phi_max 0.02 rad": {
+      "propagation": {
+        "rel_l2_psi": 1.1144165479824956e-07,
+        "max_abs_amplitude_diff": 5.794018586025018e-07,
+        "rel_l2_hologram_contrast": 0.00013404592739708803,
+        "crop_is_centred_integer": true,
+        "crop_max_abs_diff": 5.960412430283668e-08,
+        "crop_start": 256,
+        "kernel_max_abs_diff": 1.4283279453697982e-05,
+        "scan": {
+          "-0.4%": 1.0637804615876381e-05,
+          "-0.1%": 2.654388076737763e-06,
+          "+0.0%": 1.1144165479824956e-07,
+          "+0.1%": 2.651289283630668e-06,
+          "+0.4%": 1.0555334616931929e-05
+        },
+        "fr_fit_over_label_minus_1": -4.2189670468317786e-07,
+        "min_rel_l2": 1.1143622846639985e-07
+      },
+      "stages": [
+        {
+          "stage": "reference float64 |psi| on the full padded grid",
+          "template_pct": -0.0063565037005886005,
+          "minima_pct": -0.017072158770781165
+        },
+        {
+          "stage": "Forge |psi_det| on the full padded grid (float32 FFT)",
+          "template_pct": -0.006392342154393216,
+          "minima_pct": -0.016721701446842374
+        },
+        {
+          "stage": "crop_center -> images/gt_hologram (N px)",
+          "template_pct": -0.004802318869134847,
+          "minima_pct": 0.013237169701585394
+        },
+        {
+          "stage": "intensity convention |psi|^2 after crop (not used by Forge)",
+          "template_pct": -0.0054804103088335054,
+          "minima_pct": 0.013564192977666423
+        },
+        {
+          "stage": "float32 HDF5 round trip of gt_hologram",
+          "template_pct": -0.004802318869134847,
+          "minima_pct": 0.013237169701585394
+        },
+        {
+          "stage": "+ Gaussian noise std 8.5e-05 (= 10% of the fringe rms) on the amplitude, clip < 0: mean / sd of 4",
+          "template_pct": -0.08282087574759678,
+          "minima_pct": 0.008574129584233465
+        }
+      ]
+    },
+    "nodown/nominal object, phi_max 0.33 rad (Mg 2 um)": {
+      "propagation": {
+        "rel_l2_psi": 1.0821907322089804e-07,
+        "max_abs_amplitude_diff": 5.350473659682109e-07,
+        "rel_l2_hologram_contrast": 7.809665437576075e-06,
+        "crop_is_centred_integer": true,
+        "crop_max_abs_diff": 5.960425863982266e-08,
+        "crop_start": 256,
+        "kernel_max_abs_diff": 1.4283279453697982e-05,
+        "scan": {
+          "-0.4%": 0.00017665014896042728,
+          "-0.1%": 4.4055224559500393e-05,
+          "+0.0%": 1.0821907322089804e-07,
+          "+0.1%": 4.396937503315637e-05,
+          "+0.4%": 0.00017524648071483003
+        },
+        "fr_fit_over_label_minus_1": -2.1627971635851395e-08,
+        "min_rel_l2": 1.082137247023717e-07
+      },
+      "stages": [
+        {
+          "stage": "reference float64 |psi| on the full padded grid",
+          "template_pct": -0.003980705176465094,
+          "minima_pct": 0.10512488275253862
+        },
+        {
+          "stage": "Forge |psi_det| on the full padded grid (float32 FFT)",
+          "template_pct": -0.003978753135980284,
+          "minima_pct": 0.10514421537204388
+        },
+        {
+          "stage": "crop_center -> images/gt_hologram (N px)",
+          "template_pct": -0.018275796777500464,
+          "minima_pct": -0.051621442494709235
+        },
+        {
+          "stage": "intensity convention |psi|^2 after crop (not used by Forge)",
+          "template_pct": -0.030013223879088446,
+          "minima_pct": -0.08157851516948922
+        },
+        {
+          "stage": "float32 HDF5 round trip of gt_hologram",
+          "template_pct": -0.018275796777500464,
+          "minima_pct": -0.051621442494709235
+        },
+        {
+          "stage": "+ Gaussian noise std 1.4e-03 (= 10% of the fringe rms) on the amplitude, clip < 0: mean / sd of 4",
+          "template_pct": -0.1221664927219035,
+          "minima_pct": 0.008464969449698656
+        }
+      ]
+    },
+    "ds4/linear-regime object, phi_max 0.02 rad": {
+      "propagation": {
+        "rel_l2_psi": 1.2410794963987742e-07,
+        "max_abs_amplitude_diff": 7.304075311242997e-07,
+        "rel_l2_hologram_contrast": 0.00010818508103769384,
+        "crop_is_centred_integer": true,
+        "crop_max_abs_diff": 5.9603032953603474e-08,
+        "crop_start": 256,
+        "kernel_max_abs_diff": 3.485990535765659e-05,
+        "scan": {
+          "-0.4%": 2.7886296004963606e-05,
+          "-0.1%": 6.978887407295049e-06,
+          "+0.0%": 1.2410794963987742e-07,
+          "+0.1%": 6.9668749437679984e-06,
+          "+0.4%": 2.7667850951957696e-05
+        },
+        "fr_fit_over_label_minus_1": -1.3808353738209433e-07,
+        "min_rel_l2": 1.2410422531848357e-07
+      },
+      "stages": [
+        {
+          "stage": "reference float64 |psi| on the full padded grid",
+          "template_pct": -0.0029326035154819685,
+          "minima_pct": -0.004170445314222171
+        },
+        {
+          "stage": "Forge |psi_det| on the full padded grid (float32 FFT)",
+          "template_pct": -0.0028970914377479673,
+          "minima_pct": -0.004197463963262482
+        },
+        {
+          "stage": "crop_center -> images/gt_hologram (N px)",
+          "template_pct": -0.02140852845775587,
+          "minima_pct": 0.034754309899631686
+        },
+        {
+          "stage": "intensity convention |psi|^2 after crop (not used by Forge)",
+          "template_pct": -0.020979995348391345,
+          "minima_pct": 0.03486753731019032
+        },
+        {
+          "stage": "float32 HDF5 round trip of gt_hologram",
+          "template_pct": -0.02140852845775587,
+          "minima_pct": 0.034754309899631686
+        },
+        {
+          "stage": "+ Gaussian noise std 1.1e-04 (= 10% of the fringe rms) on the amplitude, clip < 0: mean / sd of 4",
+          "template_pct": -0.0227348239898173,
+          "minima_pct": 0.012366555412369683
+        }
+      ]
+    },
+    "ds4/nominal object, phi_max 0.33 rad (Mg 2 um)": {
+      "propagation": {
+        "rel_l2_psi": 1.2013913700908166e-07,
+        "max_abs_amplitude_diff": 6.237202054837354e-07,
+        "rel_l2_hologram_contrast": 6.057568313592853e-06,
+        "crop_is_centred_integer": true,
+        "crop_max_abs_diff": 5.960269411353636e-08,
+        "crop_start": 256,
+        "kernel_max_abs_diff": 3.485990535765659e-05,
+        "scan": {
+          "-0.4%": 0.0004630540808002982,
+          "-0.1%": 0.00011588252570441313,
+          "+0.0%": 1.2013913700908166e-07,
+          "+0.1%": 0.00011565291254572152,
+          "+0.4%": 0.0004593972389416637
+        },
+        "fr_fit_over_label_minus_1": -5.889222887134338e-09,
+        "min_rel_l2": 1.2013596982154594e-07
+      },
+      "stages": [
+        {
+          "stage": "reference float64 |psi| on the full padded grid",
+          "template_pct": -0.05519433745498903,
+          "minima_pct": -0.020448262945782503
+        },
+        {
+          "stage": "Forge |psi_det| on the full padded grid (float32 FFT)",
+          "template_pct": -0.0551929158522646,
+          "minima_pct": -0.020447523096911446
+        },
+        {
+          "stage": "crop_center -> images/gt_hologram (N px)",
+          "template_pct": -0.07625230695100793,
+          "minima_pct": -0.06076038079704249
+        },
+        {
+          "stage": "intensity convention |psi|^2 after crop (not used by Forge)",
+          "template_pct": -0.06888628615566716,
+          "minima_pct": -0.03232256183012261
+        },
+        {
+          "stage": "float32 HDF5 round trip of gt_hologram",
+          "template_pct": -0.07625230695100793,
+          "minima_pct": -0.06076038079704249
+        },
+        {
+          "stage": "+ Gaussian noise std 1.9e-03 (= 10% of the fringe rms) on the amplitude, clip < 0: mean / sd of 4",
+          "template_pct": -0.07279840028422968,
+          "minima_pct": 0.012307075860731905
+        }
+      ]
+    },
+    "pad4/linear-regime object, phi_max 0.02 rad": {
+      "propagation": {
+        "rel_l2_psi": 9.029990433469724e-08,
+        "max_abs_amplitude_diff": 5.703238477039463e-07,
+        "rel_l2_hologram_contrast": 9.35156223613023e-05,
+        "crop_is_centred_integer": true,
+        "crop_max_abs_diff": 5.960252735803806e-08,
+        "crop_start": 384,
+        "kernel_max_abs_diff": 1.4283279453697982e-05,
+        "scan": {
+          "-0.4%": 7.589755641348885e-06,
+          "-0.1%": 1.8945085686561178e-06,
+          "+0.0%": 9.029990433469724e-08,
+          "+0.1%": 1.8916679278784596e-06,
+          "+0.4%": 7.530297931026773e-06
+        },
+        "fr_fit_over_label_minus_1": -2.471846967111446e-07,
+        "min_rel_l2": 9.029868753756019e-08
+      },
+      "stages": [
+        {
+          "stage": "reference float64 |psi| on the full padded grid",
+          "template_pct": -0.06415712606285817,
+          "minima_pct": -0.02773255673800268
+        },
+        {
+          "stage": "Forge |psi_det| on the full padded grid (float32 FFT)",
+          "template_pct": -0.06430300797426458,
+          "minima_pct": -0.03377270693714074
+        },
+        {
+          "stage": "crop_center -> images/gt_hologram (N px)",
+          "template_pct": 0.02539182631917658,
+          "minima_pct": 0.21188471799478137
+        },
+        {
+          "stage": "intensity convention |psi|^2 after crop (not used by Forge)",
+          "template_pct": 0.024578562199950582,
+          "minima_pct": 0.2120842317029359
+        },
+        {
+          "stage": "float32 HDF5 round trip of gt_hologram",
+          "template_pct": 0.02539182631917658,
+          "minima_pct": 0.21188471799478137
+        },
+        {
+          "stage": "+ Gaussian noise std 1.2e-04 (= 10% of the fringe rms) on the amplitude, clip < 0: mean / sd of 4",
+          "template_pct": -0.11289921980171813,
+          "minima_pct": 0.1100253114915654
+        }
+      ]
+    },
+    "pad4/nominal object, phi_max 0.33 rad (Mg 2 um)": {
+      "propagation": {
+        "rel_l2_psi": 1.1312612411378043e-07,
+        "max_abs_amplitude_diff": 6.026056269536895e-07,
+        "rel_l2_hologram_contrast": 6.216612712196194e-06,
+        "crop_is_centred_integer": true,
+        "crop_max_abs_diff": 5.960225535339703e-08,
+        "crop_start": 384,
+        "kernel_max_abs_diff": 1.4283279453697982e-05,
+        "scan": {
+          "-0.4%": 0.00012600426320801821,
+          "-0.1%": 3.142481967405611e-05,
+          "+0.0%": 1.1312612411378043e-07,
+          "+0.1%": 3.136266327578974e-05,
+          "+0.4%": 0.00012500210328980155
+        },
+        "fr_fit_over_label_minus_1": -8.883496827039039e-09,
+        "min_rel_l2": 1.1312569678992384e-07
+      },
+      "stages": [
+        {
+          "stage": "reference float64 |psi| on the full padded grid",
+          "template_pct": -0.19441936374978708,
+          "minima_pct": 0.024157037452887664
+        },
+        {
+          "stage": "Forge |psi_det| on the full padded grid (float32 FFT)",
+          "template_pct": -0.1944266397972627,
+          "minima_pct": 0.024167165746802333
+        },
+        {
+          "stage": "crop_center -> images/gt_hologram (N px)",
+          "template_pct": -0.01664474191012122,
+          "minima_pct": -0.007577860308649598
+        },
+        {
+          "stage": "intensity convention |psi|^2 after crop (not used by Forge)",
+          "template_pct": -0.029582035287001318,
+          "minima_pct": -0.004074634229456198
+        },
+        {
+          "stage": "float32 HDF5 round trip of gt_hologram",
+          "template_pct": -0.01664474191012122,
+          "minima_pct": -0.007577860308649598
+        },
+        {
+          "stage": "+ Gaussian noise std 2.0e-03 (= 10% of the fringe rms) on the amplitude, clip < 0: mean / sd of 4",
+          "template_pct": -0.23717601734215554,
+          "minima_pct": 0.1065279326920141
+        }
+      ]
+    }
+  },
+  "label_formula": {
+    "z01_mm": 132.0,
+    "z02_mm": 20000.0,
+    "energy_kev": 11.0,
+    "fr": 0.007969618355155967,
+    "checks": {
+      "setup.Fr (label) == calc_Fr(E, z01, z02, px*s)": 0.0,
+      "setup.Fr == src.utils.physics.fresnel_number": 0.0,
+      "Fr(fine px) * s^2 == Fr(coarse px) (label of binned grid)": 0.0,
+      "kernel pixel size == label pixel size (setup.detector_px_size = px*s)": 0.0,
+      "Forge kernel vs exp(-i pi/Fr (xi^2+eta^2)) max |diff| (float32 kernel)": 1.41939107814929e-05,
+      "hc = 1.2398 vs CODATA 1.23984198: rel. Fr change": -3.385915356723945e-05,
+      "1 um rounding of z01 = 50.0004 mm: rel. Fr change": -8.019985965335152e-06,
+      "float32 storage of Fr: rel. change (sample)": 5.2674358874682525e-08
+    }
+  },
+  "dataset": {
+    "file": "/tmp/wt-verify/data/processed/verify_forge_weak/test.hdf5",
+    "num_samples": 100,
+    "fr_range": [
+      0.003055455395951867,
+      0.017850227653980255
+    ],
+    "fr_terciles": [
+      0.007086141966283322,
+      0.012343542650341993
+    ],
+    "peak_phase_rad_mean": 0.35591819882392883,
+    "peak_phase_rad_max": 0.6629589796066284,
+    "stored_vs_reference_rel_l2_contrast_max": 4.141225292472993e-05,
+    "stored_vs_reference_rel_l2_contrast_mean": 1.0401907730054193e-05,
+    "ringfit": {
+      "stored gt_hologram": {
+        "template_bias_pct": -0.3848199316334246,
+        "template_sd_pct": 0.366695852781666,
+        "template_terciles_pct": [
+          -0.13394214737569396,
+          -0.3765212183558859,
+          -0.6515987862674127
+        ],
+        "minima_bias_pct": -0.42154587920612435,
+        "slope_pct_per_fr": -52.25637159794236,
+        "minus_linear_mean_pct": -0.386502025515029,
+        "minus_linear_sd_pct": 0.2674305905771957
+      },
+      "exact float64 reference (stored phantom, label Fr)": {
+        "template_bias_pct": -0.38482480741754266,
+        "template_sd_pct": 0.3667044384043423,
+        "template_terciles_pct": [
+          -0.13394093069890622,
+          -0.37652600521565915,
+          -0.6516100280568092
+        ],
+        "minima_bias_pct": -0.4213210218262285,
+        "slope_pct_per_fr": -52.25757220102947,
+        "minus_linear_mean_pct": -0.38650690129914717,
+        "minus_linear_sd_pct": 0.2674311542883961
+      },
+      "linearised CTF model": {
+        "template_bias_pct": 0.0016820938816044517,
+        "template_sd_pct": 0.1873685922306314,
+        "template_terciles_pct": [
+          0.09194692487061892,
+          -0.009112858349117717,
+          -0.08052308278544586
+        ],
+        "minima_bias_pct": 0.02326691272903847,
+        "slope_pct_per_fr": -17.848822509437685,
+        "minus_linear_mean_pct": 0.0,
+        "minus_linear_sd_pct": 0.0
+      },
+      "exact model, object x 0.5": {
+        "template_bias_pct": -0.19329808331239104,
+        "template_sd_pct": 0.2602097391892653,
+        "template_terciles_pct": [
+          -0.021100288750519614,
+          -0.19557115954380924,
+          -0.3684409166295677
+        ],
+        "minima_bias_pct": -0.1999861964231018,
+        "slope_pct_per_fr": -35.45487724944705,
+        "minus_linear_mean_pct": -0.1949801771939955,
+        "minus_linear_sd_pct": 0.13407178103895454
+      },
+      "exact model, object x 2": {
+        "template_bias_pct": -0.8733897258660634,
+        "template_sd_pct": 0.6649354005025664,
+        "template_terciles_pct": [
+          -0.5011194911123735,
+          -0.7950257699900055,
+          -1.335304832700469
+        ],
+        "minima_bias_pct": -1.0018212382011118,
+        "slope_pct_per_fr": -82.73361819699669,
+        "minus_linear_mean_pct": -0.8750718197476679,
+        "minus_linear_sd_pct": 0.6171243344144123
+      },
+      "2nd-order transmission 1 + i phi - A - phi^2/2": {
+        "template_bias_pct": -0.3928342202953592,
+        "template_sd_pct": 0.3619005180350244,
+        "template_terciles_pct": [
+          -0.14334605476945506,
+          -0.38172832905644916,
+          -0.6609885245003523
+        ],
+        "minima_bias_pct": -0.4396217749772211,
+        "slope_pct_per_fr": -52.02032458332809,
+        "minus_linear_mean_pct": -0.39451631417696353,
+        "minus_linear_sd_pct": 0.26339922365471735
+      }
+    }
+  },
+  "elapsed_s": 128.7
+}
