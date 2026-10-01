@@ -96,7 +96,8 @@ python -m src.evaluate --checkpoint runs/smoke/best.pt --data data/processed/sma
 
 Schreibt `eval_results.json` (Metriken im Zielraum und physikalisch: MAE/RMSE/p95/Bias von `z01` in mm,
 relativer `Fr`-Fehler in %, Inferenzzeit pro Hologramm für Batch 1 und Batch N), `predictions.npz` und Plots
-nach `<Checkpoint-Ordner>/eval_<datei>/` (oder `--out`).
+nach `<Checkpoint-Ordner>/eval_<datei>/` (oder `--out`). Auf CPU hängt die Batch-1-Latenz stark von der
+Thread-Zahl ab (Oversubscription auf kleinen/geteilten Maschinen); `--threads 1` liefert reproduzierbare Werte.
 
 ## Tests
 

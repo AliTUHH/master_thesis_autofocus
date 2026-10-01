@@ -147,6 +147,7 @@ def measure_inference_time(
             timings.append((time.perf_counter() - start) * 1e3 / bsz)
         results[f"ms_per_hologram_{label}"] = float(np.median(timings))
     results["device"] = str(device)
+    results["torch_num_threads"] = torch.get_num_threads()
     results["input_shape"] = list(sample.shape)
     return results
 
@@ -158,10 +159,17 @@ def evaluate_checkpoint(
     batch_size: int | None = None,
     device_name: str | None = None,
     num_workers: int | None = None,
+    num_threads: int | None = None,
 ) -> dict[str, Any]:
-    """Full evaluation of one checkpoint on one HDF5 file; writes ``eval_results.json`` and figures."""
+    """Full evaluation of one checkpoint on one HDF5 file; writes ``eval_results.json`` and figures.
+
+    ``num_threads`` limits PyTorch's intra-op CPU threads; on shared or small CPUs the batch-1 latency
+    can be an order of magnitude worse with the default thread count because of oversubscription.
+    """
     checkpoint_path = resolve_path(checkpoint_path)
     data_path = resolve_path(data_path)
+    if num_threads is not None:
+        torch.set_num_threads(int(num_threads))
     device = select_device(device_name or "auto")
     model, checkpoint = load_checkpoint(checkpoint_path, device)
     config = checkpoint["config"]
@@ -218,15 +226,19 @@ def main(argv: list[str] | None = None) -> dict[str, Any]:
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--device", default=None, help="auto | cpu | cuda | mps")
     parser.add_argument("--num-workers", type=int, default=None)
+    parser.add_argument("--threads", type=int, default=None, help="PyTorch intra-op CPU threads (latency on CPU depends on it)")
     args = parser.parse_args(argv)
-    results = evaluate_checkpoint(args.checkpoint, args.data, args.out, args.batch_size, args.device, args.num_workers)
+    results = evaluate_checkpoint(
+        args.checkpoint, args.data, args.out, args.batch_size, args.device, args.num_workers, args.threads
+    )
     phys = results["metrics"]["physical"]
     tgt = results["metrics"]["target_space"]
     print(
         f"test n={tgt['n']}  target MAE={tgt['mae']:.4g}  RMSE={tgt['rmse']:.4g}  R2={tgt['r2']:.3f} | "
         f"z01 MAE={phys['z01_mae_mm']:.3f} mm  RMSE={phys['z01_rmse_mm']:.3f} mm  p95={phys['z01_p95_abs_err_mm']:.3f} mm  "
         f"bias={phys['z01_bias_mm']:+.3f} mm | Fr rel. err={phys['fr_rel_err_mean_pct']:.2f} % | "
-        f"{results['inference_time']['ms_per_hologram_batch_1']:.2f} ms/hologram (batch 1)"
+        f"{results['inference_time']['ms_per_hologram_batch_1']:.2f} ms/hologram (batch 1, "
+        f"{results['inference_time']['torch_num_threads']} threads)"
     )
     out_dir = Path(results["figures"]["scatter_target"]).parent
     print(f"results written to {out_dir.relative_to(PROJECT_ROOT) if out_dir.is_relative_to(PROJECT_ROOT) else out_dir}")
