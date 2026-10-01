@@ -33,8 +33,13 @@ src/
   utils/plotting.py    Headless-Plots (Loss, Scatter, Fehler über z01, Beispiel-Hologramme)
   utils/config.py, targets.py, torch_utils.py   YAML/Pfade, Ziel-Standardisierung, Seeds/Device
 tests/                 pytest-Suite (Physik, Random-Setup + Labels, Dataset, Modelle, Trainings-Smoke-Test)
+tools/export_figures.py                Plots eines Runs nach thesis/figures/<kapitel>/ kopieren + LaTeX-Snippets erzeugen
 tools/build_project_documentation.py   ReportLab-Dokumentation (unabhängig von der Pipeline)
-docs/                  Begleitdokumente (01_thesis_erklaerung.md, 02_literatur.md, 03_projektplan.md; entstehen parallel)
+docs/                  Begleitdokumente: 01_thesis_erklaerung.md, 02_literatur.md, 03_projektplan.md,
+                       04_werkzeuge_und_workflow.md; docs/notizen/ (Logbuch, Vorlagen, Fragen an Betreuer)
+thesis/                LaTeX-Skelett der Masterarbeit (main.tex, chapters/, references.bib, figures/, thesis.mplstyle)
+notebooks/             colab_training.ipynb (Pipeline in Google Colab mit Python-3.11-venv)
+.github/               CI-Workflow (pytest, Python 3.11, CPU), Issue-Vorlagen (Experiment/Aufgabe/Paper-Notiz), PR-Vorlage
 ```
 
 ## Installation
@@ -138,6 +143,36 @@ HoloWizard rundet Abstände intern auf 1 µm; `fresnel_number` tut dasselbe und 
   gemessene P05-Daten, gemessene Flatfields (`flatfield_dataset` kann über `forge_overrides` eingebunden werden).
 - In HoloForge 3.0.6 lassen sich die Phantom-Glättung nicht deaktivieren und `probe.constant` nicht als Bereich
   angeben (beides führt dort zu Fehlern); die YAML-Schnittstelle erzwingt daher Skalar bzw. Glättung.
+
+## Thesis-Workflow
+
+Der Arbeitsablauf für Schreiben, Rechnen und Protokollieren ist in
+[docs/04_werkzeuge_und_workflow.md](docs/04_werkzeuge_und_workflow.md) beschrieben.
+Fachliche Einarbeitung: [docs/01_thesis_erklaerung.md](docs/01_thesis_erklaerung.md),
+Literatur: [docs/02_literatur.md](docs/02_literatur.md), Plan: [docs/03_projektplan.md](docs/03_projektplan.md).
+
+- **Thesis (LaTeX):** [`thesis/`](thesis/) enthält ein kompilierbares Skelett (KOMA-Script, biblatex/biber, DE/EN-Umschalter).
+  Bauen mit `cd thesis && latexmk` oder `tectonic -X compile main.tex`; Details in [thesis/README.md](thesis/README.md).
+  Build-Artefakte (`thesis/*.pdf`, `*.aux`, …) sind in der `.gitignore`, `thesis/figures/**` bleibt versioniert.
+- **Literatur:** Zotero + Better BibTeX exportieren nach `thesis/references.bib` (Citekeys `autor+jahr+stichwort`,
+  z. B. `dora2025autofocus`).
+- **Training in der Cloud:** [`notebooks/colab_training.ipynb`](notebooks/colab_training.ipynb) richtet in Colab ein
+  Python-3.11-venv ein und ruft die CLI auf (`src.data.generate_data --config configs/data_small.yaml --out data/processed/small`,
+  `src.train --config configs/base.yaml --data-dir … --run-name …`, `src.evaluate --checkpoint runs/<run>/best.pt --data …/test.hdf5`);
+  `results.json`, `eval_test/eval_results.json`, Plots und `tb/` werden nach Google Drive gesichert
+  (Hinweise in [notebooks/README.md](notebooks/README.md)).
+- **Abbildungen in die Thesis:** `python tools/export_figures.py --run runs/<run> --list` zeigt die Plots eines Runs
+  (`loss_curves`, `test_scatter_z01_mm`, `test_error_vs_z01`, …; aus `src.evaluate` zusätzlich `eval_<split>/…`);
+  `python tools/export_figures.py --run runs/<run> --chapter experimente --names loss_curves test_scatter_z01_mm`
+  kopiert sie nach `thesis/figures/experimente/` und erzeugt `.tex`-Snippets mit Run- und Commit-Angabe
+  (Konventionen in [thesis/figures/README.md](thesis/figures/README.md)).
+- **Experimente protokollieren:** Issue-Vorlage „Experiment“ ([.github/ISSUE_TEMPLATE/experiment.md](.github/ISSUE_TEMPLATE/experiment.md))
+  + Logbuch [docs/notizen/experimente.md](docs/notizen/experimente.md); Run-Namen `JJJJ-MM-TT_<kurzname>_s<seed>`
+  (Metriken aus `results.json` → `test_metrics.physical.z01_mae_mm`, `fr_rel_err_mean_pct`). Da `runs/` ignoriert ist,
+  werden `results.json`/Plots thesisrelevanter Läufe gezielt mit `git add -f` versioniert.
+- **CI:** [.github/workflows/tests.yml](.github/workflows/tests.yml) installiert `requirements.txt` mit dem
+  CPU-Torch-Index (`--extra-index-url https://download.pytorch.org/whl/cpu`) unter Python 3.11 und führt
+  `python -m pytest -q` aus.
 
 ## ملخص
 
