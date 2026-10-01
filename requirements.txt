@@ -1,0 +1,13 @@
+# Direkte Abhängigkeiten, gepinnt auf die getestete Umgebung (Python 3.11, CPU).
+# Installation:  uv venv --python 3.11 .venv && uv pip install -r requirements.txt
+# holowizard zieht zahlreiche transitive Pakete (scipy, scikit-image, xraylib, cupy-cuda12x, PyQt5, ...).
+holowizard==3.0.6
+torch==2.10.0
+torchvision==0.25.0
+numpy==1.26.4
+h5py==3.16.0
+PyYAML==6.0.3
+matplotlib==3.11.2
+tqdm==4.70.1
+tensorboard==2.21.0
+pytest==9.1.1
