@@ -205,7 +205,7 @@ Mikrometerbereich hervorragend erfüllt ist \cite{goodman2017fourier}.
 Numerisch liegt die Welle auf einem Gitter mit Pixelabstand $\dx$ vor. Werden
 die Frequenzen in Zyklen pro Pixel gemessen, $\xi = f_x\dx$ und $\eta = f_y\dx$,
 nimmt \cref{eq:grundlagen:propagation-physikalisch} die Form an, die HoloWizard
-und \cite{dora2024asrm,dora2025autofocus} verwenden:
+und Dora et al.\ \cite{dora2024asrm,dora2025autofocus} verwenden:
 \begin{equation}
   I = \abs{\prop{\Fr}(\psi)}^2,
   \qquad
@@ -508,8 +508,8 @@ $N = 256$ Pixeln dagegen nur bis $\xi \approx 0.03$, also die ersten etwa vier
 Ringe. Kleine Bildausschnitte tragen demnach deutlich weniger Information über
 $\Fr$ als das volle Detektorbild.
 
-Die Linearisierung gilt nur für schwache Objekte. Für die in
-\cite{dora2025autofocus} untersuchten Proben mit Phasenschüben von mehreren
+Die Linearisierung gilt nur für schwache Objekte. Für die von
+Dora et al.\ \cite{dora2025autofocus} untersuchten Proben mit Phasenschüben von mehreren
 $\pi$ enthält das Hologramm Terme höherer Ordnung, und \cref{eq:grundlagen:ctf}
 beschreibt den Kontrast nicht mehr quantitativ
 \cite{moosmann2011single,dora2024asrm}. Die Lage der Nullstellen des
@@ -536,7 +536,7 @@ das \ac{pr}-Problem \cite{fienup1982phase}. Eindeutigkeit und Stabilität
 entstehen erst durch A-priori-Wissen: Vorzeichenbedingungen wie $\Omega_P$,
 räumliche Trägerbeschränkungen (\emph{Support}), Glattheit, die Annahme eines
 homogenen Materials mit bekanntem $\delta/\beta$, mehrere Abstände oder
-Regularisierung. \cite{maretzke2020constrained} zeigen, dass das
+Regularisierung. Maretzke und Hohage \cite{maretzke2020constrained} zeigen, dass das
 Phasenproblem der propagationsbasierten Röntgenbildgebung unter
 Supportbedingungen eindeutig lösbar und im linearisierten Modell sogar stabil
 ist; die dort bewiesenen Stabilitätsabschätzungen begründen, warum
@@ -557,7 +557,7 @@ der Ausbreitung mit der Phase verknüpft:
   \frac{\partial I}{\partial z} = -\frac{\wl}{2\pi}\,\nabla_\perp\!\cdot\big(I\,\nabla_\perp\varphi\big) .
   \label{eq:grundlagen:tie}
 \end{equation}
-\cite{paganin2002phase} lösen die \ac{tie} für ein homogenes Objekt, dessen
+Paganin et al.\ \cite{paganin2002phase} lösen die \ac{tie} für ein homogenes Objekt, dessen
 Phase und Absorption beide proportional zur projizierten Dicke $T$ sind, für
 einen einzigen kurzen Abstand geschlossen:
 \begin{equation}
@@ -578,7 +578,7 @@ Schärfe und Quantitativität der Rekonstruktion.
 \subsection{Iterative Projektionsverfahren}
 
 Jenseits der Linearisierung werden Phasenprobleme iterativ gelöst.
-\cite{fienup1982phase} vergleicht Algorithmen, die abwechselnd
+Fienup \cite{fienup1982phase} vergleicht Algorithmen, die abwechselnd
 Nebenbedingungen im Objektraum (Support, Nichtnegativität) und im Messraum (der
 gemessene Betrag, hier $\sqrt{I}$) erzwingen. Der \ac{er}-Algorithmus ist die
 reine alternierende Projektion; sein Fehler fällt monoton, der Algorithmus ist
@@ -589,7 +589,7 @@ $\beta_{\mathrm{HIO}}$ und konvergiert in der Praxis deutlich schneller
 \cite{fienup1982phase}. Für die \ac{nfh} wurden diese Ideen zu Varianten der
 alternierenden Projektion und zu \ac{raar} weiterentwickelt, die in der
 HoloTomoToolbox neben \ac{ctf}- und \ac{tie}-Verfahren implementiert sind
-\cite{lohse2020toolbox}. Zwei Konzepte aus \cite{fienup1982phase} tragen
+\cite{lohse2020toolbox}. Zwei Konzepte aus Fienups Vergleich \cite{fienup1982phase} tragen
 unmittelbar in diese Arbeit: Nebenbedingungen stellen Eindeutigkeit her, und
 der Fehler im Messraum ist ein natürliches Maß dafür, wie gut eine Lösung
 Modell und Daten vereinbart -- die Grundidee des in \cref{sec:grundlagen:autofokus}
@@ -616,7 +616,7 @@ berücksichtigt, was auf ein \ac{pgd} führt:
   \tilde O_{k+1} = \mathcal{P}_{\Omega_P}\big(\tilde O_k - \eta_k\,\nabla\mathcal{L}(\tilde O_k)\big) .
   \label{eq:grundlagen:pgd}
 \end{equation}
-\cite{huhn2022tikhonov} verfolgen alternativ eine nichtlineare
+Huhn et al.\ \cite{huhn2022tikhonov} verfolgen alternativ eine nichtlineare
 Tikhonov-Regularisierung des vollen Vorwärtsmodells mit Nebenbedingungen und
 erreichen damit für stark wechselwirkende Objekte konkurrenzfähige
 Rechenzeiten. Allen genannten Verfahren ist gemeinsam, dass $\Fr$ als bekannt
@@ -665,7 +665,7 @@ Nach \cref{sec:grundlagen:fresnelzahl} ist der einzige kritische und zugleich
 nicht präzise messbare Parameter der Abstand $\zOne$, der die Fresnel-Zahl
 festlegt. \emph{Autofokus} bezeichnet die Bestimmung von $\zOne$ beziehungsweise
 $\Fr$ aus dem gemessenen Hologramm selbst. In Anlehnung an
-\cite{dora2025autofocus} sei ein Hologramm $I$, eine Schätzung
+Dora et al.\ \cite{dora2025autofocus} sei ein Hologramm $I$, eine Schätzung
 $\zOne^{\mathrm{est}}$ und eine Unsicherheit $\Delta_M$ gegeben (an der
 \ac{p05}: $\Delta_M = \pm\qty{5}{\milli\metre}$). Gesucht ist
 \begin{equation}
@@ -701,7 +701,7 @@ Absorptionen auf, und der Datenfehler nach \cref{eq:grundlagen:funktional}
 steigt \cite{dora2025autofocus}. Da $\Fr$ bei $\zOne = \qty{250}{\milli\metre}$
 um \qty{0.4}{\percent} pro Millimeter variiert
 (\cref{eq:grundlagen:sensitivitaet}), sind Fehler von wenigen Millimetern in
-der Rekonstruktion deutlich sichtbar; \cite{dora2025autofocus} setzen die
+der Rekonstruktion deutlich sichtbar; Dora et al.\ \cite{dora2025autofocus} setzen die
 Zielgenauigkeit auf \qty{0.1}{\milli\metre}. Diese Zahl ist zugleich der Maßstab,
 an dem sich ein lernbasierter Autofokus messen lassen muss.
 
@@ -736,7 +736,7 @@ bewerten die Schärfe des rekonstruierten Bildes: die Varianz, Statistiken des
 Gradienten erster und zweiter Ordnung (Laplace), gewichtete Spektralmaße
 sowie Sparsity-Maße wie der Tamura-Koeffizient oder der Gini-Index des
 Gradienten \cite{langehanenberg2008autofocusing,memmolo2011automatic,zhang2017edge}.
-\cite{dora2025autofocus} formulieren vier Anforderungen, die ein Kriterium
+Dora et al.\ \cite{dora2025autofocus} formulieren vier Anforderungen, die ein Kriterium
 erfüllen muss, damit es sich mit einem lokalen Optimierer über $\Omega_z$
 minimieren lässt: einen deutlichen Peak, eine innerhalb des Kriteriums
 konsistente Peakrichtung, einen v- oder u-förmigen Verlauf über das gesamte
@@ -961,7 +961,7 @@ systematische Verzerrung oder falsche Breite an. Die \emph{erwartete Abdeckung}
 \cite{hermans2022trust} prüft, ob die $(1-\alpha)$-\ac{hpd}-Regionen der
 approximierten Posterior den wahren Parameter in einem Anteil $1-\alpha$ der
 Fälle enthalten; liegt der beobachtete Anteil darunter, ist der Schätzer
-überkonfident. \cite{hermans2022trust} zeigen, dass gängige \ac{sbi}-Verfahren
+überkonfident. Hermans et al.\ \cite{hermans2022trust} zeigen, dass gängige \ac{sbi}-Verfahren
 zu Überkonfidenz neigen, und empfehlen unter anderem Ensembles mehrerer
 Schätzer. \ac{tarp} \cite{lemos2023tarp} verallgemeinert den Abdeckungstest
 auf beliebige Posteriorformen, lokale Tests wie L-C2ST

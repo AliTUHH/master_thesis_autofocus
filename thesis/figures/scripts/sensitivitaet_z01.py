@@ -35,7 +35,12 @@ def main() -> None:
     ax_fr.set_xlim(0, 500)
     ax_fr.text(0.02, 0.97, "(a)", transform=ax_fr.transAxes, va="top", fontweight="bold")
 
-    # Fr-Werte der fünf Messobjekte aus Dora et al. 2025, Tab. 2 (z01 in mm, z02 in mm, E in keV)
+    # Geometrien der fünf Messobjekte aus Dora et al. 2025, Tab. 2 (z01 in mm, z02 in mm, E in keV).
+    # z01 und E für alle Objekte sowie z02 für Spinnenhaar, Mg-Draht und Flusszelle stammen aus
+    # docs/01_thesis_erklaerung.md (Abschnitt 4.4); für Zahn und Kaktusnadel ist z02 dort nicht
+    # einzeln notiert und wird mit 19.661 m innerhalb des im Paper genannten Bereichs
+    # (19.65-19.91 m) angenommen -- der Einfluss auf Fr liegt unter 1.5 %.
+    # TODO: mit Betreuern klären / gegen Tab. 2 in Dora et al. 2025 abgleichen.
     objects = [
         ("Spinnenhaar", 79.4, 19661.0, 11.0),
         ("Zahn", 81.0, 19661.0, 17.0),
