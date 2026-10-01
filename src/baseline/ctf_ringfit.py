@@ -40,7 +40,14 @@ Resolution limit
 The ring spacing in ``u`` is ``Fr``; the discrete spectrum of an ``N``-pixel image resolves ``u`` only to
 ``du = 2 |xi| / N`` at radius ``|xi|``.  Rings are therefore resolvable while ``Fr > 2 |xi| / N``, i.e. for
 ``|xi| < N Fr / 2`` (:func:`resolvable_frequency_limit`).  With a Hann window the resolution is ~2x
-worse.  At least one full ring must fit inside the circle ``u <= u_max``: ``Fr < u_max``.
+worse.  At least one full ring must fit inside the circle ``u <= u_max``: ``Fr < u_max``.  The number of
+resolvable rings is ``min(u_max, (N Fr / 2)^2) / Fr`` (:func:`max_resolvable_rings`), i.e. ``N^2 Fr / 4``
+when the window limit dominates.  Empirically (synthetic weak phase objects, 0-1 % noise) the fit is
+reliable from about 10 resolvable rings on (``N^2 Fr >~ 40``), marginal with 6-8 and fails below ~4.
+
+The radial binning must sample the smallest candidate period with at least :data:`MIN_BINS_PER_PERIOD`
+bins (:func:`default_n_bins`); a template sampled with 1-2 bins per period aliases and yields spurious
+correlations (e.g. ``Fr = 1e-4`` on 2048 px with ``4 N`` bins would have only 3 bins per period).
 
 Downsampled input: a hologram pooled by ``s`` has ``Fr_eff = s^2 Fr``; pass ``--downsample s`` to the
 CLI and the estimate is divided by ``s^2`` before it is compared with the labels.
@@ -78,6 +85,8 @@ __all__ = [
     "resolvable_frequency_limit",
     "max_resolvable_rings",
     "fresnel_number_resolution_limit",
+    "default_n_bins",
+    "MIN_BINS_PER_PERIOD",
     "evaluate_file",
     "main",
 ]
@@ -85,6 +94,7 @@ __all__ = [
 WINDOWS: tuple[str, ...] = ("none", "tukey", "hann")
 TEMPLATES: tuple[str, ...] = ("cos", "comb")
 _EPS = 1e-30
+DYNAMIC_RANGE = 1e-6  # lower clamp of the radial profile relative to its upper level (60 dB), see ring_fit
 
 
 # --------------------------------------------------------------------------------------------------
@@ -222,8 +232,17 @@ def _window(height: int, width: int, kind: str, alpha: float) -> np.ndarray:
     return np.outer(tukey(height, alpha), tukey(width, alpha))
 
 
-def default_n_bins(n_pixels: int) -> int:
-    return int(np.clip(4 * n_pixels, 256, 16384))
+MIN_BINS_PER_PERIOD = 8  # the smallest candidate period must span this many radial bins (no aliasing of the template)
+
+
+def default_n_bins(n_pixels: int, fr_min: float | None = None, u_max: float = 0.25) -> int:
+    """``4 N`` bins (about ``pi N / 16`` pixels per bin), raised so that the smallest candidate Fresnel number
+    still spans :data:`MIN_BINS_PER_PERIOD` bins -- a template sampled with ~1-2 bins per period aliases to a
+    long-period pattern and produces spurious correlations."""
+    n_bins = 4 * n_pixels
+    if fr_min is not None and fr_min > 0:
+        n_bins = max(n_bins, int(np.ceil(MIN_BINS_PER_PERIOD * u_max / fr_min)))
+    return int(np.clip(n_bins, 256, 65536))
 
 
 def radial_power_profile(
@@ -318,7 +337,10 @@ class _Scorer:
         return r - _weighted_average(r, self.w)
 
     def score(self, fr: float) -> tuple[float, float]:
-        """``(normalised correlation, phase)`` of the residual with the template of period ``fr``."""
+        """``(normalised correlation, phase)`` of the residual with the template of period ``fr``; zero for
+        periods the radial binning cannot represent (fewer than half of :data:`MIN_BINS_PER_PERIOD` bins)."""
+        if fr < 0.5 * MIN_BINS_PER_PERIOD * self.du:
+            return 0.0, 0.0
         r = self.residual(fr)
         w = self.w
         rr = float((w * r * r).sum())
@@ -379,9 +401,12 @@ def ring_fit(hologram: np.ndarray, config: RingFitConfig) -> RingFitResult:
     start = time.perf_counter()
     x = np.asarray(hologram, dtype=np.float64)
     n_pixels = min(x.shape)
-    n_bins = default_n_bins(n_pixels) if config.n_bins is None else int(config.n_bins)
+    n_bins = default_n_bins(n_pixels, config.fr_min, config.u_max) if config.n_bins is None else int(config.n_bins)
     u, profile, _ = radial_power_profile(x, n_bins, config.u_max, config.window, config.tukey_alpha)
     select = u >= config.u_min
+    # Noise-free (simulated) holograms have CTF zeros many decades deep; clamping the dynamic range keeps those
+    # bins from dominating the log-domain envelope fit. Real data has a noise floor far above this clamp.
+    profile = np.maximum(profile, DYNAMIC_RANGE * float(np.percentile(profile[select], 95)))
     env, signal, floor, env_params = fit_envelope(u, profile, select)
 
     log_profile = np.log(np.maximum(profile, _EPS))
