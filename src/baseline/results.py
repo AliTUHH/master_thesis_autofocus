@@ -201,7 +201,8 @@ def read_samples_csv(path: str | Path, methods: Iterable[str] | None = None) -> 
     """Read a ``samples.csv`` written by any baseline/evaluation CLI (numbers are parsed, optional method filter).
 
     Files from :mod:`src.baseline.ctf_ringfit` versions without the common columns are upgraded on the fly
-    (``fr_rel_err_pct`` -> ``rel_err_fr_pct``, ``z01_err_mm`` -> ``dz01_mm``, ``elapsed_ms`` -> ``runtime_s``).
+    (``fr_rel_err_pct`` -> ``rel_err_fr_pct``, ``z01_err_mm`` -> ``dz01_mm``, ``elapsed_ms`` -> ``runtime_s``),
+    as are the ``results.csv`` files of the baseline prototype (``z01_true``/``z01_est`` -> ``*_mm``).
     """
     path = Path(path)
     with path.open("r", newline="", encoding="utf-8") as handle:
@@ -211,6 +212,9 @@ def read_samples_csv(path: str | Path, methods: Iterable[str] | None = None) -> 
     for row in rows:
         row.setdefault("source", path.parent.name)
         row.setdefault("method", f"csv:{path.parent.name}")
+        for legacy, common in (("z01_true", "z01_true_mm"), ("z01_est", "z01_est_mm")):
+            if common not in row and legacy in row:
+                row[common] = row[legacy]
         if "rel_err_fr_pct" not in row and "fr_rel_err_pct" in row:
             row["rel_err_fr_pct"] = row["fr_rel_err_pct"]
         if "dz01_mm" not in row and "z01_err_mm" in row:
