@@ -124,16 +124,23 @@
   psdextra,
 ]{hyperref}
 % PDF-Metadaten (werden nach den Metadaten-Makros in Abschnitt 7 gesetzt)
-\usepackage[nameinlink,noabbrev]{cleveref}
-% Deutsche cleveref-Namen (babel ngerman liefert sie, hier explizit für Konsistenz)
+% \lang in PDF-Strings (Lesezeichen, Metadaten) auf die aktive Sprache reduzieren.
+% Ohne diese Definition entfernt hyperref das nicht expandierbare \ifdefstring mit
+% einer Warnung pro Überschrift und schreibt beide Sprachvarianten in das Lesezeichen.
 \ifdefstring{\thesislanguage}{german}{%
-  \crefname{figure}{Abbildung}{Abbildungen}%
-  \crefname{table}{Tabelle}{Tabellen}%
-  \crefname{equation}{Gleichung}{Gleichungen}%
-  \crefname{section}{Abschnitt}{Abschnitte}%
-  \crefname{chapter}{Kapitel}{Kapitel}%
-  \crefname{appendix}{Anhang}{Anhänge}%
-}{}
+  \pdfstringdefDisableCommands{\def\lang#1#2{#1}}%
+}{%
+  \pdfstringdefDisableCommands{\def\lang#1#2{#2}}%
+}
+% cleveref: Sprachen in derselben Reihenfolge wie bei babel übergeben (letzte =
+% Hauptsprache). cleveref wertet die babel-Paketoptionen nicht aus und fiele sonst
+% für Namen und Konjunktionen ("und", "bis") auf Englisch zurück; mit beiden
+% Sprachen schalten die Namen auch in otherlanguage-Umgebungen (Abstract) um.
+\ifdefstring{\thesislanguage}{german}{%
+  \usepackage[english,ngerman,nameinlink,noabbrev]{cleveref}%
+}{%
+  \usepackage[ngerman,english,nameinlink,noabbrev]{cleveref}%
+}
 
 % ---------------------------------------------------------------------------
 % 6. Notation -- konsistent mit HoloWizard/Dora et al. 2025
