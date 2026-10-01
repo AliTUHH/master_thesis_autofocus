@@ -1,0 +1,36 @@
+% =============================================================================
+% Anhang
+% -----------------------------------------------------------------------------
+% Was hinein gehört:
+%  A Vollständige Hyperparameter- und Konfigurationstabellen (configs/*.yaml)
+%  B Zusätzliche Abbildungen (weitere Ablationen, Fehlerfälle, Posterior-Plots)
+%  C Datensatz-Dokumentation (meta.json-Auszüge, Hashes)
+%  D Reproduktion: Befehle, Commit-SHAs, Umgebung (requirements.txt-Stand)
+% =============================================================================
+\chapter{\lang{Konfigurationen und Hyperparameter}{Configurations and Hyperparameters}}
+\label{app:configs}
+\todo{\lang{Tabellen aus den YAML-Dateien in \texttt{configs/} (\texttt{base}, \texttt{data\_small}, \texttt{data\_p05}).}{Tables from the YAML files in \texttt{configs/} (\texttt{base}, \texttt{data\_small}, \texttt{data\_p05}).}}
+
+\chapter{\lang{Zusätzliche Abbildungen}{Additional Figures}}
+\label{app:abbildungen}
+\todo{\lang{Mit \texttt{tools/export\_figures.py --chapter anhang} exportieren.}{Export with \texttt{tools/export\_figures.py --chapter anhang}.}}
+
+\chapter{\lang{Reproduktion der Ergebnisse}{Reproducing the Results}}
+\label{app:reproduktion}
+
+\lang{Alle Ergebnisse dieser Arbeit lassen sich mit den folgenden Befehlen aus dem Repository reproduzieren (Commit-SHA je Experiment im Logbuch \texttt{docs/notizen/experimente.md}):}%
+{All results in this thesis can be reproduced from the repository with the following commands (commit SHA per experiment in the logbook \texttt{docs/notizen/experimente.md}):}
+{\small
+\begin{verbatim}
+uv venv --python 3.11 .venv
+uv pip install -r requirements.txt
+python -m pytest -q
+python -m src.data.generate_data --config configs/data_small.yaml \
+    --out data/processed/small          # -> train/val/test.hdf5, meta.json
+python -m src.train --config configs/base.yaml \
+    --data-dir data/processed/small \
+    --run-name <YYYY-MM-DD>_<kurzname>_s<seed>   # -> runs/<run>/results.json
+python -m src.evaluate --checkpoint runs/<run>/best.pt \
+    --data data/processed/small/test.hdf5        # -> runs/<run>/eval_test/
+\end{verbatim}
+}

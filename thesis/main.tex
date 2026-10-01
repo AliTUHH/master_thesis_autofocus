@@ -1,0 +1,224 @@
+% =============================================================================
+% main.tex -- Masterarbeit "Learning-based autofocus for Holography"
+% TUHH, Institut für Biomedizinische Bildgebung
+%
+% Kompilieren:  tectonic -X compile main.tex   (lokal, XeTeX + biber)
+%               latexmk -pdf main.tex           (pdflatex + biber, siehe .latexmkrc)
+%               Overleaf: Compiler pdfLaTeX, Hauptdatei main.tex
+% Sprache:      \thesislanguage unten auf {german} oder {english} setzen.
+% =============================================================================
+\documentclass[
+  11pt,
+  a4paper,
+  oneside,            % für Druck/Bindung ggf. twoside + BCOR=10mm
+  numbers=noenddot,   % "1.2" statt "1.2." in Überschriften
+  bibliography=totoc, % Literaturverzeichnis im Inhaltsverzeichnis
+  listof=totoc,       % Abbildungs-/Tabellenverzeichnis im Inhaltsverzeichnis
+  toc=chapterentrywithdots,
+  headings=normal,
+]{scrbook}
+
+% ---------------------------------------------------------------------------
+% 0. Sprache der Arbeit: german | english  (einziger Schalter)
+% ---------------------------------------------------------------------------
+\newcommand{\thesislanguage}{german}
+
+% ---------------------------------------------------------------------------
+% 1. Schrift/Encoding -- Engine-abhängig (pdfLaTeX auf Overleaf, XeTeX/LuaTeX
+%    bei tectonic/lualatex), damit dieselbe Quelle überall kompiliert.
+% ---------------------------------------------------------------------------
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{lmodern}
+\else
+  \usepackage{fontspec}
+  \setmainfont{Latin Modern Roman}
+  \setsansfont{Latin Modern Sans}
+  \setmonofont{Latin Modern Mono}
+\fi
+\usepackage{etoolbox}
+
+% Sprachabhängige Textbausteine: \lang{Deutsch}{English}
+% (robust, damit der Schalter auch in Kolumnentiteln, Verzeichnissen und Captions
+%  erst beim Setzen ausgewertet wird)
+\DeclareRobustCommand{\lang}[2]{\ifdefstring{\thesislanguage}{german}{#1}{#2}}
+
+% babel: letzte Sprache = Hauptsprache
+\ifdefstring{\thesislanguage}{german}{%
+  \usepackage[english,ngerman]{babel}%
+}{%
+  \usepackage[ngerman,english]{babel}%
+}
+\usepackage{csquotes}      % Anführungszeichen sprachabhängig; von biblatex empfohlen
+
+% ---------------------------------------------------------------------------
+% 2. Mathematik, Einheiten, Tabellen, Grafik
+% ---------------------------------------------------------------------------
+\usepackage{amsmath,amssymb}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{siunitx}
+\sisetup{
+  per-mode = symbol,
+  separate-uncertainty = true,
+  range-phrase = {\,--\,},
+  range-units = single,
+}
+% Dezimaltrennzeichen etc. sprachabhängig (Choice-Key braucht Literal, daher kein \lang)
+\ifdefstring{\thesislanguage}{german}{\sisetup{locale=DE}}{\sisetup{locale=UK}}
+\usepackage{graphicx}
+\graphicspath{{figures/}}          % \includegraphics{kapitel/name} genügt
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{caption}
+\captionsetup{font=small, labelfont=bf, width=0.9\textwidth}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{microtype}
+
+% ---------------------------------------------------------------------------
+% 3. Literatur: biblatex + biber
+%    Stil IEEE (numerisch, Reihenfolge nach erstem Zitat) -- üblich in den
+%    Ingenieurwissenschaften und identisch zur Zitierweise der Optics-Express-
+%    Paper der Gruppe. Alternative ohne biblatex-ieee: style=numeric-comp.
+% ---------------------------------------------------------------------------
+\usepackage[
+  backend=biber,
+  style=ieee,
+  sorting=none,
+  maxbibnames=10,
+  minbibnames=6,
+  giveninits=true,
+  doi=true,
+  url=false,
+  isbn=false,
+  eprint=true,
+]{biblatex}
+\addbibresource{references.bib}
+% Lange DOIs/URLs im Literaturverzeichnis umbrechen lassen
+\setcounter{biburlnumpenalty}{9000}
+\setcounter{biburlucpenalty}{9000}
+\setcounter{biburllcpenalty}{9000}
+
+% ---------------------------------------------------------------------------
+% 4. Abkürzungen (acro): \ac{nfh} -> beim ersten Mal "Nahfeldholographie (NFH)",
+%    danach "NFH". Liste: \printacronyms. Neue Abkürzungen in frontmatter/acronyms.tex.
+% ---------------------------------------------------------------------------
+\usepackage{acro}
+\acsetup{
+  make-links = true,
+  list/display = used,            % nur tatsächlich verwendete Abkürzungen listen
+}
+\input{frontmatter/acronyms}
+
+% ---------------------------------------------------------------------------
+% 5. Verweise (hyperref zuletzt, cleveref danach)
+% ---------------------------------------------------------------------------
+\usepackage[
+  hidelinks,
+  bookmarksnumbered,
+  pdfencoding=auto,
+  psdextra,
+]{hyperref}
+% PDF-Metadaten (werden nach den Metadaten-Makros in Abschnitt 7 gesetzt)
+\usepackage[nameinlink,noabbrev]{cleveref}
+% Deutsche cleveref-Namen (babel ngerman liefert sie, hier explizit für Konsistenz)
+\ifdefstring{\thesislanguage}{german}{%
+  \crefname{figure}{Abbildung}{Abbildungen}%
+  \crefname{table}{Tabelle}{Tabellen}%
+  \crefname{equation}{Gleichung}{Gleichungen}%
+  \crefname{section}{Abschnitt}{Abschnitte}%
+  \crefname{chapter}{Kapitel}{Kapitel}%
+  \crefname{appendix}{Anhang}{Anhänge}%
+}{}
+
+% ---------------------------------------------------------------------------
+% 6. Notation -- konsistent mit HoloWizard/Dora et al. 2025
+%    Fr: Fresnel-Zahl, z01: Quelle-Objekt, z02: Quelle-Detektor, M: Vergrößerung,
+%    lambda: Wellenlänge, dx: Pixelgröße, D_Fr: Fresnel-Propagator
+% ---------------------------------------------------------------------------
+\newcommand{\Fr}{\mathrm{Fr}}
+\newcommand{\zOne}{z_{01}}
+\newcommand{\zTwo}{z_{02}}
+\newcommand{\zEff}{z_{\mathrm{eff}}}
+\newcommand{\magn}{M}
+\newcommand{\wl}{\lambda}
+\newcommand{\dx}{\Delta x}
+\newcommand{\prop}[1]{\mathcal{D}_{#1}}        % Fresnel-Propagator D_Fr
+\newcommand{\abs}[1]{\left\lvert #1 \right\rvert}
+\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\vect}[1]{\bm{#1}}
+\DeclareMathOperator{\argmin}{arg\,min}
+\DeclareMathOperator{\argmax}{arg\,max}
+\DeclareMathOperator{\MAE}{MAE}
+
+% Platzhalter-Markierung für offene Stellen im Text: \todo{...}
+\newcommand{\todo}[1]{\textcolor{red!80!black}{[TODO: #1]}}
+
+% ---------------------------------------------------------------------------
+% 7. Metadaten (Platzhalter ausfüllen)
+% ---------------------------------------------------------------------------
+\newcommand{\thesisTitleDE}{Lernbasierter Autofokus für die Röntgen-Nahfeldholographie}
+\newcommand{\thesisTitleEN}{Learning-based Autofocus for X-ray Near-field Holography}
+\newcommand{\thesisTitle}{\lang{\thesisTitleDE}{\thesisTitleEN}}
+\newcommand{\thesisAuthor}{Vorname Nachname}
+\newcommand{\thesisMatrikel}{000000}
+\newcommand{\thesisDegree}{Master of Science (M.\,Sc.)}
+\newcommand{\thesisProgram}{\todo{Studiengang}}
+\newcommand{\thesisInstitute}{\lang{Institut für Biomedizinische Bildgebung}{Institute for Biomedical Imaging}}
+\newcommand{\thesisUniversity}{\lang{Technische Universität Hamburg}{Hamburg University of Technology}}
+\newcommand{\thesisFirstExaminer}{Prof. Dr.-Ing. Tobias Knopp}
+\newcommand{\thesisSecondExaminer}{\todo{Zweitprüfer:in}}
+\newcommand{\thesisSupervisors}{Daniel Hernández Durán (TUHH), Johannes Dora (DESY)}
+\newcommand{\thesisDate}{\today}
+\newcommand{\thesisCity}{Hamburg}
+
+\title{\thesisTitle}
+\author{\thesisAuthor}
+\date{\thesisDate}
+\ifdefstring{\thesislanguage}{german}{%
+  \hypersetup{pdftitle={\thesisTitleDE}, pdflang={de-DE}}%
+}{%
+  \hypersetup{pdftitle={\thesisTitleEN}, pdflang={en-GB}}%
+}
+\hypersetup{pdfauthor={\thesisAuthor}, pdfsubject={Master's Thesis, TUHH}}
+
+% =============================================================================
+\begin{document}
+
+% ----- Titelei --------------------------------------------------------------
+\frontmatter
+\input{frontmatter/titlepage}
+\input{frontmatter/declaration}
+\input{frontmatter/abstract}
+
+\tableofcontents
+\listoffigures
+\listoftables
+\printacronyms[name=\lang{Abkürzungsverzeichnis}{List of Abbreviations}]
+
+% ----- Hauptteil ------------------------------------------------------------
+\mainmatter
+\input{chapters/01_einleitung}
+\input{chapters/02_grundlagen}
+\input{chapters/03_stand_der_technik}
+\input{chapters/04_methoden}
+\input{chapters/05_experimente}
+\input{chapters/06_diskussion}
+\input{chapters/07_fazit}
+
+% ----- Anhang ---------------------------------------------------------------
+\appendix
+\input{chapters/anhang}
+
+% ----- Literatur ------------------------------------------------------------
+\backmatter
+\printbibliography[title=\lang{Literaturverzeichnis}{Bibliography}]
+
+\end{document}

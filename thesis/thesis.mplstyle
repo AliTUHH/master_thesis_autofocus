@@ -1,0 +1,68 @@
+# thesis.mplstyle -- Matplotlib-Stil für alle Abbildungen der Masterarbeit
+#
+# Verwendung:
+#   import matplotlib.pyplot as plt
+#   plt.style.use("thesis/thesis.mplstyle")          # Pfad relativ zum Repo-Root
+#   fig, ax = plt.subplots()                          # Standardgröße = Textbreite
+#   ...
+#   fig.savefig("runs/<run>/figures/scatter_z01.pdf") # PDF ist Standardformat
+#
+# Grundannahmen: scrbook 11pt, A4, Textbreite ca. 15 cm (~5.9 in).
+# Schriftgrößen ~ 9-10 pt entsprechen \small/\footnotesize im Fließtext,
+# damit Achsenbeschriftungen nicht größer wirken als der Text.
+
+# --- Figurengröße (Breite = Textbreite; für halbe Breite figsize=(2.9, 2.2)) ---
+figure.figsize      : 5.9, 3.6
+figure.dpi          : 120
+figure.constrained_layout.use : True
+
+# --- Schrift: Serif passend zu Latin Modern im Text; Mathe in Computer Modern ---
+font.family         : serif
+font.serif          : Latin Modern Roman, CMU Serif, TeX Gyre Termes, Times New Roman, DejaVu Serif
+font.size           : 10
+axes.titlesize      : 10
+axes.labelsize      : 10
+xtick.labelsize     : 9
+ytick.labelsize     : 9
+legend.fontsize     : 9
+legend.title_fontsize : 9
+mathtext.fontset    : cm
+text.usetex         : False
+
+# --- Farbpalette: Okabe-Ito (farbenblind-sicher, 8 Farben) ---
+axes.prop_cycle     : cycler('color', ['0072B2', 'D55E00', '009E73', 'E69F00', 'CC79A7', '56B4E9', 'F0E442', '000000'])
+image.cmap          : viridis
+
+# --- Achsen, Linien, Marker ---
+axes.linewidth      : 0.8
+axes.grid           : True
+grid.linewidth      : 0.5
+grid.alpha          : 0.4
+axes.spines.top     : False
+axes.spines.right   : False
+axes.axisbelow      : True
+lines.linewidth     : 1.4
+lines.markersize    : 4
+scatter.marker      : o
+errorbar.capsize    : 2
+
+# --- Ticks ---
+xtick.direction     : out
+ytick.direction     : out
+xtick.major.width   : 0.8
+ytick.major.width   : 0.8
+xtick.major.size    : 3.5
+ytick.major.size    : 3.5
+
+# --- Legende ---
+legend.frameon      : False
+legend.handlelength : 1.8
+
+# --- Export: PDF mit eingebetteten TrueType-Schriften (in Illustrator/Inkscape editierbar) ---
+savefig.format      : pdf
+savefig.bbox        : tight
+savefig.pad_inches  : 0.02
+savefig.dpi         : 300
+savefig.transparent : False
+pdf.fonttype        : 42
+ps.fonttype         : 42

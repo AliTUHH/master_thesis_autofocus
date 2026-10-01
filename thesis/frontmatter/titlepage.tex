@@ -1,0 +1,35 @@
+% Titelseite -- Platzhalter in main.tex (Abschnitt 7) ausfüllen.
+% Prüfe die formalen Vorgaben der TUHH (Studierendenservice/Prüfungsamt) und des
+% Instituts; ggf. offizielles TUHH-Logo als figures/tuhh_logo.pdf ablegen und die
+% auskommentierte \includegraphics-Zeile aktivieren.
+\begin{titlepage}
+  \centering
+  \vspace*{1cm}
+  % \includegraphics[width=0.35\textwidth]{tuhh_logo}\\[1.5cm]
+  {\large \thesisUniversity\\ \thesisInstitute\par}
+  \vspace{2.5cm}
+
+  {\large \lang{Masterarbeit}{Master's Thesis}\par}
+  \vspace{0.8cm}
+  {\LARGE\bfseries \thesisTitle\par}
+  \ifdefstring{\thesislanguage}{german}{%
+    \vspace{0.4cm}{\large\itshape \thesisTitleEN\par}%
+  }{}
+  \vspace{2cm}
+
+  {\large \lang{vorgelegt von}{submitted by}\par}
+  \vspace{0.3cm}
+  {\Large \thesisAuthor\par}
+  {\normalsize \lang{Matrikelnummer}{Student ID}: \thesisMatrikel\par}
+  {\normalsize \thesisProgram\par}
+  \vspace{2cm}
+
+  \begin{tabular}{@{}ll@{}}
+    \lang{Erstprüfer}{First examiner}:   & \thesisFirstExaminer \\[0.2em]
+    \lang{Zweitprüfer}{Second examiner}: & \thesisSecondExaminer \\[0.2em]
+    \lang{Betreuung}{Supervision}:       & \thesisSupervisors \\
+  \end{tabular}
+
+  \vfill
+  {\large \thesisCity, \thesisDate\par}
+\end{titlepage}
