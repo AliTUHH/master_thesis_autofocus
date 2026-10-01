@@ -315,15 +315,18 @@ $PY -m src.baseline.model_based_autofocus --data data/processed/small/test.hdf5 
 $PY -m src.eval.downstream --data data/processed/small/test.hdf5 --n 2 --errors -20 -10 -5 -1 0 1 5 10 20 \
     --preset quality_256 --out reports/downstream/small_test
 # ... und mit den Fr-Schätzungen beliebiger Methoden (samples.csv der Baseline-CLI, von src.evaluate oder des Ring-Fits):
-$PY -m src.evaluate --config configs/base.yaml --checkpoint runs/<run>/best.pt --split test     # schreibt runs/<run>/eval/samples.csv
+$PY -m src.evaluate --checkpoint runs/<run>/best.pt --data data/processed/small/test.hdf5   # schreibt runs/<run>/eval_test/samples.csv
 $PY -m src.eval.downstream --data data/processed/small/test.hdf5 --n 8 \
-    --candidates-csv reports/baseline_model_based/small_test/samples.csv runs/<run>/eval/samples.csv \
+    --candidates-csv reports/baseline_model_based/small_test/samples.csv runs/<run>/eval_test/samples.csv \
     --out reports/downstream/small_test_methods
 
-# Smoke-Läufe (Sekunden; Ergebnisse nicht im Repo):
+# Smoke-Läufe (Ergebnisse nicht im Repo); gemessen auf p05bin8_z01_100.hdf5 (256 px, 2 Threads, Peak-RSS 0,79 GB):
+#   Baseline 33 s (find_focus 18 Auswertungen à 1,7 s bei 60/60 Iterationen, +3,98 %; classical_tv 0,2 s, −0,07 %),
+#   Downstream 8 s (3 Rekonstruktionen à 1,7–1,9 s; Residuum ×1,9–2,0 bei ±5 %), --candidates-csv 9 s
 $PY -m src.baseline.model_based_autofocus --data <forge.hdf5> --n 1 --iterations-scale 0.2 --method both --out /tmp/smoke_mb
 $PY -m src.eval.downstream --data <forge.hdf5> --n 1 --errors -5 0 5 --iterations-scale 0.2 --out /tmp/smoke_ds
-$PY -m pytest -q                                     # Tests inkl. find_focus-Smoke (Marker "slow")
+$PY -m src.eval.downstream --data <forge.hdf5> --n 1 --candidates-csv /tmp/smoke_mb/samples.csv --iterations-scale 0.2 --out /tmp/smoke_ds_cand
+$PY -m pytest -q                                     # 105 Tests, ca. 15 s; find_focus-Smoke-Tests tragen den Marker "slow"
 ```
 
 Die Prototyp-Läufe selbst (eigene Datensätze `p05bin8_z01_*`/`small_z01_*`, Skripte `run_autofocus_baseline.py`, `run_downstream_test.py`,
