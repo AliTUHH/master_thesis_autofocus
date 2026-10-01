@@ -1,0 +1,80 @@
+% =============================================================================
+% Kapitel 1: Einleitung
+% -----------------------------------------------------------------------------
+% Was hinein gehört (Richtwert 4--6 Seiten):
+%  - Motivation: Synchrotron-Röntgenbildgebung, Phasenkontrast, warum NFH
+%    (schwach absorbierende Objekte, Kohärenz an PETRA III / P05).
+%  - Problem: Phase Retrieval braucht ein genaues Vorwärtsmodell; die Geometrie
+%    steckt in der Fresnel-Zahl Fr. Falsches Fr -> Artefakte. Autofokus =
+%    Bestimmung von Fr (bzw. z01) aus den Daten.
+%  - Stand: modellbasierter Autofokus (Dora et al. 2025) ist interpretierbar,
+%    aber langsam (Optimierung mit vielen Rekonstruktionen).
+%  - Ziel dieser Arbeit: lernbasierte Schätzung von Fr/z01 direkt aus dem
+%    Hologramm; Trainingsdaten aus HoloWizard/HoloForge; optional
+%    Unsicherheiten via SBI.
+%  - Forschungsfragen (nummeriert, später in Kapitel 6/7 wieder aufgreifen):
+%      F1 Wie genau kann ein CNN Fr/z01 aus einem einzelnen Hologramm schätzen?
+%      F2 Wie verhält sich das im Vergleich zum modellbasierten Autofokus
+%         (Genauigkeit vs. Laufzeit)?
+%      F3 Übertragbarkeit Simulation -> Messdaten (Sim-to-Real-Gap)?
+%      F4 Liefert SBI/NPE brauchbare Unsicherheiten?
+%  - Beiträge der Arbeit (Stichpunkte).
+%  - Aufbau der Arbeit (ein Absatz, mit \cref auf Kapitel).
+% =============================================================================
+\chapter{\lang{Einleitung}{Introduction}}
+\label{ch:einleitung}
+
+\section{\lang{Motivation}{Motivation}}
+\label{sec:einleitung:motivation}
+
+% Beispiel: Zitat + Abkürzung beim ersten Auftreten
+\lang{%
+Die \ac{nfh} nutzt die hohe Kohärenz von Synchrotronstrahlung, um auch schwach
+absorbierende Objekte über ihren Phasenkontrast abzubilden. Das zugrunde liegende
+Rekonstruktionsproblem, das \ac{pr}, ist nichtlinear und schlecht gestellt
+\cite{fienup1982phase}. Moderne Verfahren wie die \ac{asrm} rekonstruieren das
+komplexe Objekt ohne räumliche Trägerbeschränkung \cite{dora2024asrm}, setzen
+aber ein genaues Modell der Aufnahmegeometrie voraus.
+}{%
+\Ac{nfh} exploits the high coherence of synchrotron radiation to image weakly
+absorbing objects via their phase contrast. The underlying reconstruction problem,
+\ac{pr}, is non-linear and ill-posed \cite{fienup1982phase}. Modern methods such
+as \ac{asrm} reconstruct the complex object without a spatial support constraint
+\cite{dora2024asrm}, but require an accurate model of the acquisition geometry.
+}
+
+\todo{\lang{Motivation ausformulieren.}{Elaborate the motivation.}}
+
+\section{\lang{Problemstellung und Zielsetzung}{Problem Statement and Objectives}}
+\label{sec:einleitung:ziel}
+
+\lang{%
+Der aktuelle Stand der Technik bestimmt die Fresnel-Zahl $\Fr$ durch
+modellbasierte Optimierung \cite{dora2025autofocus}. Ziel dieser Arbeit ist es,
+$\Fr$ bzw. den Abstand $\zOne$ mit einem neuronalen Netz direkt aus dem Hologramm
+zu schätzen, um die Autofokussierung um Größenordnungen zu beschleunigen.
+}{%
+The current state of the art determines the Fresnel number $\Fr$ by model-based
+optimisation \cite{dora2025autofocus}. This thesis aims to estimate $\Fr$ or the
+distance $\zOne$ directly from the hologram with a neural network in order to
+speed up autofocusing by orders of magnitude.
+}
+
+\todo{\lang{Forschungsfragen F1--F4 formulieren.}{State research questions F1--F4.}}
+
+\section{\lang{Aufbau der Arbeit}{Outline}}
+\label{sec:einleitung:aufbau}
+
+\lang{%
+\Cref{ch:grundlagen} führt die physikalischen und methodischen Grundlagen ein,
+\cref{ch:stand} ordnet verwandte Arbeiten ein. \Cref{ch:methoden} beschreibt
+Datenerzeugung, Modelle und Trainingsaufbau, \cref{ch:experimente} die
+Experimente und Ergebnisse. \Cref{ch:diskussion} diskutiert die Befunde,
+\cref{ch:fazit} fasst zusammen und gibt einen Ausblick.
+}{%
+\Cref{ch:grundlagen} introduces the physical and methodological background,
+\cref{ch:stand} reviews related work. \Cref{ch:methoden} describes data
+generation, models and the training setup, \cref{ch:experimente} the experiments
+and results. \Cref{ch:diskussion} discusses the findings and \cref{ch:fazit}
+concludes with an outlook.
+}

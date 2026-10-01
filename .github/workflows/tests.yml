@@ -1,0 +1,110 @@
+# CI: Unit-Tests auf CPU (ubuntu-latest, Python 3.11)
+#
+# Hinweis zur Laufzeit: Die Installation dauert wegen holowizard und seiner
+# Abhängigkeiten (torch, torchvision, cupy, astra-toolbox, PySide2, ...) auch mit
+# CPU-Wheels mehrere Minuten (typisch 5-10 min ohne Cache, ~2-4 min mit Cache).
+# Deshalb: pip-Cache, Timeout 30 min und Abbruch überholter Läufe pro Branch.
+#
+# Torch kommt vom CPU-Index (--extra-index-url .../whl/cpu), damit nicht die
+# CUDA-Wheels (>2 GB inkl. NVIDIA-Bibliotheken) auf dem Runner landen.
+
+name: tests
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore:
+      - "docs/**"
+      - "thesis/**"
+      - "notebooks/**"
+      - "**.md"
+  pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "thesis/**"
+      - "notebooks/**"
+      - "**.md"
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONUNBUFFERED: "1"
+  TORCH_CPU_INDEX: https://download.pytorch.org/whl/cpu
+
+jobs:
+  pytest:
+    name: pytest (py3.11, CPU)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          # pip-Cache über actions/cache unten (Key aus requirements.txt + environment.yml),
+          # damit der Workflow auch ohne diese Dateien nicht abbricht.
+
+      - name: pip-Cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          # hashFiles liefert "" wenn keine Datei existiert -> trotzdem gültiger Key
+          key: pip-${{ runner.os }}-py311-${{ hashFiles('requirements.txt', 'environment.yml') }}
+          restore-keys: |
+            pip-${{ runner.os }}-py311-
+
+      - name: Abhängigkeiten installieren
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip wheel
+          if [ -f requirements.txt ]; then
+            echo "::group::pip install -r requirements.txt (CPU-Torch-Index)"
+            pip install --extra-index-url "$TORCH_CPU_INDEX" -r requirements.txt
+            echo "::endgroup::"
+          else
+            echo "::warning::requirements.txt fehlt - Fallback-Installation der Kernpakete"
+            echo "::group::pip install Fallback"
+            pip install --extra-index-url "$TORCH_CPU_INDEX" \
+              holowizard pytest pyyaml matplotlib tensorboard tqdm h5py
+            echo "::endgroup::"
+          fi
+          # pytest sicherstellen, auch wenn requirements.txt es nicht listet
+          python -m pip install pytest
+
+      - name: Umgebung prüfen
+        shell: bash
+        run: |
+          python - <<'EOF'
+          import importlib, sys
+          print("Python", sys.version.split()[0])
+          for name in ("torch", "numpy", "h5py", "yaml", "matplotlib", "holowizard"):
+              try:
+                  mod = importlib.import_module(name)
+                  print(f"{name:12s} {getattr(mod, '__version__', '?')}")
+              except Exception as exc:  # noqa: BLE001 - nur Diagnose
+                  print(f"{name:12s} NICHT importierbar: {exc!r}")
+          try:
+              import torch
+              print("torch.cuda.is_available():", torch.cuda.is_available(), "(CPU-Runner: False erwartet)")
+          except Exception:
+              pass
+          EOF
+
+      - name: Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -d tests ]; then
+            python -m pytest -q
+          else
+            echo "::warning::Kein tests/-Ordner vorhanden - pytest übersprungen."
+          fi

@@ -1,0 +1,34 @@
+% Kurzfassung (DE) und Abstract (EN) -- beide Sprachen werden unabhängig von
+% \thesislanguage ausgegeben; die Hauptsprache zuerst.
+% Richtwert: je 200--300 Wörter. Struktur: Problem -> Ansatz -> Daten/Methode ->
+% Hauptergebnis (mit Zahl) -> Bedeutung.
+
+\newcommand{\kurzfassungDE}{%
+\begin{otherlanguage}{ngerman}
+\chapter*{Kurzfassung}
+\todo{Kurzfassung schreiben.} Die Röntgen-Nahfeldholographie an
+Synchrotronquellen wie PETRA~III rekonstruiert komplexe Objekte aus
+Inline-Hologrammen. Die Rekonstruktion setzt eine genaue Kenntnis der
+Aufnahmegeometrie voraus, die in der Fresnel-Zahl $\Fr$ zusammengefasst wird;
+deren Bestimmung ist das Autofokus-Problem. Modellbasierte Verfahren lösen es
+durch Optimierung, sind aber langsam. Diese Arbeit untersucht, ob ein
+neuronales Netz $\Fr$ bzw. den Abstand $\zOne$ direkt aus dem Hologramm
+schätzen kann. \todo{Daten, Modell, Hauptergebnis mit Zahl, Einordnung.}
+\end{otherlanguage}
+}
+
+\newcommand{\abstractEN}{%
+\begin{otherlanguage}{english}
+\chapter*{Abstract}
+\todo{Write abstract.} X-ray near-field holography at synchrotron sources such
+as PETRA~III reconstructs complex-valued objects from in-line holograms. The
+reconstruction requires accurate knowledge of the acquisition geometry, which is
+summarised by the Fresnel number $\Fr$; determining it is the autofocus problem.
+Model-based methods solve it by optimisation but are slow. This thesis
+investigates whether a neural network can estimate $\Fr$ or the distance
+$\zOne$ directly from a hologram. \todo{Data, model, main result with a number,
+significance.}
+\end{otherlanguage}
+}
+
+\ifdefstring{\thesislanguage}{german}{\kurzfassungDE\abstractEN}{\abstractEN\kurzfassungDE}
