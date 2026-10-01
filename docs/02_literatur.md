@@ -52,7 +52,7 @@ Nichts in dieser Liste ist erfunden; Quellen, die sich nicht belegen ließen, st
 
 ### [5] HoloWizard – Python-Framework für Online-Rekonstruktion
 
-**Zitat:** J. Dora, S. Flenner, A. Lopes Marinho, J. Hagemann, „A Python framework for the online reconstruction of X-ray near-field holography data“, Zenodo (2024). DOI: [10.5281/zenodo.8349364](https://doi.org/10.5281/zenodo.8349364) (so in [2] zitiert; [1] zitiert 10.5281/zenodo.8349365 – vermutlich Konzept- vs. Versions-DOI). Lokal installiert: `holowizard` 3.0.6 unter `/tmp/holo311`.
+**Zitat:** J. Dora, S. Flenner, A. Lopes Marinho, J. Hagemann, „A Python framework for the online reconstruction of X-ray near-field holography data“, Zenodo (2024). DOI: [10.5281/zenodo.8349364](https://doi.org/10.5281/zenodo.8349364) (so in [2] zitiert; Konzept-DOI, löst laut DataCite auf die aktuelle Version 1.3.1 (2024, Versions-DOI 10.5281/zenodo.14024980) auf; [1] zitiert 10.5281/zenodo.8349365 = Versions-DOI 1.0.0 (2023)). Die installierte Version 3.0.6 ist separat unter dem Namen „HoloWizard“ veröffentlicht (Konzept-DOI 10.5281/zenodo.16275927, Version 3.0.6: 10.5281/zenodo.19560147). Lokal installiert: `holowizard` 3.0.6 unter `/tmp/holo311`.
 **Verifikation:** Metadaten über die Referenzlisten von [1], [2] und die Ausschreibung; der **Quellcode** wurde vollständig gelesen (Pakete `core`, `forge`, `livereco`, `pipe`).
 **Was ist es:** Das Softwarepaket, das ASRM [1], den Autofokus [2], den Simulator HoloForge und die Online-Infrastruktur (Livereco-Server, Pipelines) bündelt.
 **Kerninhalte (aus dem Code):** `core.api.functions.find_focus.find_focus` (öffentliche Autofokus-API), `core.find_focus.find_focus_z01` (scipy Nelder–Mead, `xatol = z01_tol = 0.1` mm, `initial_simplex` = Intervallenden), Varianten mit $a_0$-Suche und Flatfield-Korrektur, `focus_loss_metrics` (VAR/SPEC/GRA/LAP/ToG/GoG), `core.models.cone_beam.ConeBeam.get_fr/get_z01`, `core.models.fresnel_propagator_torch`, Multistage-Rekonstruktion (`reconstruct_multistage`), Beispielskripte (`core/scripts/examples/find_focus/magnesium_wire.py`, `focus_series_singledim`), HoloForge (`forge.utils.calc_Fr`, `forge.experiment.setup.NFHSetup/NFHConstantDistSetup`, `NFHSimulation`, `PhantomGenerator` mit `xraylib`, `ProbeGenerator`, `HDF5Labeller`, `forge/scripts/generate_data.py`, `forge/configs/default.json`).
@@ -61,7 +61,7 @@ Nichts in dieser Liste ist erfunden; Quellen, die sich nicht belegen ließen, st
 
 ### [6] Deistler et al. 2025 – Simulation-Based Inference: A Practical Guide
 
-**Zitat:** M. Deistler, J. Boelts, P. Steinbach, G. Moss, T. Moreau, M. Gloeckler, P. L. C. Rodrigues, J. Linhart, J. K. Lappalainen, B. K. Miller, P. J. Gonçalves, J.-M. Lueckmann, C. Schröder, J. H. Macke, „Simulation-Based Inference: A Practical Guide“, arXiv:2506.22607 (2025). URL: https://arxiv.org/abs/2506.22607.
+**Zitat:** M. Deistler, J. Boelts, P. Steinbach, G. Moss, T. Moreau, M. Gloeckler, P. L. C. Rodrigues, J. Linhart, J. K. Lappalainen, B. K. Miller, P. J. Gonçalves, J.-M. Lueckmann, C. Schröder, J. H. Macke, „Simulation-Based Inference: A Practical Guide“, arXiv:2508.12939 (2025). URL: https://arxiv.org/abs/2508.12939.
 **Verifikation:** Volltext (arXiv-HTML).
 **Was ist es:** Praxisleitfaden für SBI mit neuronalen Netzen: Workflow von Prior und Simulator über Training bis Diagnostik, mit `sbi`-Codebeispielen.
 **Kernidee:** Simulator als implizite Likelihood; Lernen von Posterior (NPE), Likelihood (NLE) oder Likelihood-Ratio (NRE) aus simulierten Paaren $(\theta, x)$; amortisierte Inferenz für neue Beobachtungen; Embedding-Netze für hochdimensionale Daten (Bilder) end-to-end mittrainierbar. Ausführlicher Diagnostikteil: Prior Predictive Checks, Posterior Predictive Checks, Simulation-Based Calibration (SBC), Expected Coverage, TARP, lokale Tests (L-C2ST, posterior SBC), Umgang mit Modellfehlspezifikation, NPE-Ensembles gegen Überkonfidenz, Hinweise zu Dichteschätzern (Normalizing Flows, Flow Matching, Diffusion) und zur Wahl der Zahl der Simulationen.
@@ -93,8 +93,8 @@ Nichts in dieser Liste ist erfunden; Quellen, die sich nicht belegen ließen, st
 
 ### [9] Pitkäaho, Manninen, Naughton 2017 – Konferenzvorläufer
 
-**Zitat:** T. Pitkäaho, A. Manninen, T. J. Naughton, „Performance of autofocus capability of deep convolutional neural networks in digital holographic microscopy“, in *Digital Holography and Three-Dimensional Imaging*, OSA Technical Digest, paper W2A.5 (2017).
-**Verifikation:** Metadaten (Titel/Autoren/Konferenz über Academia.edu-Seite und Referenz in [8]).
+**Zitat:** T. Pitkäaho, A. Manninen, T. J. Naughton, „Performance of autofocus capability of deep convolutional neural networks in digital holographic microscopy“, in *Digital Holography and Three-Dimensional Imaging*, OSA Technical Digest, paper W2A.5 (2017). DOI: [10.1364/DH.2017.W2A.5](https://doi.org/10.1364/DH.2017.W2A.5).
+**Verifikation:** Metadaten über Crossref (Titel/Autoren/Konferenz stimmen; Crossref führt als Erscheinungsjahr 2016, der Digest selbst 2017) und Referenz in [8].
 **Relevanz:** Klassifikationsformulierung (wenige Fokusebenen) als Vorläufer von [8]; nur als historischer Verweis zitieren.
 
 ### [10] Jaferzadeh, Hwang, Moon, Javidi 2019 – Fokusprädiktion auf Einzelzellebene
@@ -200,8 +200,8 @@ Die Originalarbeiten zu diesen Kriterien ([2] zitiert dort [1,2,4–8,29]) wurde
 
 ### [23] Yang et al. 2025 – SelfPhish (physikinformiertes GAN, P05/Hereon-Umfeld)
 
-**Zitat:** X. Yang, D. Hailu, V. Kulvait, T. Jentschke, S. Flenner, I. Greving, S. I. Campbell, J. Hagemann, C. G. Schroer, T. M. Wong, J. Moosmann, „Self-supervised physics-informed generative networks for phase retrieval from a single X-ray hologram“, *Optics Express* 33(17), 35834–35848 (2025). DOI: [10.1364/OE.569216](https://doi.org/10.1364/OE.569216). Daten: figshare 10.6084/m9.figshare.29803343.
-**Verifikation:** Volltext (Seitenbereich aus den Kopfzeilen abgeleitet).
+**Zitat:** X. Yang, D. Hailu, V. Kulvait, T. Jentschke, S. Flenner, I. Greving, S. I. Campbell, J. Hagemann, C. G. Schroer, T. M. Wong, J. Moosmann, „Self-supervised physics-informed generative networks for phase retrieval from a single X-ray hologram“, *Optics Express* 33(17), 35832–35851 (2025). DOI: [10.1364/OE.569216](https://doi.org/10.1364/OE.569216). Ergänzendes Material (Supplementary document): figshare 10.6084/m9.figshare.29803343.
+**Verifikation:** Volltext; Seitenbereich nach Crossref/Europe PMC (35832–35851), figshare-DOI laut DataCite als „Supplementary document“ (kein Datensatz).
 **Was ist es:** Selbstüberwachtes Phase Retrieval (GAN mit eingebautem Fresnel-Vorwärtsmodell) aus einem einzigen Hologramm, ohne gepaarte/simulierte Trainingsdaten; Anwendung auf Hereon/DESY-Daten.
 **Relevanz:** Zeigt den Deep-Learning-Stand in der direkten Nachbarschaft deiner Betreuer; auch dort ist $\mathrm{Fr}$ ein Eingabeparameter – ein lernbasierter Autofokus wäre für solche Netze ebenfalls Voraussetzung.
 
