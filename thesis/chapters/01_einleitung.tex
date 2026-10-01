@@ -1,25 +1,15 @@
 % =============================================================================
 % Kapitel 1: Einleitung
 % -----------------------------------------------------------------------------
-% Was hinein gehört (Richtwert 4--6 Seiten):
-%  - Motivation: Synchrotron-Röntgenbildgebung, Phasenkontrast, warum NFH
-%    (schwach absorbierende Objekte, Kohärenz an PETRA III / P05).
-%  - Problem: Phase Retrieval braucht ein genaues Vorwärtsmodell; die Geometrie
-%    steckt in der Fresnel-Zahl Fr. Falsches Fr -> Artefakte. Autofokus =
-%    Bestimmung von Fr (bzw. z01) aus den Daten.
-%  - Stand: modellbasierter Autofokus (Dora et al. 2025) ist interpretierbar,
-%    aber langsam (Optimierung mit vielen Rekonstruktionen).
-%  - Ziel dieser Arbeit: lernbasierte Schätzung von Fr/z01 direkt aus dem
-%    Hologramm; Trainingsdaten aus HoloWizard/HoloForge; optional
-%    Unsicherheiten via SBI.
-%  - Forschungsfragen (nummeriert, später in Kapitel 6/7 wieder aufgreifen):
-%      F1 Wie genau kann ein CNN Fr/z01 aus einem einzelnen Hologramm schätzen?
-%      F2 Wie verhält sich das im Vergleich zum modellbasierten Autofokus
-%         (Genauigkeit vs. Laufzeit)?
-%      F3 Übertragbarkeit Simulation -> Messdaten (Sim-to-Real-Gap)?
-%      F4 Liefert SBI/NPE brauchbare Unsicherheiten?
-%  - Beiträge der Arbeit (Stichpunkte).
-%  - Aufbau der Arbeit (ein Absatz, mit \cref auf Kapitel).
+% Gliederung:
+%  1.1 Motivation (Synchrotron-Phasenkontrast, NFH an P05, Rolle der Fresnel-Zahl)
+%  1.2 Problemstellung (Autofokus = Schätzung von z01; Stand der Technik: Dora
+%      et al. 2025, genau, aber Minuten; lernbasierte Alternative)
+%  1.3 Zielsetzung und Forschungsfragen F1--F8 mit messbaren Kriterien
+%      (aus docs/01_thesis_erklaerung.md, Abschnitt 9)
+%  1.4 Beiträge und Nicht-Ziele (vorläufig; nach den Experimenten anpassen)
+%  1.5 Aufbau der Arbeit
+% Zahlenwerte: docs/01 (Abschnitte 4, 6, 9) und die dort zitierten Quellen.
 % =============================================================================
 \chapter{\lang{Einleitung}{Introduction}}
 \label{ch:einleitung}
@@ -27,54 +17,216 @@
 \section{\lang{Motivation}{Motivation}}
 \label{sec:einleitung:motivation}
 
-% Beispiel: Zitat + Abkürzung beim ersten Auftreten
-\lang{%
-Die \ac{nfh} nutzt die hohe Kohärenz von Synchrotronstrahlung, um auch schwach
-absorbierende Objekte über ihren Phasenkontrast abzubilden. Das zugrunde liegende
-Rekonstruktionsproblem, das \ac{pr}, ist nichtlinear und schlecht gestellt
-\cite{fienup1982phase}. Moderne Verfahren wie die \ac{asrm} rekonstruieren das
-komplexe Objekt ohne räumliche Trägerbeschränkung \cite{dora2024asrm}, setzen
-aber ein genaues Modell der Aufnahmegeometrie voraus.
-}{%
-\Ac{nfh} exploits the high coherence of synchrotron radiation to image weakly
-absorbing objects via their phase contrast. The underlying reconstruction problem,
-\ac{pr}, is non-linear and ill-posed \cite{fienup1982phase}. Modern methods such
-as \ac{asrm} reconstruct the complex object without a spatial support constraint
-\cite{dora2024asrm}, but require an accurate model of the acquisition geometry.
-}
+Harte Röntgenstrahlung durchdringt Materie nahezu ungehindert, und gerade
+deshalb liefern viele Proben -- biologisches Gewebe, Polymere, leichte
+Metalle -- im klassischen Absorptionskontrast kaum Signal. Für
+Röntgenstrahlung von \qty{11}{\kilo\electronvolt} absorbiert ein
+\qty{30}{\micro\metre} dicker Magnesiumdraht nur rund \qty{8}{\percent} der
+Intensität, verschiebt die Phase der Welle aber um etwa \qty{5}{\radian}
+(\cref{tab:grundlagen:material}). Der Phasenkontrast ist damit --
+entsprechend dem Verhältnis $\delta/\beta \approx 120$ -- rund zwei
+Größenordnungen empfindlicher als der Absorptionskontrast. Die
+Röntgen-\ac{nfh} nutzt dies aus: Mit der hohen räumlichen Kohärenz einer
+Synchrotronquelle wie PETRA~III am \ac{desy} wandelt sich der Phasenschub
+durch Freiraumpropagation zwischen Probe und Detektor in messbare
+Intensitätsmodulationen -- Fresnel-Säume -- um. An der Nano-Imaging-Endstation
+der \ac{p05} wird der Strahl mit einer \ac{fzp} fokussiert; der Fokus wirkt
+als nahezu punktförmige Quelle eines Kegelstrahls, der die Probe auf den
+Detektor vergrößert abbildet, mit effektiven Pixelgrößen von wenigen zehn
+Nanometern (\cref{tab:grundlagen:geometrie}). Aus einem einzigen
+Hologramm lässt sich der komplexe projizierte Brechungsindex der Probe
+quantitativ rekonstruieren \cite{paganin2006coherent,cloetens1999holotomography}.
 
-\todo{\lang{Motivation ausformulieren.}{Elaborate the motivation.}}
+Diese Rekonstruktion, das \ac{pr}, ist ein nichtlineares und schlecht
+gestelltes inverses Problem \cite{fienup1982phase}. Die an der \ac{p05}
+eingesetzte \ac{asrm} löst es für stark wechselwirkende Objekte aus einem
+einzigen Hologramm und ohne räumliche Trägerbeschränkung
+\cite{dora2024asrm}; sie ist Teil des Python-Frameworks HoloWizard, das
+auch die Online-Rekonstruktion während der Messung unterstützt
+\cite{dora2024framework,dora2026holowizard}. Jedes dieser Verfahren setzt
+ein exakt parametrisiertes Vorwärtsmodell voraus. Die gesamte Geometrie der
+Aufnahme geht dabei in einen einzigen dimensionslosen Parameter ein, die
+Fresnel-Zahl $\Fr$, die aus Wellenlänge, Pixelgröße und den Abständen
+zwischen Fokus, Probe und Detektor folgt (\cref{sec:grundlagen:fresnelzahl}).
+Wellenlänge, Pixelgröße und der etwa \qty{20}{\metre} lange Abstand zwischen
+Fokus und Detektor sind präzise bekannt. Der Abstand $\zOne$ zwischen dem
+nicht sichtbaren Fokus der \ac{fzp} und der Probe -- wenige Zentimeter bis
+Dezimeter -- ist dagegen nur auf etwa $\pm\qty{5}{\milli\metre}$ bekannt
+und ändert sich mit jeder Probe und jeder Probenposition
+\cite{dora2025autofocus}. Weil $\Fr$ bei $\zOne = \qty{250}{\milli\metre}$
+um rund \qty{0.4}{\percent} pro Millimeter variiert
+(\cref{sec:grundlagen:fresnelzahl}), führt bereits ein Fehler von wenigen
+Millimetern zu sichtbaren Artefakten: Kanten werden von Fresnel-Säumen
+umgeben, die Rekonstruktion ist defokussiert, und quantitative Aussagen über
+Dichte und Zusammensetzung der Probe werden unzuverlässig.
 
-\section{\lang{Problemstellung und Zielsetzung}{Problem Statement and Objectives}}
+\section{\lang{Problemstellung}{Problem Statement}}
+\label{sec:einleitung:problem}
+
+Die Bestimmung von $\zOne$ beziehungsweise $\Fr$ aus den Messdaten selbst
+wird in Anlehnung an die optische Mikroskopie als \emph{Autofokus}
+bezeichnet. Der aktuelle Stand der Technik für die \ac{nfh} ist der
+modellbasierte Autofokus von Dora et al.\ \cite{dora2025autofocus}: Ein
+Nelder--Mead-Optimierer durchsucht das Unsicherheitsintervall um die
+Startschätzung, führt für jeden Probepunkt eine vollständige
+\ac{asrm}-Rekonstruktion aus und bewertet sie mit dem \ac{mfe}, der die
+Konsistenz zwischen Rekonstruktion, Vorwärtsmodell und Hologramm misst. Das
+Verfahren erreicht auf Messdaten eine Genauigkeit von \qty{0.1}{\milli\metre},
+ist jedoch mit 9 bis 13 Rekonstruktionen zu je \qtyrange{6}{16}{\second}
+und einer Gesamtdauer von einigen Minuten pro Datensatz langsam, hängt von
+den Einstellungen der Rekonstruktion ab und liefert keine Angabe über die
+Verlässlichkeit seines Ergebnisses (\cref{sec:stand:modellbasiert}). Für
+die Online-Rekonstruktion an der Beamline, für Tomographie-Serien mit
+Driften und für In-situ-Experimente, in denen sich $\zOne$ häufig ändert, ist
+dies ein Engpass: Die Rekonstruktion kann erst beginnen, wenn der Abstand
+bekannt ist.
+
+Das Hologramm selbst enthält die gesuchte Information in unmittelbar
+lesbarer Form. Die Fresnel-Zahl bestimmt die Skala der Fresnel-Säume und
+die Lage der Nullstellen der \ac{ctf}, die im Leistungsspektrum des
+Hologramms als äquidistante Ringe in der Koordinate $\xi^2 + \eta^2$
+erscheinen (\cref{sec:grundlagen:ctf}). Ein lernendes Verfahren, das diese
+Signatur aus dem Hologramm extrahiert, könnte $\Fr$ in einem einzigen
+Vorwärtsdurchlauf schätzen -- ohne Rekonstruktion und ohne Suche. In der
+optischen digitalen Holographie wurde gezeigt, dass ein \ac{cnn} den
+Rekonstruktionsabstand mit Genauigkeiten von rund \qty{50}{\micro\metre}
+und um Größenordnungen schneller als Suchverfahren vorhersagen kann
+\cite{ren2018learning,montoya2023focusnet}.
+Für die Röntgen-\ac{nfh} mit Kegelstrahlgeometrie, stark wechselwirkenden
+Objekten, einem kontinuierlichen Abstandsbereich von
+\qtyrange{20}{500}{\milli\metre} und ohne große annotierte Messdatensätze
+ist dieser Ansatz bislang nicht untersucht worden (\cref{ch:stand}).
+Trainingsdaten müssen simuliert werden, womit die Übertragbarkeit von der
+Simulation auf Messdaten zur zentralen Frage wird, und für den Einsatz an
+der Beamline ist neben der Punktschätzung eine kalibrierte Unsicherheit
+nötig, die entscheidet, ob der geschätzte Wert direkt verwendet oder mit
+dem modellbasierten Verfahren verfeinert werden sollte.
+
+\section{\lang{Zielsetzung und Forschungsfragen}{Objectives and Research Questions}}
 \label{sec:einleitung:ziel}
 
-\lang{%
-Der aktuelle Stand der Technik bestimmt die Fresnel-Zahl $\Fr$ durch
-modellbasierte Optimierung \cite{dora2025autofocus}. Ziel dieser Arbeit ist es,
-$\Fr$ bzw. den Abstand $\zOne$ mit einem neuronalen Netz direkt aus dem Hologramm
-zu schätzen, um die Autofokussierung um Größenordnungen zu beschleunigen.
-}{%
-The current state of the art determines the Fresnel number $\Fr$ by model-based
-optimisation \cite{dora2025autofocus}. This thesis aims to estimate $\Fr$ or the
-distance $\zOne$ directly from the hologram with a neural network in order to
-speed up autofocusing by orders of magnitude.
-}
+Ziel dieser Arbeit ist ein lernbasierter Autofokus für die Röntgen-\ac{nfh},
+der die Fresnel-Zahl beziehungsweise den Abstand $\zOne$ direkt aus einem
+einzelnen Hologramm schätzt, auf simulierten Daten des HoloWizard-Moduls
+HoloForge trainiert und auf Messdaten der \ac{p05} geprüft wird. Die
+Schätzung soll um Größenordnungen schneller sein als der modellbasierte
+Autofokus, eine geprüfte Unsicherheit mitliefern und sich als Startwert in
+das bestehende Verfahren integrieren lassen. Daraus ergeben sich die
+folgenden Forschungsfragen mit den Kriterien, an denen die Ergebnisse in
+\cref{ch:experimente} gemessen werden. Die Zielwerte sind aus den
+Anforderungen des Einsatzszenarios abgeleitet
+(\cref{sec:grundlagen:autofokus}): Die Genauigkeit des modellbasierten
+Autofokus von \qty{0.1}{\milli\metre} entspricht einem relativen Fehler in
+$\Fr$ von \qty{0.04}{\percent}, und eine Genauigkeit von
+\qty{1}{\milli\metre} reicht aus, um das Suchintervall von
+$\pm\qty{5}{\milli\metre}$ deutlich zu verengen.
+% TODO: mit Betreuern klären, ob die Zielwerte (insbesondere F1, F4, F5, F8)
+%       so akzeptiert werden oder angepasst werden sollen.
 
-\todo{\lang{Forschungsfragen F1--F4 formulieren.}{State research questions F1--F4.}}
+\begingroup
+\renewcommand{\labelenumi}{F\theenumi}
+\begin{enumerate}
+  \item \emph{Genauigkeit auf simulierten Daten.} Kann ein \ac{cnn} $\Fr$
+    beziehungsweise $\zOne$ aus einem einzelnen simulierten Hologramm in
+    \ac{p05}-Geometrie für $\zOne \in [\qty{50}{\milli\metre}, \qty{500}{\milli\metre}]$
+    schätzen? Kriterien: \ac{mae} in $\zOne$ von höchstens
+    \qty{1}{\milli\metre} (Mindestziel), \qty{0.5}{\milli\metre} (Ziel)
+    beziehungsweise \qty{0.1}{\milli\metre} (Genauigkeit des modellbasierten
+    Verfahrens); Median des relativen Fehlers in $\Fr$ von höchstens
+    \qty{0.4}{\percent} beziehungsweise \qty{0.2}{\percent}; Anteil der
+    Schätzungen mit $\abs{\Delta\zOne} \le \qty{1}{\milli\metre}$ von
+    mindestens \qty{95}{\percent}.
+  \item \emph{Eingaberepräsentation.} Welche Eingabe -- rohes Hologramm,
+    logarithmierte Intensität oder Amplitude, Leistungsspektrum, radiales
+    Spektralprofil oder eine Kombination -- ist bei gleichem Trainingsbudget
+    am genauesten und am robustesten gegenüber Rauschpegel, Objektgröße und
+    Material?
+  \item \emph{Zielparametrisierung und Verlustfunktion.} Welche Zielgröße
+    ($\Fr$, $\ln\Fr$ oder $\zOne$) und welche Verlustfunktion liefern den
+    kleinsten Fehler über den gesamten Abstandsbereich, ohne systematische
+    Abweichungen an den Rändern des Trainingsbereichs?
+  \item \emph{Kalibrierte Unsicherheit.} Liefert \ac{sbi} mit \ac{npe}
+    eine kalibrierte Posterior-Verteilung $q(\zOne \mid I)$? Kriterien:
+    Expected Coverage innerhalb von $\pm 5$ Prozentpunkten der nominalen
+    Abdeckung bei \qtylist{50;80;95}{\percent}; gleichverteilte
+    \ac{sbc}-Ränge (Kolmogorov--Smirnov-Test mit $p > 0.05$); Korrelation
+    zwischen Posterior-Standardabweichung und tatsächlichem Fehler über
+    $0.5$; mittlere Breite des \qty{95}{\percent}-Intervalls von höchstens
+    \qty{2}{\milli\metre}.
+  \item \emph{Hybrid mit dem modellbasierten Autofokus.} Beschleunigt die
+    lernbasierte Schätzung als Startwert und Intervall den modellbasierten
+    Autofokus ohne Genauigkeitsverlust? Kriterien: Reduktion der
+    Nelder--Mead-Rekonstruktionen von 9 bis 13 auf höchstens 5; Endergebnis
+    innerhalb von \qty{0.1}{\milli\metre} des Ergebnisses mit dem
+    Startintervall $\pm\qty{5}{\milli\metre}$; mindestens halbierte
+    Gesamtlaufzeit.
+  \item \emph{Sim-to-real-Lücke.} Wie genau ist ein auf Simulationen
+    trainierter Schätzer auf Messhologrammen der \ac{p05} gegenüber den
+    Referenzabständen des modellbasierten Autofokus? Kriterien: \ac{mae}
+    von höchstens \qty{1}{\milli\metre} ohne und \qty{0.5}{\milli\metre}
+    mit Feinabstimmung auf wenigen Messhologrammen; dokumentierte
+    Diagnostik der Modellfehlspezifikation.
+  \item \emph{Rekonstruktionsqualität.} Reicht die geschätzte Fresnel-Zahl
+    für eine artefaktfreie \ac{asrm}-Rekonstruktion aus? Kriterien:
+    \ac{mfe} der Rekonstruktion mit $\hat z_{01}$ höchstens das
+    $1{,}05$-Fache des \ac{mfe} am Referenzabstand; Bildähnlichkeit der
+    Phase zur Referenzrekonstruktion; visuelle Prüfung der Kantensäume.
+  \item \emph{Laufzeit.} Liegt die Inferenz einschließlich Vorverarbeitung
+    bei höchstens \qty{50}{\milli\second} je Hologramm auf einer \ac{gpu}
+    beziehungsweise \qty{2}{\second} auf einer CPU, gegenüber Minuten beim
+    modellbasierten Verfahren?
+\end{enumerate}
+\endgroup
+
+\section{\lang{Beiträge}{Contributions}}
+\label{sec:einleitung:beitraege}
+
+Die Arbeit leistet die folgenden Beiträge.
+% TODO: mit Betreuern klären -- die Liste ist vorläufig und nach Abschluss der
+%       Experimente (Kapitel 5) an die tatsächlich erzielten Ergebnisse anzupassen.
+\begin{itemize}
+  \item Ein reproduzierbarer Daten- und Trainingsstack auf Basis von
+    HoloForge für die Aufgabe \enquote{Hologramm $\to$ $\Fr$ bzw.\ $\zOne$}
+    mit randomisierter Geometrie, Materialien und Beleuchtung, definierten
+    Datensatzaufteilungen und vollständigen Metadaten.
+    % TODO: Umfang (Zahl der Simulationen, Parameterbereiche) nach Kapitel 4 ergänzen.
+  \item Eine systematische Studie zu Eingaberepräsentationen,
+    Zielparametrisierungen und Verlustfunktionen für den lernbasierten
+    Autofokus in der Röntgen-\ac{nfh}, die es nach Kenntnis des Autors für
+    diese Modalität bisher nicht gibt.
+    % TODO: Formulierung "nach Kenntnis des Autors" nach abschließender Literaturprüfung bestätigen.
+  \item Eine probabilistische Variante des Schätzers über heteroskedastische
+    Regression und \ac{npe} mit geprüfter Kalibrierung sowie ein
+    Hybridverfahren, das die Unsicherheit als Suchintervall an den
+    modellbasierten Autofokus übergibt.
+    % TODO: mit Betreuern klären, ob NPE oder die heteroskedastische Regression
+    %       als Hauptvariante dargestellt wird.
+  \item Eine Evaluation auf Messdaten der \ac{p05} gegen den Stand der
+    Technik in Genauigkeit und Laufzeit, einschließlich der Qualität der
+    nachgelagerten Rekonstruktion.
+    % TODO: Ergebnisse (Zahlenwerte) nach Kapitel 5 ergänzen.
+\end{itemize}
+Nicht Gegenstand der Arbeit sind ein neuer Algorithmus für das \ac{pr},
+eine vollständige Rekonstruktion durch ein neuronales Netz, die Schätzung von
+$\zTwo$, Energie oder Pixelgröße sowie Änderungen am HoloWizard-Paket; die
+Integration erfolgt ausschließlich über dessen öffentliche Schnittstelle.
 
 \section{\lang{Aufbau der Arbeit}{Outline}}
 \label{sec:einleitung:aufbau}
 
-\lang{%
-\Cref{ch:grundlagen} führt die physikalischen und methodischen Grundlagen ein,
-\cref{ch:stand} ordnet verwandte Arbeiten ein. \Cref{ch:methoden} beschreibt
-Datenerzeugung, Modelle und Trainingsaufbau, \cref{ch:experimente} die
-Experimente und Ergebnisse. \Cref{ch:diskussion} diskutiert die Befunde,
-\cref{ch:fazit} fasst zusammen und gibt einen Ausblick.
-}{%
-\Cref{ch:grundlagen} introduces the physical and methodological background,
-\cref{ch:stand} reviews related work. \Cref{ch:methoden} describes data
-generation, models and the training setup, \cref{ch:experimente} the experiments
-and results. \Cref{ch:diskussion} discusses the findings and \cref{ch:fazit}
-concludes with an outlook.
-}
+\Cref{ch:grundlagen} führt die physikalischen und methodischen Grundlagen
+ein: die Bildentstehung in der \ac{nfh}, die Fresnel-Propagation und die
+Fresnel-Zahl in Kegelstrahlgeometrie, die \ac{ctf} mit ihrer spektralen
+Signatur, das \ac{pr}, die Formulierung des Autofokus-Problems sowie die
+Grundlagen der Regression mit neuronalen Netzen und der \ac{sbi}.
+\Cref{ch:stand} ordnet die Arbeit in den Stand der Technik ein -- klassische
+Fokuskriterien, der modellbasierte Autofokus, lernbasierte Verfahren der
+optischen Holographie, spektrale Parameterschätzung, Deep Learning für das
+\ac{pr} und Unsicherheitsquantifizierung -- und leitet daraus die
+Forschungslücke ab. \Cref{ch:methoden} beschreibt die Datenerzeugung mit
+HoloForge, die Eingaberepräsentationen, Modelle, Verlustfunktionen und den
+Trainingsaufbau sowie die probabilistischen Varianten und den Hybrid.
+\Cref{ch:experimente} stellt die Experimente und Ergebnisse entlang der
+Forschungsfragen F1 bis F8 dar. \Cref{ch:diskussion} diskutiert die
+Befunde, ihre Grenzen und die Sim-to-real-Lücke, und \cref{ch:fazit} fasst
+die Arbeit zusammen und gibt einen Ausblick.
