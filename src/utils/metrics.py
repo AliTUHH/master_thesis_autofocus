@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import ArrayLike
 
+from src.utils.fresnel import defocus_blur_px
 from src.utils.physics import fresnel_number, target_to_fr, target_to_z01_mm
 
 __all__ = ["regression_metrics", "metrics_in_physical_units", "physical_errors"]
@@ -82,12 +83,15 @@ def metrics_in_physical_units(
 
     Returns ``z01_mae_mm``, ``z01_rmse_mm``, ``z01_p95_abs_err_mm``, ``z01_bias_mm``, ``z01_median_abs_err_mm``,
     ``fr_rel_err_mean_pct`` (mean |Fr_pred-Fr_true|/Fr_true), ``fr_rel_err_median_pct``, ``fr_rel_err_p95_pct``,
-    ``fr_rel_bias_pct`` (signed mean) and ``n``.
+    ``fr_rel_bias_pct`` (signed mean), the defocus blur ``blur_px_mean``, ``blur_px_median``, ``blur_px_p95``
+    (``b = sqrt(|e| / Fr_true)`` in detector pixels per sample, see :func:`src.utils.fresnel.defocus_blur_px`;
+    ``b <= 1-2`` px is the accuracy a reconstruction needs) and ``n``.
     """
     values = physical_errors(pred_target, true_target, target_mode, setup)
     z01 = regression_metrics(values["z01_pred_mm"], values["z01_true_mm"])
     rel = (values["fr_pred"] - values["fr_true"]) / values["fr_true"] * 100.0
     abs_rel = np.abs(rel)
+    blur = np.asarray(defocus_blur_px(rel / 100.0, values["fr_true"]), dtype=np.float64)
     return {
         "z01_mae_mm": z01["mae"],
         "z01_rmse_mm": z01["rmse"],
@@ -98,5 +102,8 @@ def metrics_in_physical_units(
         "fr_rel_err_median_pct": float(np.median(abs_rel)),
         "fr_rel_err_p95_pct": float(np.percentile(abs_rel, 95)),
         "fr_rel_bias_pct": float(rel.mean()),
+        "blur_px_mean": float(blur.mean()),
+        "blur_px_median": float(np.median(blur)),
+        "blur_px_p95": float(np.percentile(blur, 95)),
         "n": z01["n"],
     }
