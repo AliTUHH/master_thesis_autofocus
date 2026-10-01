@@ -56,6 +56,7 @@ from src.sbi.npe import (
     load_posterior,
     load_simulations,
     log_prob_grid,
+    member_log_prob,
     parameter_grid,
     point_estimates,
     posterior_members,
@@ -108,7 +109,7 @@ def measure_inference_time(
     def _map_grid(xi: torch.Tensor) -> None:
         # unnormalised member densities: the MAP timing excludes the leakage estimate (see log_prob_grid)
         for member in members:
-            member.log_prob(theta_grid, x=xi, norm_posterior=False)
+            member_log_prob(member, theta_grid, xi, normalize=False)
 
     for i in range(n):
         raw = torch.from_numpy(raws[i]).unsqueeze(0)

@@ -38,10 +38,12 @@ from typing import Any
 import numpy as np
 import torch
 import torch.nn as nn
+from nflows.flows import Flow as NflowsFlow
 from sbi.inference import NPE, EnsemblePosterior
 from sbi.inference.posteriors.direct_posterior import DirectPosterior
 from sbi.neural_nets import posterior_nn
 from sbi.utils import BoxUniform
+from sbi.utils.sbiutils import within_support
 from torch.utils import data as torch_data
 from torch.utils.data import DataLoader, SubsetRandomSampler
 
@@ -73,6 +75,7 @@ __all__ = [
     "posterior_members",
     "embedding_net_of",
     "sample_posterior",
+    "member_log_prob",
     "log_prob_grid",
     "parameter_grid",
     "point_estimates",
@@ -629,11 +632,51 @@ def log_prob_grid(
     if normalize is None:
         normalize = isinstance(posterior, EnsemblePosterior)
     theta = torch.as_tensor(np.asarray(grid, dtype=np.float32)).reshape(-1, 1)
+    members = posterior_members(posterior)
+    log_weights = (
+        torch.log(posterior.weights).reshape(-1, 1)
+        if isinstance(posterior, EnsemblePosterior)
+        else torch.zeros(1, 1)
+    )
     rows = []
     for i in range(x.shape[0]):
-        logp = posterior.log_prob(theta, x=x[i : i + 1], norm_posterior=bool(normalize))
+        logp = torch.stack([member_log_prob(member, theta, x[i : i + 1], normalize=bool(normalize)) for member in members])
+        logp = torch.logsumexp(log_weights + logp, dim=0)
         rows.append(logp.cpu().numpy().astype(np.float64))
     return np.stack(rows, axis=0)
+
+
+def member_log_prob(
+    member: DirectPosterior,
+    theta: torch.Tensor,
+    x_single: torch.Tensor,
+    normalize: bool = False,
+) -> torch.Tensor:
+    """``log q(theta | x)`` of one ``DirectPosterior`` for a *single* observation, embedding ``x`` only once.
+
+    Equivalent to ``member.log_prob(theta, x=x_single, norm_posterior=normalize)``.  sbi broadcasts the raw
+    observation to one copy per ``theta`` *before* the embedding net
+    (``ConditionalDensityEstimator._broadcast_and_align``); with a CNN embedding on 256² holograms this
+    costs several GB of activations for a 1001-point grid.  For nflows-based estimators (``nsf``, ``maf``,
+    ``mdn``) the embedding is therefore computed once here and the flow evaluated on the expanded features
+    (same computation as ``nflows.flows.Flow._log_prob``); other estimators fall back to sbi.
+    """
+    estimator = member.posterior_estimator
+    flow = getattr(estimator, "net", None)
+    theta = torch.as_tensor(theta, dtype=torch.float32).reshape(-1, 1)
+    x_single = torch.as_tensor(x_single).reshape(1, *estimator.condition_shape)
+    if isinstance(flow, NflowsFlow):
+        estimator.eval()
+        with torch.no_grad():
+            context = flow._embedding_net(x_single)
+            context = context.expand(theta.shape[0], *context.shape[1:])
+            noise, logabsdet = flow._transform(theta, context=context)
+            logp = flow._distribution.log_prob(noise, context=context) + logabsdet
+        logp = torch.where(within_support(member.prior, theta), logp, torch.tensor(float("-inf")))
+        if normalize:
+            logp = logp - torch.log(member.leakage_correction(x=x_single))
+        return logp
+    return member.log_prob(theta, x=x_single, norm_posterior=normalize)
 
 
 def _refine_argmax(grid: np.ndarray, logp: np.ndarray) -> np.ndarray:
