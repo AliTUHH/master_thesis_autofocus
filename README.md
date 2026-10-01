@@ -21,6 +21,8 @@ configs/
   base.yaml            Experiment (data / model / train / paths) für Training und Evaluation
   data_small.yaml      Datensatz für CPU-Smoke-Tests (2048 px um 8 gebinnt -> 256 px, 400/100/100 Samples)
   data_p05.yaml        Realistischer P05-Datensatz (2048 px, Padding 4, 10000/1000/1000) – nur für GPU
+  data_small_oor.yaml  Out-of-range-Testsatz (z01 ∈ [300, 350] mm, 30 Samples) für die Posterior-Diagnostik
+  sbi_radial.yaml, sbi_cnn.yaml   NPE-Posterior q(z01 | Hologramm) mit Radialprofil-MLP- bzw. Hologramm-CNN-Embedding
 src/
   data/forge_setup.py  NFHRandomDistSetup: HoloForge-Setup mit zufälligem z01 (und optional z02) pro Hologramm
   data/generate_data.py  CLI: YAML -> HoloForge-Konfiguration -> train/val/test.hdf5 + meta.json
@@ -30,6 +32,9 @@ src/
   models/cnn.py        AutofocusCNN (beliebige Auflösung via AdaptiveAvgPool2d), ResNet-18-Variante, RadialProfileMLP, build_model
   train.py             CLI: Training mit Early Stopping, bestem Checkpoint, TensorBoard, Test-Evaluation
   evaluate.py          CLI: Checkpoint auf beliebiger HDF5-Datei auswerten (Metriken, Plots, Inferenzzeit)
+  sbi/npe.py           Simulation-based inference: Prior aus meta.json, Embeddings, NPE (sbi, Deep Ensemble), find_focus-Startwert
+  sbi/train_npe.py, sbi/evaluate_npe.py   CLIs: Posterior trainieren bzw. kalibrieren (Coverage, SBC, TARP, Risk-Coverage, Laufzeit)
+  sbi/calibration.py, sbi/plots.py, sbi/simulator.py   Kalibrierungsmetriken, Plots, HoloForge-Simulator-Schnittstelle (Online-SBI)
   utils/physics.py     Fresnel-Zahl, Umkehrung nach z01, effektive Geometrie (identisch zu holowizard calc_Fr)
   utils/metrics.py     Regressionsmetriken im Zielraum und in physikalischen Einheiten (z01 in mm, Fr in %)
   utils/plotting.py    Headless-Plots (Loss, Scatter, Fehler über z01, Beispiel-Hologramme)
@@ -101,6 +106,20 @@ relativer `Fr`-Fehler in %, Inferenzzeit pro Hologramm für Batch 1 und Batch N)
 nach `<Checkpoint-Ordner>/eval_<datei>/` (oder `--out`). Auf CPU hängt die Batch-1-Latenz stark von der
 Thread-Zahl ab (Oversubscription auf kleinen/geteilten Maschinen); `--threads 1` liefert reproduzierbare Werte.
 
+## Simulation-based inference (NPE für z01)
+
+```bash
+python -m src.sbi.train_npe --config configs/sbi_radial.yaml --data-dir data/processed/small --run-name sbi_radial
+python -m src.sbi.evaluate_npe --posterior runs/sbi_radial/posterior.pt --data data/processed/small/test.hdf5
+```
+
+Lernt mit [sbi](https://sbi.readthedocs.io) eine amortisierte Posterior `q(z01 | Hologramm)` (Neural Spline Flow,
+Prior `Uniform(z01_min, z01_max)` aus `meta.json`, Embedding = Radialprofil-MLP oder Hologramm-CNN, optional Deep
+Ensemble). Die Evaluation schreibt `eval_results.json` mit Punktschätzern (Mittel/Median/MAP), Intervallbreiten,
+Coverage 50/68/90/95 % (Wilson-Intervalle), SBC-Rängen + KS-Test, TARP, Risk-Coverage-Kurve und Laufzeit; der
+Startwert für HoloWizards `find_focus` folgt aus `src.sbi.npe.posterior_to_find_focus_init(samples)` →
+`{"z01": Median, "z01_confidence": halbe Breite des 95-%-Intervalls}`. Ergebnisse: `reports/experiments_sbi.md`.
+
 ## Tests
 
 ```bash
@@ -136,8 +155,8 @@ HoloWizard rundet Abstände intern auf 1 µm; `fresnel_number` tut dasselbe und 
 - Pro Hologramm wird ein neuer Propagationskernel berechnet; bei 2048 px und Padding 4 sind das 8192² komplexe
   Werte (≈ 0.5 GB) – realistische Datensätze erfordern eine GPU.
 - Noch nicht enthalten: Vergleich mit dem modellbasierten Autofokus von HoloWizard
-  (`holowizard.core.api.functions.find_focus.find_focus`), simulation-based inference (sbi/NPE), Lader für
-  gemessene P05-Daten, gemessene Flatfields (`flatfield_dataset` kann über `forge_overrides` eingebunden werden).
+  (`holowizard.core.api.functions.find_focus.find_focus`), Online-Simulation im SBI-Training (nur Schnittstelle
+  `src/sbi/simulator.py`), Lader für gemessene P05-Daten, gemessene Flatfields (`flatfield_dataset` kann über `forge_overrides` eingebunden werden).
 - In HoloForge 3.0.6 lassen sich die Phantom-Glättung nicht deaktivieren und `probe.constant` nicht als Bereich
   angeben (beides führt dort zu Fehlern); die YAML-Schnittstelle erzwingt daher Skalar bzw. Glättung.
 

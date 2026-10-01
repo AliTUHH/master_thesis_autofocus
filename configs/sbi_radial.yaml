@@ -1,0 +1,64 @@
+# Simulation-based inference (NPE) für z01 – Hauptvariante: Radialprofil-Embedding (CPU-tauglich).
+#   python -m src.sbi.train_npe --config configs/sbi_radial.yaml --data-dir data/processed/small --run-name sbi_radial
+#   python -m src.sbi.evaluate_npe --posterior runs/sbi_radial/posterior.pt --data data/processed/small/test.hdf5
+# Ziel: amortisierte Posterior q(z01 | Hologramm) statt Punktschätzung; Ausgabe z01 ± Konfidenz für
+# HoloWizards find_focus (Measurement(z01=..., z01_confidence=...)), siehe src/sbi/npe.py.
+# Einheiten: z01 in mm; alle Pfade relativ zur Projektwurzel.
+
+data:
+  dir: data/processed/small           # train.hdf5, val.hdf5, test.hdf5 + meta.json (Prior-Grenzen)
+  normalization: standardize          # Hologramm-Normalisierung (nur für die Hologramm-Kanäle relevant)
+  crop_size: null
+  downsample: 1
+  hologram_key: images/hologram
+  representation: radial_profile      # Beobachtung x: azimutal gemitteltes log-Leistungsspektrum, 256 Bins in |xi|^2
+  representation_kwargs: {window: true, log_scale: auto, n_bins: 256, axis: freq_sq}
+  batch_size: 64                      # nur für das Vorberechnen der Repräsentationen
+  num_workers: 0
+  validation_split: files             # files: train.hdf5 = Training, val.hdf5 = Validierung/Early Stopping (wie die Punktschätzer)
+                                      # random: train+val gepoolt, sbi teilt zufällig mit train.validation_fraction
+
+prior:
+  parameter: z01_mm                   # theta = z01 in mm (1-D); Fr folgt deterministisch aus der Geometrie
+  bounds: meta                        # Uniform(min, max) aus meta.json (config.setup.z01_mm) – identisch zur Simulation;
+                                      # alternativ explizit [50.0, 300.0]
+
+embedding:                            # Summary-Netz x -> Merkmale, konditioniert den Dichteschätzer
+  type: mlp                           # mlp (Radialprofil) | cnn (Hologramm, siehe sbi_cnn.yaml) | identity
+  hidden_units: [128, 64]             # wie RadialProfileMLP (LayerNorm -> 128 -> 64), letzte Schicht -> output_dim
+  output_dim: 16                      # kleiner als der Punktschätzer-MLP: 400 Trainingsbeispiele (Validierungs-Sweep,
+  dropout_rate: 0.1                   # reports/experiments_sbi.md): [128,64]->16 + Dropout 0.1 schlägt [256,128]->32
+
+density_estimator:                    # sbi.neural_nets.posterior_nn
+  model: nsf                          # nsf (Neural Spline Flow) | maf | mdn
+  hidden_features: 50
+  num_transforms: 5
+  num_bins: 10                        # Spline-Bins (nur nsf)
+  z_score_theta: independent          # z01 standardisieren (Statistik aus dem Training)
+  z_score_x: independent              # Profil pro Bin standardisieren (vor dem Embedding); none = aus
+
+train:                                # sbi NPE.train(...)
+  training_batch_size: 50
+  learning_rate: 5.0e-4
+  validation_fraction: 0.2            # nur bei validation_split: random
+  stop_after_epochs: 20               # sbi-Early-Stopping: Epochen ohne Verbesserung der Validierungs-Log-Likelihood
+  max_num_epochs: 300
+  clip_max_norm: 5.0
+  ensemble_size: 5                    # Deep Ensemble: 5 unabhängig initialisierte Flows (Seeds seed..seed+4), Posterior =
+                                      # gleichgewichtete Mischung (sbi EnsemblePosterior). Einzelne Flows streuen bei 400
+                                      # Trainingsbeispielen stark (Val-MAE 15–22 mm je nach Seed); 1 = einzelner Flow
+  seed: 42
+  num_threads: 2                      # torch.set_num_threads (geteilte CPU)
+  device: cpu
+  deterministic: false
+
+eval:                                 # Test-Evaluation nach dem Training (src.sbi.evaluate_npe)
+  n_posterior_samples: 1000
+  n_examples: 5
+  coverage_levels: [0.5, 0.68, 0.9, 0.95]
+  grid_points: 1001                   # Gitter über den Prior für MAP und Dichteplots
+  sbi_diagnostics: true               # zusätzlich sbi.diagnostics.run_sbc / run_tarp
+  seed: 0
+
+paths:
+  runs_dir: runs                      # Ausgabe: runs/<run_name>/{posterior.pt, results.json, history.json, loss_curves.png, eval_test/, tb/}
