@@ -265,8 +265,8 @@ Datenterm der letzten Stufe zurück. Die Parameterobjekte
 \texttt{Measurement} (Felder \texttt{z01}, \texttt{z01\_confidence}) und
 \texttt{Options} (Feld \texttt{z01\_tol}) kapseln Startschätzung,
 Intervallbreite (Standard \qty{5}{\milli\metre}) und Abbruchtoleranz; die
-Klasse \texttt{ConeBeam} rechnet die Geometrie nach
-\cref{eq:grundlagen:fresnelzahl} und \cref{eq:grundlagen:z01-aus-fr} um.
+Klasse \texttt{ConeBeam} rechnet die Geometrie nach den
+\cref{eq:grundlagen:fresnelzahl,eq:grundlagen:z01-aus-fr} um.
 Über das Paper hinaus enthält der Code eine gemeinsame Suche über $\zOne$
 und den Intensitätsoffset $a_0$ (auch als orthogonale Suche), eine Variante
 mit Flatfield-Korrektur sowie die klassischen Kriterien aus
@@ -515,8 +515,9 @@ sind zu randomisieren.
 \section{\lang{Unsicherheit und simulationsbasierte Inferenz in der Bildgebung}{Uncertainty and Simulation-based Inference in Imaging}}
 \label{sec:stand:unsicherheit}
 
-Keines der in \cref{sec:stand:modellbasiert} und \cref{sec:stand:dl-autofokus}
-beschriebenen Verfahren gibt an, wie verlässlich seine Schätzung ist. Für
+Keines der bisher beschriebenen Verfahren
+(\cref{sec:stand:modellbasiert,sec:stand:dl-autofokus}) gibt an, wie
+verlässlich seine Schätzung ist. Für
 den Einsatz an der Beamline ist das jedoch entscheidend, weil die
 Unsicherheit bestimmt, ob ein Wert direkt verwendet oder noch verfeinert
 werden muss. Die Literatur bietet dafür zwei Familien.
