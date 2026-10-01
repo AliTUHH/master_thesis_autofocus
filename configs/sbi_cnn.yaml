@@ -1,0 +1,62 @@
+# Simulation-based inference (NPE) für z01 – Variante 2: Hologramm-Eingabe mit CNN-Embedding.
+#   python -m src.sbi.train_npe --config configs/sbi_cnn.yaml --data-dir data/processed/small --run-name sbi_cnn
+# Das Embedding nutzt denselben Faltungsrumpf wie der Punktschätzer AutofocusCNN (configs/base.yaml:
+# Conv-BN-ReLU-MaxPool [16, 32, 64, 128], AdaptiveAvgPool 4x4, eine FC-Schicht), nur die letzte Schicht
+# liefert output_dim Merkmale statt eines Skalars. Auf CPU ~15 s/Epoche (256 px, 400 Hologramme);
+# deshalb max_num_epochs 30 (ein Lauf). Siehe sbi_radial.yaml für die Erläuterung der übrigen Felder.
+
+data:
+  dir: data/processed/small
+  normalization: standardize          # Hologramm pro Bild auf Mittelwert 0 / Std 1
+  crop_size: null
+  downsample: 1
+  hologram_key: images/hologram
+  representation: hologram            # Beobachtung x: standardisiertes Hologramm [1, 256, 256]
+  representation_kwargs: {}
+  batch_size: 32
+  num_workers: 0
+  validation_split: files
+
+prior:
+  parameter: z01_mm
+  bounds: meta
+
+embedding:
+  type: cnn
+  conv_channels: [16, 32, 64, 128]
+  fc_units: 128
+  pool_size: 4
+  output_dim: 32
+  dropout_rate: 0.0
+
+density_estimator:
+  model: nsf
+  hidden_features: 50
+  num_transforms: 5
+  num_bins: 10
+  z_score_theta: independent
+  z_score_x: none                     # Bilder sind bereits pro Sample standardisiert; kein Pixel-weises z-Scoring
+
+train:
+  training_batch_size: 32
+  learning_rate: 5.0e-4
+  validation_fraction: 0.2
+  stop_after_epochs: 8
+  max_num_epochs: 30
+  clip_max_norm: 5.0
+  ensemble_size: 1                    # ein einzelner Flow (CPU-Budget: nur ein CNN-Lauf; Ensemble siehe sbi_radial.yaml)
+  seed: 42
+  num_threads: 2
+  device: cpu
+  deterministic: false
+
+eval:
+  n_posterior_samples: 1000
+  n_examples: 5
+  coverage_levels: [0.5, 0.68, 0.9, 0.95]
+  grid_points: 1001
+  sbi_diagnostics: true
+  seed: 0
+
+paths:
+  runs_dir: runs

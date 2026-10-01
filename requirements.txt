@@ -11,3 +11,6 @@ matplotlib==3.11.2
 tqdm==4.70.1
 tensorboard==2.21.0
 pytest==9.1.1
+# Simulation-based inference (NPE für z01, src/sbi); zieht nflows 0.14, zuko 1.6.0, skorch 1.4.0, tabulate.
+# Getestet mit torch 2.10.0 (keine Versionskonflikte).
+sbi==0.27.0

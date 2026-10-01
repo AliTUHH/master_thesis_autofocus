@@ -9,3 +9,4 @@ dependencies:
   - pip
   - pip:
       - -r requirements.txt
+      - sbi==0.27.0          # simulation-based inference (NPE, src/sbi); bereits in requirements.txt, hier explizit

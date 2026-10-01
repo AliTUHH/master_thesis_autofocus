@@ -1,0 +1,68 @@
+# Out-of-range-Testdatensatz für den Robustheitscheck der NPE-Posterior (reports/experiments_sbi.md):
+# identisch zu data_small.yaml (Geometrie, Phantome, Rauschen), aber z01 ∈ [300, 350] mm – also
+# außerhalb des Priors/Trainingsbereichs [50, 300] mm – und nur 30 Test-Hologramme.
+#   python -m src.data.generate_data --config configs/data_small_oor.yaml   # -> data/processed/small_oor/test.hdf5
+#   python -m src.sbi.evaluate_npe --posterior runs/sbi_radial/posterior.pt --data data/processed/small_oor/test.hdf5
+name: small_oor
+output_dir: data/processed
+
+num_samples:
+  train: 0
+  val: 0
+  test: 30
+
+seeds:
+  train: 1000
+  val: 2000
+  test: 4000                          # eigener Seed (data_small: 3000)
+
+setup:
+  detector_size: 2048
+  detector_px_size_mm: 0.0065
+  energy_kev: 11.0
+  padding_factor: 2
+  downsample_factor: 8
+  z01_mm:
+    min: 300.0                        # data_small: 50–300 mm
+    max: 350.0
+    distribution: uniform
+  z02_mm: 20000.0                     # -> Fr in [1.80e-2, 2.11e-2]
+
+phantom:
+  materials: [Mg]
+  num_shapes: [1, 3]
+  thickness_um: [30, 30]
+  position: random
+  shapes: [Rectangle, Polygon, Ellipse, Ball, Cylinder, CylinderRoundTip]
+  radius_range_px: [64, 512]
+  size_range_px: [64, 1024]
+  polygon_max_corners: 4
+  ellipse_max_cut: 0
+  rotate: true
+  smoothing:
+    kernel_size: 3
+    sigma: 1.0
+
+probe:
+  constant: 1.0
+  linear: 0.0
+  square: 0.0
+  center_beam: true
+  noise: null
+
+hologram_noise:
+  type: Gaussian
+  mean: 0.0
+  std: 1.0
+  intensity: 0.05
+
+store:
+  hologram: true
+  gt_hologram: false
+  phantom: false
+  probe: false
+  flatfield: false
+  polynomial: false
+cache_size: 10
+
+forge_overrides: {}
