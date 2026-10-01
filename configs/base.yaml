@@ -1,29 +1,40 @@
-# Data-generation settings. The distance interval is centered on the nominal
-# object-to-detector distance of 1.00 m. Sampling symmetrically around this
-# reference helps prevent a regression model from learning a biased mean value.
-image_size: 128
-distance_min: 0.95
-distance_max: 1.05
-num_samples: 3000
-test_split: 0.2
+# Experiment-Konfiguration für Training und Evaluation:
+#   python -m src.train --config configs/base.yaml [--data-dir data/processed/small] [--run-name NAME]
+# Einheiten: z01 in mm, Fr dimensionslos; alle Pfade relativ zur Projektwurzel.
 
-# Training settings. The batch size controls how many holograms are processed
-# per optimization step, while the epoch count specifies complete passes over
-# the training split. The learning rate determines the Adam update magnitude.
-batch_size: 32
-epochs: 100
-learning_rate: 0.001
+data:
+  dir: data/processed/small           # enthält train.hdf5, val.hdf5, test.hdf5 (siehe configs/data_small.yaml)
+  target_mode: log_fr                 # Regressionsziel: log_fr (ln Fr, Standard) | fr | z01_mm
+  standardize_target: true            # Ziel vor dem Loss auf Mittelwert 0 / Std 1 skalieren (Statistik aus Train)
+  normalization: standardize          # Eingabe pro Bild: standardize | divide_mean | log | none
+  crop_size: null                     # zentraler Ausschnitt in Pixeln (null = kein Crop)
+  downsample: 1                       # Average-Pooling-Faktor (z. B. 2 für CPU-Experimente)
+  hologram_key: images/hologram       # alternativ images/gt_hologram (rauschfrei), falls gespeichert
+  batch_size: 32
+  num_workers: 0                      # DataLoader-Prozesse (HDF5 wird pro Prozess lazy geöffnet)
 
-# Model architecture. Each entry in conv_channels defines the output width of
-# one convolutional block. Batch normalization is applied inside every block
-# to stabilize activations and improve optimization behavior.
-conv_channels: [16, 32, 64, 128]
-fc_units: 256
-dropout_rate: 0.3
+model:
+  arch: cnn                           # cnn (AutofocusCNN) | resnet18 (torchvision, 1-Kanal, ohne Pretraining)
+  conv_channels: [16, 32, 64, 128]    # ein Conv-BN-ReLU-MaxPool-Block pro Eintrag (nur cnn)
+  fc_units: 256                       # Breite des FC-Kopfes (nur cnn)
+  dropout_rate: 0.3                   # Dropout im Kopf
+  pool_size: 4                        # AdaptiveAvgPool2d-Ausgabe (pool_size × pool_size), macht H/W beliebig (nur cnn)
 
-# Output and input paths. These paths are resolved relative to the project root
-# when training is launched with the command documented in README.md.
-data_dir: "./data/raw/"
-log_dir: "./reports/logs/"
-model_dir: "./reports/trained_models/"
-figures_dir: "./reports/figures/"
+train:
+  epochs: 30
+  lr: 1.0e-3                          # AdamW-Lernrate
+  weight_decay: 1.0e-4
+  loss: mse                           # mse | huber
+  huber_delta: 1.0                    # nur für loss: huber (im skalierten Zielraum)
+  scheduler: cosine                   # cosine | plateau | none
+  lr_min: 1.0e-5                      # Endwert für cosine
+  plateau_factor: 0.5                 # nur plateau
+  plateau_patience: 5                 # nur plateau (Epochen ohne Val-Verbesserung)
+  early_stopping_patience: 10         # 0 = aus
+  grad_clip: null                     # z. B. 1.0 für Gradient-Norm-Clipping
+  seed: 42
+  device: auto                        # auto (cuda > mps > cpu) | cpu | cuda | mps
+  deterministic: true                 # deterministische Kernel (warn_only), cudnn.benchmark aus
+
+paths:
+  runs_dir: runs                      # Ausgabe: runs/<run_name>/{best.pt, results.json, history.json, *.png, tb/}

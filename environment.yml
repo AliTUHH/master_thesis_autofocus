@@ -1,15 +1,11 @@
+# conda-Umgebung (Alternative zu uv + requirements.txt).
+#   conda env create -f environment.yml && conda activate holophd
+# holowizard (HoloWizard/HoloForge, DESY) gibt es nur auf PyPI und verlangt Python >=3.11,<3.12.
 name: holophd
 channels:
-  - pytorch
   - conda-forge
-  - defaults
 dependencies:
   - python=3.11
-  - pytorch
-  - torchvision
-  - numpy
-  - matplotlib
-  - pyyaml
-  - tensorboard
-  - tqdm
   - pip
+  - pip:
+      - -r requirements.txt

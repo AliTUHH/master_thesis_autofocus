@@ -1,0 +1,71 @@
+# Realistischer Datensatz in P05-Geometrie (PETRA III, DESY): 2048 px Detektor, Padding 4,
+# HoloForge-Standardformen. NUR FÜR GPU-RECHNER GEDACHT: pro Hologramm wird ein Propagationskernel
+# der Größe (2048·4)² = 8192² complex64 (≈ 0.5 GB) neu berechnet; auf CPU dauert ein Sample mehrere
+# Sekunden und 12 000 Hologramme belegen ≈ 200 GB im HDF5 (float32, 2048²). Für Experimente mit
+# geringerer Auflösung downsample_factor erhöhen (z. B. 4 -> 512 px, Pixelgröße 0.026 mm).
+#   python -m src.data.generate_data --config configs/data_p05.yaml
+# Einheiten: Längen in mm, Pixelgröße in mm, Energie in keV, Dicken in µm, Fr dimensionslos.
+name: p05
+output_dir: data/processed
+
+num_samples:
+  train: 10000
+  val: 1000
+  test: 1000
+
+seeds:
+  train: 11000
+  val: 12000
+  test: 13000
+
+setup:
+  detector_size: 2048                 # Pixel
+  detector_px_size_mm: 0.0065         # mm (6.5 µm)
+  energy_kev: 11.0                    # keV
+  padding_factor: 4
+  downsample_factor: 1
+  z01_mm:
+    min: 150.0                        # Abtastkriterium des Propagators: Fr >= 1/(2048·4) = 1.2e-4  <=>  z01 >= ~130 mm
+    max: 500.0
+    distribution: loguniform          # gleichmäßige Abdeckung in log(Fr)
+  z02_mm: 20000.0                     # fest (P05-Detektorposition ≈ 19.6–20 m)
+                                      # -> Fr in [1.4e-4, 4.8e-4]
+
+phantom:
+  materials: [Mg, Cu, Fe, Ag, Au]     # HoloForge-Standardmaterialien
+  num_shapes: [1, 10]
+  thickness_um: [1, 10]
+  position: random
+  shapes: [Rectangle, Polygon, Ellipse, Ball, Cylinder, CylinderRoundTip]
+  radius_range_px: [16, 512]
+  size_range_px: [16, 1024]
+  polygon_max_corners: 4
+  ellipse_max_cut: 0
+  rotate: true
+  smoothing:
+    kernel_size: 3
+    sigma: 1.0
+
+probe:
+  constant: 1.0
+  linear: 0.1                         # leichte Beleuchtungsgradienten
+  square: 0.05
+  center_beam: true
+  noise: {type: Poisson, intensity: 0.1, lam: 0.7}   # HoloForge-Standard für Probe-Rauschen
+
+hologram_noise:
+  type: Gaussian
+  mean: 0.0
+  std: 1.0
+  intensity: 0.1
+
+store:
+  hologram: true
+  gt_hologram: false
+  phantom: false
+  probe: false
+  flatfield: false
+  polynomial: true                    # Strahlkoeffizienten für spätere Analysen
+cache_size: 10
+
+forge_overrides: {}                   # z. B. flatfield_dataset mit gemessenen Flatfields (TIFFDataset)

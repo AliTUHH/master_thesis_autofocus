@@ -1,0 +1,49 @@
+% =============================================================================
+% Kapitel 3: Stand der Technik / Verwandte Arbeiten
+% -----------------------------------------------------------------------------
+% Was hinein gehört (Richtwert 6--10 Seiten):
+%  - Autofokus in der (Röntgen-)Holographie: Schärfemaße (Varianz, Gradienten,
+%    Entropie, Tamura, Sparsity-Kriterien), modellbasiert (Dora et al. 2025)
+%  - Autofokus in der digitalen (optischen) Holographie mit Deep Learning:
+%    Regression vs. Klassifikation der Rekonstruktionsdistanz, Architekturen,
+%    Trainingsdaten (simuliert vs. gemessen) -> Quellen aus docs/02_literatur.md
+%  - Deep Learning für Phase Retrieval / NFH (Ende-zu-Ende vs. hybrid)
+%  - Parameterschätzung mit SBI in der Bildgebung (Beispiele)
+%  - Abgrenzung: Was macht diese Arbeit anders/neu? (Tabelle: Methode | Eingabe |
+%    Zielgröße | Daten | Laufzeit | Unsicherheit)
+% Hinweis: Jede hier zitierte Quelle braucht eine Paper-Notiz in docs/notizen/
+%          (Vorlage: vorlage_paper_notiz.md).
+% =============================================================================
+\chapter{\lang{Stand der Technik}{State of the Art}}
+\label{ch:stand}
+
+\section{\lang{Autofokus in der Nahfeldholographie}{Autofocus in Near-field Holography}}
+\label{sec:stand:autofokus}
+\todo{\lang{Schärfemaße und modellbasierter Autofokus \cite{dora2025autofocus} einordnen.}{Review sharpness metrics and model-based autofocus \cite{dora2025autofocus}.}}
+
+\section{\lang{Lernbasierter Autofokus in der digitalen Holographie}{Learning-based Autofocus in Digital Holography}}
+\label{sec:stand:dl-autofokus}
+\todo{\lang{Quellen aus \texttt{docs/02\_literatur.md} übernehmen (Citekeys in \texttt{references.bib} ergänzen).}{Import sources from \texttt{docs/02\_literatur.md} (add citekeys to \texttt{references.bib}).}}
+
+\section{\lang{Abgrenzung und Beitrag}{Delimitation and Contribution}}
+\label{sec:stand:abgrenzung}
+
+% Beispiel: Vergleichstabelle mit booktabs (keine vertikalen Linien, \toprule/\midrule/\bottomrule).
+% In Tabellen Abkürzungen mit \acs{} (nur Kurzform), sonst erscheint dort die Langform.
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{\lang{Einordnung verwandter Ansätze (Platzhalter).}{Classification of related approaches (placeholder).}}
+  \label{tab:stand:vergleich}
+  \begin{tabular}{@{}lllc@{}}
+    \toprule
+    \lang{Ansatz}{Approach} & \lang{Zielgröße}{Target} & \lang{Daten}{Data} & \lang{Unsicherheit}{Uncertainty} \\
+    \midrule
+    \lang{Modellbasiert}{Model-based} \cite{dora2025autofocus} & $\Fr$ & \lang{Messung}{Measured} & -- \\
+    \acs{cnn}-Regression (\lang{diese Arbeit}{this work}) & $\zOne$ / $\Fr$ & \lang{Simulation}{Simulated} & -- \\
+    \acs{npe} (\lang{diese Arbeit}{this work}) & $p(\Fr \mid I)$ & \lang{Simulation}{Simulated} & \checkmark \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\todo{\lang{\Cref{tab:stand:vergleich} mit Quellen aus Kapitel~3 füllen.}{Populate \cref{tab:stand:vergleich} with the sources from Chapter~3.}}
