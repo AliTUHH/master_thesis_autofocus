@@ -7,6 +7,8 @@ Prototyp-Läufen (HoloWizard 3.0.6, torch CPU, 2 Threads, 256-px-Hologramme, RSS
 während aller Läufe durch weitere Agenten ausgelastet – Laufzeiten sind obere Schranken). Die Ergebnisdateien
 liegen unverändert in `reports/baseline_model_based/{p05bin8,small,figures}/` und `reports/downstream/{p05bin8,small}/`;
 der Code wurde in `src/` integriert (Abschnitt 2) und mit Smoke-Läufen der neuen CLIs validiert (Abschnitt 10).
+**Abschnitt 11** ergänzt den Lauf der integrierten CLIs auf allen 100 Test-Hologrammen des Repo-Datensatzes `data_small` und den
+fairen Vergleich mit Ring-Fit, CNNs und NPE auf identischen Hologrammen (inkl. Downstream-Vergleich).
 
 **Regime-Hinweis (wichtig für den Vergleich mit den Thesis-Ergebnissen):** Der Prototyp nennt das Regime mit
 `detector_size 2048`, `downsample_factor 8` (256 px, px 0,052 mm, Fr 3e-3…2,4e-2) „p05bin8“ und das ungebinnte
@@ -21,6 +23,9 @@ folgen dem Prototyp.
 | `reports/baseline_model_based/small/` | dasselbe für 12 Hologramme im Fr-1e-4-Regime |
 | `reports/baseline_model_based/figures/` | `scan_focus_landscape_p05bin8.{json,png}` (Zielfunktions-Scan, Abschnitt 7), `bench_iteration_time.json` (Laufzeit-Benchmark, Abschnitt 8) |
 | `reports/downstream/p05bin8/`, `reports/downstream/small/` | Downstream-Test: `downstream_results.csv`, `downstream_summary.json`, `downstream_table.md`, `downstream_error_vs_fr_error.png`, `downstream_image_grid.png` |
+| `reports/baseline_model_based/small_test/` | **Nachtlauf auf allen 100 Test-Hologrammen von `data_small`** (Abschnitt 11): `samples.csv`, `summary.json`, `summary_table.md`, `histories.json`, `scatter.png`, `objective_curves.png` |
+| `reports/method_comparison/small_test/` | Vergleich aller Methoden auf denselben 100 Hologrammen: Kopien der `samples.csv` von CNN, 2-Kanal-CNN, Ring-Fit und NPE, `comparison_table.md`, `comparison_summary.json`, `comparison_scatter.png` |
+| `reports/downstream/small_test_methods/` | Downstream-Vergleich aller Methoden (20 Hologramme × 8 Kandidaten, Abschnitt 11.2); Ground-Truth-Phasen aus `configs/data_small_phantoms.yaml` |
 
 ## 0. Kurzfassung
 
@@ -49,6 +54,12 @@ folgen dem Prototyp.
 * **Hochrechnung 2048 px**: P05-Standardkonfiguration ≈ 7,7 min pro Auswertung, ≈ 2,7 h pro Hologramm auf 2 CPU-Threads → auf CPU in
   voller Auflösung nicht praktikabel (P05-Betrieb: GPU). Die 256-px-Variante (≈ 3,5 min pro Hologramm) ist als Referenz auf einigen
   Dutzend Hologrammen machbar.
+* **Fairer Vergleich auf `data_small/test` (100 Hologramme, Abschnitt 11)**: `find_focus` (Fenster Fr_true ± 50 %) MAE 4,15 % (Median 3,10 %,
+  p95 9,8 %, b Median 1,80 px, MAE Δz01 7,19 mm, 163 s pro Hologramm, 1 Grenzfall an der Suchgrenze) vs. 2-Kanal-CNN 7,10 % (11,4 mm),
+  Hologramm-CNN 7,82 % (13,0 mm), NPE-Median 9,36 % (11,05 mm), Ring-Fit 26,8 % (Median 5,6 %), TV-Fallback 9,33 % (Median 0,76 %, 30/100
+  grobe Fehlschätzungen) – ML-Methoden in 11–29 ms und ohne Orakel-Fenster. Downstream (20 Hologramme): GT- und Gradienten-NRMSE für alle
+  Methoden innerhalb ±2,5 % des Werts beim wahren Fr; das Vorwärtsmodell-Residuum beim wahren Fr trennt sie (×1,14 TV … ×2,00 `find_focus`
+  … ×2,54 NPE).
 
 ## 1. HoloWizard-API und Konventionen
 
@@ -332,6 +343,159 @@ $PY -m pytest -q                                     # 105 Tests, ca. 15 s; find
 Die Prototyp-Läufe selbst (eigene Datensätze `p05bin8_z01_*`/`small_z01_*`, Skripte `run_autofocus_baseline.py`, `run_downstream_test.py`,
 `scan_focus_landscape.py`, `bench_iteration_time.py`) sind in Abschnitt 7 des Prototyp-Berichts dokumentiert; die HoloWizard-Konsolenausgabe
 wird in beiden Fällen auf Header-Level reduziert (`configure_holowizard`, Session-Logs im Log-Verzeichnis).
+
+## 11. Fairer Vergleich auf data_small/test (100 Hologramme)
+
+Nachtlauf 01./02.10.2026 mit den CLIs dieses Repos: Die modellbasierte Baseline wurde auf **allen 100 Test-Hologrammen** von
+`data/processed/small/test.hdf5` (`configs/data_small.yaml`: z01 ∈ [50, 300] mm uniform, z02 20 m, 11 keV, Fr 3,1e-3…1,8e-2, 256 px,
+additives Gauß-Rauschen σ 0,05) gerechnet – denselben Hologrammen, auf denen Ring-Fit, Hologramm-CNN und 2-Kanal-CNN (PR #2)
+sowie die NPE (PR #5) ausgewertet wurden. Einstellungen wie in Abschnitt 6: Suchbereich **Fr_true ± 50 % je Hologramm** (Startwert
+Intervallmitte, `z01_confidence` = halbe Intervallbreite), Preset `p05filter_dsf2_1` (300/300 Iterationen), `z01_tol` 0,1 mm, klassischer
+Fallback TV (21-Punkt-Gitter + Verfeinerung), 2 Torch-Threads. Rechenzeit 4,57 h (`summary.json`: 16 464 s; 23:32–05:28 UTC inklusive
+≈ 80 min VM-Pause; Hologramme 20–30 parallel zum Downstream-Lauf 01:50–02:10 UTC). Ergebnisdateien:
+
+| Verzeichnis / Datei | Inhalt |
+|---|---|
+| `reports/baseline_model_based/small_test/` | `samples.csv` (200 Zeilen: `holowizard_find_focus`, `classical_tv`; gemeinsames Schema + `fr_lo`, `fr_hi`, `preset`), `summary.json`, `summary_table.md`, `histories.json` (z01/Fr/Loss jeder Auswertung), `scatter.png`, `objective_curves.png` |
+| `reports/method_comparison/small_test/` | `ml_cnn_hologram_samples.csv`, `ml_cnn_hologram_spectrum_samples.csv`, `ringfit_cos_samples.csv`, `npe_radial_ens5_samples.csv` (Kopien der Vergleichsmethoden), `comparison_table.md`, `comparison_summary.json` (inkl. Grenzfallanalyse), `comparison_scatter.png` |
+| `reports/downstream/small_test_methods/` | Downstream-Vergleich aller Methoden (20 Hologramme × 8 Kandidaten): `downstream_results.csv`, `downstream_summary.json`, `downstream_table.md`, `downstream_error_vs_fr_error.png`, `downstream_image_grid.png` |
+| `configs/data_small_phantoms.yaml` | Test-Split von `data_small` mit `store.phantom/gt_hologram: true` (identischer Seed 3000; `images/hologram`, Fr und z01 bitidentisch zu `data_small/test`, max. abs. Differenz 0,0) – liefert die Ground-Truth-Phasen für den Downstream-Test |
+
+Herkunft der Vergleichs-CSVs (alle 100 Hologramme von `data_small/test`): `ml_cnn_hologram_samples.csv` und
+`ml_cnn_hologram_spectrum_samples.csv` stammen aus `src.evaluate` mit den Checkpoints `runs/repr_hologram/best.pt` (Epoche 26) bzw.
+`runs/repr_hologram_spectrum/best.pt` (Epoche 28) der Konfigurationen `configs/exp_repr_hologram.yaml` / `configs/exp_repr_hologram_spectrum.yaml`
+(Ziel log Fr; Trainingsbereich z01 ∈ [50, 300] mm); `ringfit_cos_samples.csv` aus `src.baseline.ctf_ringfit --template cos` (Suchbereich
+z01 50–300 mm ⇔ Fr 3,0e-3…1,83e-2); `npe_radial_ens5_samples.csv` enthält die Posterior-Mediane (Ensemble aus 5 NPEs auf dem Radialprofil,
+1000 Posterior-Samples, Prior z01 ∈ [50, 300] mm uniform) aus `runs/sbi_radial/eval_test/posterior_samples.npz` (`src.sbi.evaluate_npe`,
+PR #5), mit `src.baseline.results.make_result_row` in das gemeinsame Schema übertragen (`n_evals` = 1000 Posterior-Samples, 29 ms pro Hologramm).
+
+### 11.1 Genauigkeit und Laufzeit auf denselben 100 Hologrammen
+
+Statistiken aus `src.baseline.results.summarize` (`comparison_table.md`; Laufzeit = Median pro Hologramm, CPU, 2 Threads):
+
+| Methode | n | MAE rel. Fr [%] | Median [%] | p95 [%] | Bias [%] | MAE z01 [mm] | Median z01 [mm] | b Median / p95 [px] | innerhalb 2 % / 5 % | Laufzeit [s/Hologramm] | Auswertungen |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `holowizard_find_focus` (Fr_true ± 50 %) | 100 | **4,15** | 3,10 | **9,79** | −3,07 | **7,19** | 4,28 | 1,80 / **3,12** | 36 % / **74 %** | 163 | 21,1 |
+| `holowizard_find_focus` ohne Grenzfälle (\|e\| ≥ 40 %) | 99 | 3,72 | 3,04 | 9,55 | −2,63 | 6,63 | 4,18 | 1,79 / 2,84 | 36 % / 75 % | 163 | 21,2 |
+| `classical_tv` (Fr_true ± 50 %) | 100 | 9,33 | **0,76** | 44,12 | +8,17 | 14,28 | **1,55** | **0,83** / 8,55 | **64 %** / 70 % | 0,194 | 32,4 |
+| `ml_cnn` (Hologramm-CNN) | 100 | 7,82 | 6,06 | 18,60 | −2,11 | 13,04 | 8,69 | 2,45 / 5,78 | 15 % / 42 % | 0,0112 | 1 |
+| `ml_cnn_hologram_spectrum` (2-Kanal-CNN) | 100 | 7,10 | 5,95 | 17,22 | −0,43 | 11,42 | 7,23 | 2,42 / 5,16 | 25 % / 46 % | 0,0113 | 1 |
+| `npe_radial_ens5_median` (NPE, Posterior-Median) | 100 | 9,36 | 6,67 | 28,14 | +3,08 | 11,05 | 8,27 | 2,61 / 8,23 | 20 % / 43 % | 0,029 | 1000 |
+| `ringfit_cos` (CTF-Ring-Fit) | 100 | 26,80 | 5,58 | 103,86 | −3,73 | 38,22 | 6,48 | 2,45 / 12,84 | 43 % / 49 % | 0,0204 | 191,8 |
+
+Nach Fr-Bändern (MAE / Bias in %): `find_focus` Fr ≤ 6e-3 (n = 25) 2,91 / −0,32, 6e-3…1,2e-2 (n = 37) 4,37 / −3,42, Fr ≥ 1,2e-2 (n = 38)
+4,76 / −4,54 – der negative Bias bei großem Fr aus Abschnitt 7 bestätigt sich auf 100 Hologrammen; 5/100 Hologramme mit |e| > 10 %, davon
+eines > 20 % (Grenzfall). Laufzeit 136–208 s (Mittel 164 s), 17–25 Auswertungen à 7,8 s. Die NPE ist bei Fr ≤ 6e-3 mit MAE 20,0 % (Bias
++15,8 %) am schlechtesten und bei Fr ≥ 1,2e-2 mit 4,11 % am besten aller ML-Methoden; die CNNs liegen in allen drei Bändern bei 6,9–8,7 %.
+In mm kehrt sich das um (MAE Δz01 für z01 < 100 / 100–200 / ≥ 200 mm): `find_focus` 2,1 / 6,3 / 11,6, NPE 14,1 / 10,5 / 9,5, 2-Kanal-CNN
+5,1 / 9,8 / 17,6, CNN 5,4 / 10,4 / 21,3 mm.
+
+**Grenzfälle** (Schätzung an/nahe der Suchgrenze, |e| ≥ 40 %): **1 von 100 Hologrammen (1 %)**, Hologramm 0 (Fr 7,97e-3, z01 132,0 mm):
+`find_focus` −47,5 % (Fr_est 5,0 % über der unteren Grenze, Δz01 −62,5 mm, 19 Auswertungen), während die anderen Methoden dort bei +0,9 %
+(CNN), +9,4 % (2-Kanal-CNN), −5,3 % (NPE), +11,7 % (Ring-Fit) und +21,3 % (`classical_tv`) lagen. Prüfung an `histories.json` (Spannweite
+loss_max/loss_min − 1 über alle Nelder-Mead-Auswertungen im Intervall Fr ± 50 %): Hologramm 0 hat **0,121**, die 99 regulären Fälle im
+Median **0,390** (p10 0,216, p90 0,555, min 0,066, max 0,944) – die Zielfunktion des Grenzfalls gehört zu den drei flachsten (kontrastarmes
+Objekt, die Mulde geht im Rauschen der Zielfunktion unter; Minimum der Auswertungen bei z01 ≈ 70 mm statt 132 mm). Flachheit allein ist
+jedoch kein hinreichendes Kriterium: Hologramm 7 (Spannweite 0,066) wurde mit +0,16 % korrekt gelöst, und die vier übrigen Fälle mit
+|e| > 10 % haben Spannweiten 0,25–0,62. Ohne den Grenzfall: MAE 3,72 %, p95 9,55 %, b p95 2,84 px.
+
+### 11.2 Downstream-Vergleich (20 Hologramme × 8 Kandidaten, Preset `quality_256`, 1184 s)
+
+Hologramme 0–19 von `data_small_phantoms/test.hdf5` (= `data_small/test`), Rekonstruktion mit dem Fr jeder Methode (`--candidates-csv`),
+Metriken gegen `images/phantoms.real` (Rand 16 px), Mediane über die 20 Hologramme, „rel. `true`“ = gepaarter Median relativ zur
+Rekonstruktion mit dem wahren Fr desselben Hologramms; keine Divergenzen (`downstream_table.md`, `downstream_summary.json`):
+
+| Kandidat | Median \|e\| [%] | b Median [px] | NRMSE Phase (Median) | NRMSE rel. `true` | NRMSE Gradient (Median) | Gradient rel. `true` | Residuum bei Fr_true (Median) | Residuum rel. `true` | s/Rekonstruktion |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `true` | 0 | 0 | 0,723 | 1,000 | 1,385 | 1,000 | 0,0623 | 1,000 | 8,0 |
+| `classical_tv` | 0,50 | 0,68 | 0,760 | 1,001 | 1,409 | 1,000 | 0,0780 | **1,14** | 8,1 |
+| `holowizard_find_focus` | 3,11 | 1,96 | 0,753 | 0,987 | 1,360 | 0,991 | 0,1254 | 2,00 | 8,1 |
+| `ml_cnn_hologram_spectrum` | 6,04 | 2,32 | 0,763 | 1,000 | 1,391 | 1,019 | 0,1381 | 2,10 | 8,1 |
+| `ringfit_cos` | 3,55 | 1,56 | 0,771 | 1,002 | 1,400 | 1,010 | 0,1071 | 2,20 | 8,1 |
+| `ml_cnn` | 6,51 | 2,46 | 0,748 | 1,001 | 1,378 | 1,009 | 0,1471 | 2,27 | 8,2 |
+| `npe_radial_ens5_median` | 8,96 | 3,27 | 0,752 | 0,996 | 1,400 | 1,025 | 0,1528 | 2,54 | 8,0 |
+
+Über alle 120 Kandidaten-Rekonstruktionen korreliert log(Residuum rel. `true`) mit log b mit r = 0,78 (Gradienten-NRMSE rel. `true` mit b:
+r = 0,48); Anteil der Hologramme mit Residuum rel. `true` < 1,3: `classical_tv` 65 %, Ring-Fit 35 %, `find_focus` und CNN je 10 %, NPE 5 %,
+2-Kanal-CNN 0 %.
+
+### 11.3 Interpretation
+
+1. **Der Vergleich ist zugunsten des modellbasierten Autofokus verzerrt**: `find_focus` und `classical_tv` erhalten pro Hologramm das Fenster
+   Fr_true ± 50 % (Orakelwissen über den Bereich: ein um Fr_true zentriertes Intervall vom Faktor 3, Startwert in der Intervallmitte),
+   während CNNs, NPE und Ring-Fit nur den Trainings- bzw. Suchbereich z01 ∈ [50, 300] mm kennen (Fr 3e-3…1,8e-2, Faktor 6, nicht zentriert)
+   und die Grobsuche mitleisten müssen. Trotzdem ist `find_focus` mit MAE 4,15 % (3,72 % ohne den Grenzfall), p95 9,8 % und b p95 3,1 px die genaueste Methode
+   in allen Mittel- und Tail-Metriken; sein Bias −3,1 % stammt fast vollständig aus Fr ≥ 6e-3 (−3,4…−4,5 %, asymmetrische Mulde, Abschnitt 7),
+   bei Fr ≤ 6e-3 ist er mit MAE 2,9 % praktisch unverzerrt.
+2. **Die Rangfolge der lernbasierten Methoden hängt von der Metrik ab**: in mm führt die NPE (MAE 11,05 mm vor 2-Kanal-CNN 11,42 mm und CNN
+   13,04 mm), in rel. Fr das 2-Kanal-CNN (7,10 % vor CNN 7,82 % und NPE 9,36 %). Ursache ist die Sensitivität d ln Fr/d z01 = 1/z01 + 1/(z02 − z01):
+   1 mm bei z01 = 50 mm ≙ 2,0 % Fr, bei 250 mm ≙ 0,41 % Fr. Die NPE schätzt z01 unter einem in z01 uniformen Prior mit über den Bereich etwa
+   konstantem mm-Fehler (14 mm bei z01 < 100 mm ⇔ 20 % Fr; 9,5 mm bei ≥ 200 mm ⇔ 4,1 %), die CNNs regressieren log Fr, also einen in allen
+   Fr-Bändern ähnlichen relativen Fehler (≈ 7 %), der in mm bei großem z01 auf 18–21 mm anwächst. Weder MAE in % noch in mm ist deshalb die
+   richtige Zielgröße; physikalisch relevant ist die Defokus-Unschärfe b = sqrt(|e|/Fr) in Detektorpixeln (Median 2,4–2,6 px für alle drei
+   ML-Methoden, p95 5,2 px für das 2-Kanal-CNN bis 8,2 px für die NPE; `find_focus` 1,8 / 3,1 px) oder direkt die Rekonstruktionsqualität.
+3. **Downstream** ist der GT-NRMSE der Phase für alle Kandidaten innerhalb ±1,3 % des Werts beim wahren Fr (0,987–1,002), der Gradienten-NRMSE
+   innerhalb −0,9…+2,5 % – bei b ≈ 2–3 px liegen alle Methoden in dem Bereich, in dem die Fehlerkurve aus Abschnitt 4 (±5 % ⇔ 2,6 px) eine
+   beginnende, aber keine deutliche Verschlechterung zeigt. Das Vorwärtsmodell-Residuum beim wahren Fr trennt die Methoden dagegen klar
+   (×1,14 `classical_tv`, ×2,00 `find_focus`, ×2,10 2-Kanal-CNN, ×2,20 Ring-Fit, ×2,27 CNN, ×2,54 NPE) und folgt b (r = 0,78): ein Fr-Fehler
+   von einigen Prozent erzeugt Kanten-Ringing, das das Hologramm nicht erklärt, auch wenn die GT-Metriken es kaum sehen.
+4. **Laufzeit**: `find_focus` benötigt 163 s pro Hologramm (136–208 s; 21 Rekonstruktionen à 7,8 s auf 2 CPU-Threads, 4,6 h für 100 Hologramme),
+   die lernbasierten Methoden 11 ms (CNN, ein Forward-Pass), 29 ms (NPE, 1000 Posterior-Samples) bzw. 20 ms (Ring-Fit) – vier Größenordnungen,
+   bei etwa doppeltem Fehler ohne Orakel-Fenster. Das stützt das Hybrid-Argument aus Abschnitt 8: ML-Schätzung als Startwert, `find_focus` nur
+   noch als Verfeinerung in einem Fenster von wenigen Prozent.
+5. **Der klassische TV-Fallback** ist im Median mit 0,76 % (b 0,83 px, Residuum ×1,14) die genaueste aller Methoden und löst 64 % der Hologramme
+   innerhalb 2 %, ist aber schwer-tailig: 30/100 Hologramme mit |e| > 10 %, 23 mit |e| > 20 % (p95 44 %, Bias +8,2 %, b p95 8,6 px) –
+   Nebenminima der flachen TV-Kurve, bei kleinem Fr (wenige Säume) am häufigsten (MAE 11,7 % bei Fr ≤ 6e-3). Als alleiniger Autofokus ist er
+   ungeeignet, als 0,2-s-Plausibilitätscheck oder zweiter Startwert für `find_focus` attraktiv.
+6. **Grenzfälle sind selten** (1/100), aber nicht allein an der Flachheit der Zielfunktion erkennbar (Spannweite 0,121 vs. Median 0,390; der
+   flachste reguläre Fall mit 0,066 wurde korrekt gelöst). Für den Betrieb sollte `find_focus` mindestens die Lage der Schätzung relativ zu den
+   Suchgrenzen und die Spannweite der Zielfunktion als Warnsignale ausgeben; im Hybrid-Ansatz liefert die Abweichung zur ML-Schätzung (hier
+   +0,9 % vs. −47,5 %) einen unmittelbaren Plausibilitätscheck.
+
+### 11.4 Reproduktion
+
+```bash
+export OMP_NUM_THREADS=2 MKL_NUM_THREADS=2
+PY=/tmp/holo311/bin/python          # Python 3.11, holowizard==3.0.6, torch CPU
+
+# (1) Test-Split mit Phantomen (Hologramme bitidentisch zu data_small/test; zusätzlich images/phantoms, images/gt_hologram)
+$PY -m src.data.generate_data --config configs/data_small_phantoms.yaml      # -> data/processed/small_phantoms/test.hdf5
+
+# (2) Modellbasierte Baseline + klassischer Fallback auf allen 100 Test-Hologrammen (163 s pro Hologramm, 4,6 h auf 2 Threads;
+#     samples.csv/histories.json werden nach jedem Hologramm fortgeschrieben)
+$PY -m src.baseline.model_based_autofocus --data data/processed/small/test.hdf5 --search-width 50 \
+    --preset p05filter_dsf2_1 --method both --threads 2 --log-dir /tmp/hw_logs --out reports/baseline_model_based/small_test
+
+# (3) Vergleichs-CSVs der anderen Methoden (identische Hologramme; Checkpoints aus PR #2, Posterior aus PR #5)
+$PY -m src.evaluate --checkpoint runs/repr_hologram/best.pt          --data data/processed/small/test.hdf5 --out <dir>  # ml_cnn
+$PY -m src.evaluate --checkpoint runs/repr_hologram_spectrum/best.pt --data data/processed/small/test.hdf5 --out <dir>  # ml_cnn_hologram_spectrum
+$PY -m src.baseline.ctf_ringfit --data data/processed/small/test.hdf5 --template cos --out <dir>                        # ringfit_cos
+# npe_radial_ens5_median: Posterior-Mediane aus runs/sbi_radial/eval_test/posterior_samples.npz (src.sbi.evaluate_npe) ->
+#   src.baseline.results.make_result_row(..., runtime_s=0.029, n_evals=1000, method="npe_radial_ens5_median") + write_samples_csv
+
+# (4) Downstream-Vergleich (20 Hologramme × 8 Kandidaten, ≈ 8 s pro Rekonstruktion, 1184 s)
+$PY -m src.eval.downstream --data data/processed/small_phantoms/test.hdf5 --n 20 \
+    --candidates-csv reports/method_comparison/small_test/ml_cnn_hologram_samples.csv \
+                     reports/method_comparison/small_test/ml_cnn_hologram_spectrum_samples.csv \
+                     reports/method_comparison/small_test/ringfit_cos_samples.csv \
+                     reports/method_comparison/small_test/npe_radial_ens5_samples.csv \
+                     reports/baseline_model_based/small_test/samples.csv \
+    --preset quality_256 --threads 2 --grid-sample 1 --out reports/downstream/small_test_methods
+
+# (5) Vergleichstabelle und gemeinsamer Scatter-Plot (src.baseline.results; Grenzfälle = |rel_err_fr_pct| >= 40 in samples.csv,
+#     Spannweite der Zielfunktion = max(loss)/min(loss) - 1 je Eintrag "holowizard_find_focus_<i>" in histories.json)
+$PY - <<'EOF'
+from src.baseline.results import read_samples_csv, summarize, summarize_by_method, summary_markdown_table, plot_scatter
+csvs = ["reports/baseline_model_based/small_test/samples.csv",
+        *[f"reports/method_comparison/small_test/{m}_samples.csv" for m in
+          ("ml_cnn_hologram", "ml_cnn_hologram_spectrum", "ringfit_cos", "npe_radial_ens5")]]
+rows = [row for path in csvs for row in read_samples_csv(path)]
+regular = summarize([r for r in rows if r["method"] == "holowizard_find_focus" and abs(r["rel_err_fr_pct"]) < 40])
+regular["method"] += " (ohne Grenzfälle)"
+print(summary_markdown_table(summarize_by_method(rows) + [regular]))
+plot_scatter(rows, "reports/method_comparison/small_test/comparison_scatter.png", title="Methodenvergleich data_small/test")
+EOF
+```
 
 ## Anhang: Abweichungen von der Integrationsempfehlung des Prototyps (Abschnitt 5 des Prototyp-Berichts)
 
