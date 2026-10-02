@@ -70,6 +70,7 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import least_squares, minimize_scalar
 from scipy.signal.windows import tukey
 
+from src.baseline.results import make_result_row, summarize
 from src.utils.config import PROJECT_ROOT, resolve_path
 from src.utils.physics import fresnel_number, z01_from_fresnel_number
 
@@ -198,6 +199,8 @@ class RingFitResult:
     fr_grid: np.ndarray = field(repr=False)
     scores: np.ndarray = field(repr=False)
     minima_u: np.ndarray = field(repr=False)
+    n_evals: int = 0
+    """Number of template-score evaluations (grid + Brent refinement)."""
 
     def summary(self) -> dict[str, Any]:
         """Scalar fields only (JSON friendly)."""
@@ -331,6 +334,7 @@ class _Scorer:
         self.w = weights
         self.du = float(u[1] - u[0])
         self.cfg = config
+        self.n_evals = 0
 
     def residual(self, fr: float) -> np.ndarray:
         r = self.y - _running_mean(self.y, fr / self.du) if self.cfg.matched_detrend else self.y
@@ -339,6 +343,7 @@ class _Scorer:
     def score(self, fr: float) -> tuple[float, float]:
         """``(normalised correlation, phase)`` of the residual with the template of period ``fr``; zero for
         periods the radial binning cannot represent (fewer than half of :data:`MIN_BINS_PER_PERIOD` bins)."""
+        self.n_evals += 1
         if fr < 0.5 * MIN_BINS_PER_PERIOD * self.du:
             return 0.0, 0.0
         r = self.residual(fr)
@@ -464,6 +469,7 @@ def ring_fit(hologram: np.ndarray, config: RingFitConfig) -> RingFitResult:
         fr_grid=fr_grid,
         scores=scores,
         minima_u=minima_u,
+        n_evals=scorer.n_evals,
     )
 
 
@@ -501,8 +507,10 @@ def evaluate_file(
     """Run the ring fit over the first ``num_samples`` holograms of an HDF5 file and write a report.
 
     The search range is derived from ``z01_range_mm`` (setup range) or ``fr_range``; by default the per-file
-    z01 range widened by ``range_margin`` (``/1.4 .. *1.4``) is used and reported.  Writes ``samples.csv``,
-    ``summary.json``, a scatter plot and ``n_examples`` radial-profile figures into ``out_dir``.
+    z01 range widened by ``range_margin`` (``/1.4 .. *1.4``) is used and reported.  Writes ``samples.csv``
+    (common per-sample schema of :mod:`src.baseline.results` followed by ring-fit diagnostics), ``summary.json``
+    (with the common statistics under ``"common"``), a scatter plot and ``n_examples`` radial-profile figures
+    into ``out_dir``.
     """
     data_path = resolve_path(data_path)
     out_dir = resolve_path(out_dir)
@@ -526,6 +534,7 @@ def evaluate_file(
         fr_range = (min(fr_lo, fr_hi), max(fr_lo, fr_hi))
     scale = float(downsample) ** 2
     config = RingFitConfig(fr_min=fr_range[0] * scale, fr_max=fr_range[1] * scale, **options)
+    method = f"ringfit_{config.template}"
 
     rows: list[dict[str, Any]] = []
     examples: list[tuple[int, RingFitResult]] = []
@@ -541,26 +550,32 @@ def evaluate_file(
             fr_hat_minima = result.fr_minima / scale
             z01_hat = float(z01_from_fresnel_number(fr_hat, z02[i], energy, px_mm))
             z01_hat_minima = float(z01_from_fresnel_number(fr_hat_minima, z02[i], energy, px_mm)) if np.isfinite(fr_hat_minima) else float("nan")
+            # common schema (src.baseline.results) first, ring-fit specific diagnostics after it; the historical
+            # column names fr_rel_err_pct / z01_err_mm / elapsed_ms are kept for existing reports
             rows.append(
-                {
-                    "index": i,
-                    "fr_true": float(fr_true[i]),
-                    "fr_est": fr_hat,
-                    "fr_rel_err_pct": (fr_hat - fr_true[i]) / fr_true[i] * 100.0,
-                    "fr_est_minima": fr_hat_minima,
-                    "fr_minima_rel_err_pct": (fr_hat_minima - fr_true[i]) / fr_true[i] * 100.0 if np.isfinite(fr_hat_minima) else float("nan"),
-                    "z01_true_mm": float(z01[i]),
-                    "z01_est_mm": z01_hat,
-                    "z01_err_mm": z01_hat - float(z01[i]),
-                    "z01_est_minima_mm": z01_hat_minima,
-                    "score": result.score,
-                    "phase_rad": result.phase_rad,
-                    "n_minima": result.n_minima,
-                    "n_rings_visible": result.n_rings_visible,
-                    "noise_floor": result.envelope["noise_floor"],
-                    "power_law_exponent": result.envelope["power_law_exponent"],
-                    "elapsed_ms": result.elapsed_s * 1e3,
-                }
+                make_result_row(
+                    index=i,
+                    source=data_path.name,
+                    fr_true=float(fr_true[i]),
+                    z01_true_mm=float(z01[i]),
+                    fr_est=fr_hat,
+                    z01_est_mm=z01_hat,
+                    runtime_s=result.elapsed_s,
+                    n_evals=result.n_evals,
+                    method=method,
+                    fr_rel_err_pct=(fr_hat - fr_true[i]) / fr_true[i] * 100.0,
+                    fr_est_minima=fr_hat_minima,
+                    fr_minima_rel_err_pct=(fr_hat_minima - fr_true[i]) / fr_true[i] * 100.0 if np.isfinite(fr_hat_minima) else float("nan"),
+                    z01_err_mm=z01_hat - float(z01[i]),
+                    z01_est_minima_mm=z01_hat_minima,
+                    score=result.score,
+                    phase_rad=result.phase_rad,
+                    n_minima=result.n_minima,
+                    n_rings_visible=result.n_rings_visible,
+                    noise_floor=result.envelope["noise_floor"],
+                    power_law_exponent=result.envelope["power_law_exponent"],
+                    elapsed_ms=result.elapsed_s * 1e3,
+                )
             )
             if len(examples) < n_examples:
                 examples.append((i, result))
@@ -577,6 +592,8 @@ def evaluate_file(
     )
     summary: dict[str, Any] = {
         "data": _portable_path(data_path),
+        "method": method,
+        "common": summarize(rows),
         "hologram_key": hologram_key,
         "num_samples": n,
         "hologram_shape": [int(s) for s in shape],

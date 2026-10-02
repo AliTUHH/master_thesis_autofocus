@@ -28,6 +28,7 @@ def tiny_data_config(num_samples: dict[str, int] | None = None, seeds: dict[str,
     cfg["phantom"]["num_shapes"] = [1, 2]
     cfg["phantom"]["radius_range_px"] = [64, 512]
     cfg["phantom"]["size_range_px"] = [64, 1024]
+    cfg["store"]["phantom"] = True  # ground-truth phase for the downstream/reconstruction tests
     return cfg
 
 

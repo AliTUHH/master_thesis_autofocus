@@ -27,14 +27,18 @@ src/
   data/dataset.py      HologramHDF5Dataset (Target-Modi, Normalisierung, Crop/Downsample), make_dataloaders
   data/representations.py  Eingaberepräsentationen: Hologramm, log-Leistungsspektrum, 2-Kanal, Radialprofil (data.representation)
   baseline/ctf_ringfit.py  Lernfreie Baseline: Fr aus den CTF-Ringen im Radialspektrum (CLI, Bericht in reports/ringfit/)
+  baseline/model_based_autofocus.py  Modellbasierter Autofokus (HoloWizard find_focus) + klassischer Schärfemetrik-Fallback (CLI, reports/baseline_model_based.md)
+  baseline/results.py  Gemeinsames Ergebnisschema (samples.csv) und Statistiken für alle Autofokus-Methoden
+  eval/downstream.py   Downstream-Test: Rekonstruktionsqualität bei falschem/geschätztem Fr (CLI, reports/downstream/)
   models/cnn.py        AutofocusCNN (beliebige Auflösung via AdaptiveAvgPool2d), ResNet-18-Variante, RadialProfileMLP, build_model
   train.py             CLI: Training mit Early Stopping, bestem Checkpoint, TensorBoard, Test-Evaluation
   evaluate.py          CLI: Checkpoint auf beliebiger HDF5-Datei auswerten (Metriken, Plots, Inferenzzeit)
   utils/physics.py     Fresnel-Zahl, Umkehrung nach z01, effektive Geometrie (identisch zu holowizard calc_Fr)
-  utils/metrics.py     Regressionsmetriken im Zielraum und in physikalischen Einheiten (z01 in mm, Fr in %)
+  utils/fresnel.py     Torch-Vorwärtsmodell (Fresnel-Propagator in HoloForge-Konvention), Defokus-Unschärfe b = sqrt(|e|/Fr)
+  utils/metrics.py     Regressionsmetriken im Zielraum und in physikalischen Einheiten (z01 in mm, Fr in %, Unschärfe in px)
   utils/plotting.py    Headless-Plots (Loss, Scatter, Fehler über z01, Beispiel-Hologramme)
   utils/config.py, targets.py, torch_utils.py   YAML/Pfade, Ziel-Standardisierung, Seeds/Device
-tests/                 pytest-Suite (Physik, Random-Setup + Labels, Dataset, Modelle, Trainings-Smoke-Test)
+tests/                 pytest-Suite (Physik, Random-Setup + Labels, Dataset, Modelle, Trainings-Smoke-Test, Fresnel-Modell, Baselines, Downstream)
 tools/export_figures.py                Plots eines Runs nach thesis/figures/<kapitel>/ kopieren + LaTeX-Snippets erzeugen
 tools/build_project_documentation.py   ReportLab-Dokumentation (unabhängig von der Pipeline)
 docs/                  Begleitdokumente: 01_thesis_erklaerung.md, 02_literatur.md, 03_projektplan.md,
@@ -102,9 +106,23 @@ python -m src.evaluate --checkpoint runs/smoke/best.pt --data data/processed/sma
 ```
 
 Schreibt `eval_results.json` (Metriken im Zielraum und physikalisch: MAE/RMSE/p95/Bias von `z01` in mm,
-relativer `Fr`-Fehler in %, Inferenzzeit pro Hologramm für Batch 1 und Batch N), `predictions.npz` und Plots
-nach `<Checkpoint-Ordner>/eval_<datei>/` (oder `--out`). Auf CPU hängt die Batch-1-Latenz stark von der
-Thread-Zahl ab (Oversubscription auf kleinen/geteilten Maschinen); `--threads 1` liefert reproduzierbare Werte.
+relativer `Fr`-Fehler in %, Defokus-Unschärfe `blur_px_*`, Inferenzzeit pro Hologramm für Batch 1 und Batch N),
+`predictions.npz`, `samples.csv` (gemeinsames Schema aller Methoden) und Plots nach `<Checkpoint-Ordner>/eval_<datei>/`
+(oder `--out`). Auf CPU hängt die Batch-1-Latenz stark von der Thread-Zahl ab (Oversubscription auf
+kleinen/geteilten Maschinen); `--threads 1` liefert reproduzierbare Werte.
+
+## Baselines und Downstream-Test (HoloWizard-Rekonstruktion)
+
+```bash
+python -m src.baseline.model_based_autofocus --data data/processed/small/test.hdf5 --n 8 --method both --out reports/baseline_model_based/small_test
+python -m src.eval.downstream --data data/processed/small/test.hdf5 --n 2 --errors -20 -10 -5 -1 0 1 5 10 20 --out reports/downstream/small_test
+python -m src.eval.downstream --data data/processed/small/test.hdf5 --n 8 --candidates-csv runs/smoke/eval_test/samples.csv --out reports/downstream/small_test_ml
+```
+
+Modellbasierter Autofokus (`holowizard.core` `find_focus`, ≈ 3,5 min pro 256-px-Hologramm auf 2 CPU-Threads) und
+klassischer Fallback mit gemeinsamem Ergebnisschema; der Downstream-Test rekonstruiert mit falschem bzw. geschätztem Fr
+(`--candidates-csv` liest `samples.csv` beliebiger Methoden) und vergleicht mit `images/phantoms` (benötigt `store.phantom: true`).
+Ergebnisse und Konventionen: `reports/baseline_model_based.md`.
 
 ## Tests
 

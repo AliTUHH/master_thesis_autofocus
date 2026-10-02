@@ -20,11 +20,13 @@ from src.baseline.ctf_ringfit import (
     resolvable_frequency_limit,
     ring_fit,
 )
+from src.utils.fresnel import propagate
 
 
 def simulate_weak_phase_hologram(size: int, fr: float, phi_max: float = 0.2, seed: int = 0, pad: int = 2, noise: float = 0.0) -> np.ndarray:
     """Amplitude ``|D_Fr(exp(i phi))|`` of a few smooth shapes with the Fresnel kernel of the context formula
-    ``exp(-i pi / Fr (xi^2 + eta^2))`` (frequencies in cycles/pixel), simulated on a padded grid and cropped."""
+    ``exp(-i pi / Fr (xi^2 + eta^2))`` (frequencies in cycles/pixel, :mod:`src.utils.fresnel`), simulated on a
+    padded grid and cropped."""
     rng = np.random.default_rng(seed)
     grid = size * pad
     yy, xx = np.mgrid[:grid, :grid]
@@ -37,11 +39,10 @@ def simulate_weak_phase_hologram(size: int, fr: float, phi_max: float = 0.2, see
             w, h = rng.uniform(size / 10, size / 4, 2)
             phase += ((np.abs(xx - cx) < w / 2) & (np.abs(yy - cy) < h / 2)) * rng.uniform(0.5, 1.0)
     phase = gaussian_filter(phase * phi_max / max(phase.max(), 1e-9), 1.0)
-    freqs = np.fft.fftfreq(grid)
-    u = freqs[:, None] ** 2 + freqs[None, :] ** 2
-    psi = np.fft.ifft2(np.fft.fft2(np.exp(1j * phase)) * np.exp(-1j * np.pi / fr * u))
+    # the phase already lives on the padded grid, so propagate without further padding and crop the centre
+    psi = propagate(np.exp(1j * phase), fr, pad_factor=1.0)
     lo, hi = grid // 2 - size // 2, grid // 2 + size // 2
-    amplitude = np.abs(psi)[lo:hi, lo:hi]
+    amplitude = np.abs(psi.numpy())[lo:hi, lo:hi].astype(np.float64)
     if noise > 0:
         amplitude = amplitude + noise * rng.standard_normal(amplitude.shape)
     return amplitude

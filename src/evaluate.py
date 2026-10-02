@@ -4,8 +4,9 @@ Usage::
 
     python -m src.evaluate --checkpoint runs/<name>/best.pt --data data/processed/<name>/test.hdf5 [--out DIR]
 
-Writes ``eval_results.json`` (metrics in target space and in physical units, inference timing) plus
-scatter and error-over-z01 figures into ``--out`` (default: ``<checkpoint dir>/eval_<data stem>/``).
+Writes ``eval_results.json`` (metrics in target space and in physical units, inference timing), the
+per-sample ``samples.csv`` in the common baseline schema (:mod:`src.baseline.results`) plus scatter and
+error-over-z01 figures into ``--out`` (default: ``<checkpoint dir>/eval_<data stem>/``).
 The functions here are also used by :mod:`src.train` for the final test evaluation.
 """
 
@@ -22,6 +23,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
+from src.baseline.results import make_result_row, write_samples_csv
 from src.data.dataset import HologramHDF5Dataset, dataset_kwargs_from_config
 from src.models.cnn import build_model
 from src.utils.config import PROJECT_ROOT, resolve_path
@@ -203,6 +205,23 @@ def evaluate_checkpoint(
     figures["examples"] = example_figure(dataset, out)
     timing = measure_inference_time(model, dataset, device, bsz)
     timing["ms_per_hologram_full_pass_incl_loading"] = float(wall * 1e3 / len(dataset))
+    # per-sample rows in the common baseline schema (src.baseline.results) for method comparisons and
+    # the downstream reconstruction test (python -m src.eval.downstream --candidates-csv ...)
+    values = physical_errors(pred, true, target_mode, setup)
+    # label = ml_<arch>[_<representation>] so that runs of the same architecture on different input
+    # representations stay distinguishable when several samples.csv files are merged
+    method = f"ml_{config.get('model', {}).get('arch', 'cnn')}"
+    representation = str(config.get("data", {}).get("representation", "hologram"))
+    if representation != "hologram":
+        method += "_" + representation.replace("+", "_")
+    rows = [
+        make_result_row(
+            i, data_path.name, values["fr_true"][i], values["z01_true_mm"][i], values["fr_pred"][i], values["z01_pred_mm"][i],
+            timing["ms_per_hologram_batch_1"] / 1e3, 1, method,
+        )
+        for i in range(len(pred))
+    ]
+    samples_csv = write_samples_csv(rows, out / "samples.csv")
 
     results = {
         "checkpoint": str(checkpoint_path),
@@ -214,6 +233,7 @@ def evaluate_checkpoint(
         "metrics": metrics,
         "inference_time": timing,
         "figures": figures,
+        "samples_csv": str(samples_csv),
     }
     np.savez(out / "predictions.npz", pred_target=pred, true_target=true, z01_true_mm=dataset.z01_mm)
     (out / "eval_results.json").write_text(json.dumps(results, indent=2), encoding="utf-8")

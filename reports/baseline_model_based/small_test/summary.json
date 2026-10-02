@@ -1,0 +1,104 @@
+{
+  "data": [
+    "/workspace/data/processed/small/test.hdf5"
+  ],
+  "hologram_key": "images/hologram",
+  "n_samples": 100,
+  "hologram_shape": [
+    256,
+    256
+  ],
+  "search_width_pct": 50.0,
+  "method": "both",
+  "preset": {
+    "name": "p05filter_dsf2_1",
+    "purpose": "focus",
+    "padding_factor": 2.0,
+    "stages": [
+      {
+        "iterations": 300,
+        "update_rate": 0.9,
+        "l2_absorption": 1.0,
+        "fwhm_object": "(2+8j)",
+        "fwhm_nesterov": "(8+8j)",
+        "down_sampling_factor": 2,
+        "nesterov_rate": 1.0
+      },
+      {
+        "iterations": 300,
+        "update_rate": 1.1,
+        "l2_absorption": 1.0,
+        "fwhm_object": "(1+8j)",
+        "fwhm_nesterov": "(4+4j)",
+        "down_sampling_factor": 1,
+        "nesterov_rate": 1.0
+      }
+    ],
+    "description": "Autofocus objective for 256-px holograms (default): P05 regularisation (l2 1j on the absorption, fwhm 2+8j / 1+8j, Nesterov 1.0) but stages on dsf 2 (128 px FOV, 256^2 grid) and dsf 1 (512^2 grid) instead of the P05 dsf 16/4. Only variant with a smooth objective at 256 px (see scan)."
+  },
+  "iterations_scale": 1.0,
+  "z01_tol_mm": 0.1,
+  "classical": {
+    "metric": "tv",
+    "n_grid": 21
+  },
+  "torch_num_threads": 2,
+  "holowizard_log_dir": "/tmp/baseline_full/hw_logs",
+  "total_runtime_s": 16463.859182933,
+  "per_method": [
+    {
+      "method": "classical_tv",
+      "n": 100,
+      "n_failed": 0,
+      "mae_rel_fr_pct": 9.329878469189028,
+      "median_rel_fr_pct": 0.7563031104864171,
+      "p95_rel_fr_pct": 44.122089748207586,
+      "max_rel_fr_pct": 47.454006415364056,
+      "bias_rel_fr_pct": 8.16625328107714,
+      "mae_z01_mm": 14.275138457082898,
+      "median_z01_mm": 1.5498474322654374,
+      "p95_z01_mm": 74.30303457084801,
+      "bias_z01_mm": 12.795936976621187,
+      "blur_px_mean": 2.350409050030205,
+      "blur_px_median": 0.8311328130144355,
+      "blur_px_p95": 8.551419347099205,
+      "mean_runtime_s": 0.1892881398199097,
+      "median_runtime_s": 0.19351410100171051,
+      "mean_n_evals": 32.43,
+      "mean_runtime_per_eval_s": 0.0058289260387700504,
+      "fraction_within_1pct": 0.57,
+      "fraction_within_2pct": 0.64,
+      "fraction_within_5pct": 0.7,
+      "fraction_within_10pct": 0.7
+    },
+    {
+      "method": "holowizard_find_focus",
+      "n": 100,
+      "n_failed": 0,
+      "mae_rel_fr_pct": 4.15463428918245,
+      "median_rel_fr_pct": 3.096436529301444,
+      "p95_rel_fr_pct": 9.791324253713519,
+      "max_rel_fr_pct": 47.47689271107812,
+      "bias_rel_fr_pct": -3.074565191189779,
+      "mae_z01_mm": 7.1892263071742875,
+      "median_z01_mm": 4.283333787658471,
+      "p95_z01_mm": 19.726229070130632,
+      "bias_z01_mm": -6.0560126553984945,
+      "blur_px_mean": 1.9474669666503208,
+      "blur_px_median": 1.8038961418624164,
+      "blur_px_p95": 3.1216247488064885,
+      "mean_runtime_s": 164.4411141275399,
+      "median_runtime_s": 163.35015412449866,
+      "mean_n_evals": 21.15,
+      "mean_runtime_per_eval_s": 7.77497849787866,
+      "fraction_within_1pct": 0.16,
+      "fraction_within_2pct": 0.36,
+      "fraction_within_5pct": 0.74,
+      "fraction_within_10pct": 0.95
+    }
+  ],
+  "figures": {
+    "scatter": "scatter.png",
+    "objective_curves": "objective_curves.png"
+  }
+}
