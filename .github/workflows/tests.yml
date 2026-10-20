@@ -49,6 +49,14 @@ jobs:
           holofocus-dataset generate configs/dataset/ci.yaml --out ${{ runner.temp }}/demo-dataset
           holofocus-dataset inspect ${{ runner.temp }}/demo-dataset/*.h5
 
+      - name: Baseline smoke run (configs/baseline/ci.yaml) and Stage 3 figures (quick mode)
+        run: |
+          holofocus-baseline run configs/baseline/ci.yaml \
+            --data ${{ runner.temp }}/demo-dataset/test.h5 --out ${{ runner.temp }}/baseline-ci --limit 3
+          holofocus-baseline summary ${{ runner.temp }}/baseline-ci
+          python scripts/make_stage3_figures.py --quick --baseline ${{ runner.temp }}/baseline-ci \
+            --out ${{ runner.temp }}/figures
+
       - name: Upload demo dataset
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
