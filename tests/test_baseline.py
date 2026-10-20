@@ -3,8 +3,10 @@ import math
 from pathlib import Path
 
 import pytest
+import torch
 import yaml
 
+from holofocus.asrm import ASRMResult
 from holofocus.baseline import BaselineConfig, run_baseline
 from holofocus.baseline.cli import main
 from holofocus.baseline.results import (
@@ -15,7 +17,7 @@ from holofocus.baseline.results import (
     read_traces,
     summarize,
 )
-from holofocus.baseline.runner import select_indices
+from holofocus.baseline.runner import phase_rmse, select_indices
 from holofocus.dataset import DatasetConfig, write_split
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -95,6 +97,8 @@ def _row(index, error_um, mfe_true=1.0, converged=True):
         "seconds_per_reconstruction": 10.0,
         "mfe_est": 0.5,
         "mfe_true": mfe_true,
+        "phase_rmse_est": 0.1 * (index + 1),
+        "phase_rmse_true": None if mfe_true is None else 0.1,
     }
 
 
@@ -116,6 +120,8 @@ def test_results_round_trip_and_summary(tmp_path):
     assert summary["seconds_per_autofocus"]["total"] == pytest.approx(303.0)
     assert summary["converged"] == pytest.approx(2 / 3)
     assert summary["mfe_est_le_mfe_true"] == 0.5
+    assert summary["phase_rmse_est"]["mean"] == pytest.approx(0.2)
+    assert summary["phase_rmse_true"] == {"mean": pytest.approx(0.1), "median": pytest.approx(0.1)}
     assert summarize([]) == {"n_samples": 0}
     assert read_rows(tmp_path / "missing.csv") == []
 
@@ -123,6 +129,14 @@ def test_results_round_trip_and_summary(tmp_path):
     append_trace(traces, {"index": 0, "evaluations": [{"z01": 0.1, "mfe": 1.0}]})
     append_trace(traces, {"index": 1, "evaluations": []})
     assert [t["index"] for t in read_traces(traces)] == [0, 1]
+
+
+def test_phase_rmse():
+    obj = torch.complex(-torch.ones(4, 4), torch.zeros(4, 4))
+    result = ASRMResult(obj=obj, padded=obj, loss=[1.0])
+    assert phase_rmse(result, torch.full((4, 4), -0.5, dtype=torch.float64)) == pytest.approx(0.5)
+    assert phase_rmse(result, torch.zeros(8, 8)) is None
+    assert phase_rmse(result, None) is None and phase_rmse(None, torch.zeros(4, 4)) is None
 
 
 def test_select_indices():
@@ -152,6 +166,7 @@ def test_run_baseline_writes_resumable_results(split_file, tmp_path):
         assert row["n_reconstructions"] >= 2
         assert row["n_evaluations"] >= row["n_reconstructions"]
         assert row["mfe_true"] is not None and row["mfe_est"] > 0
+        assert 0 < row["phase_rmse_est"] < 2 and 0 < row["phase_rmse_true"] < 2
     traces = read_traces(out / "traces.jsonl")
     assert [t["index"] for t in traces] == [0, 1]
     assert len(traces[0]["evaluations"]) == rows[0]["n_evaluations"]

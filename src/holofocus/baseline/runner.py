@@ -4,7 +4,8 @@ Outputs in the run directory:
 
 * ``run.yaml``: method config, ASRM settings for the data, dataset identity (path, SHA-256,
   seed, commit of the generator), software versions and host;
-* ``results.csv``: one row per sample (:mod:`holofocus.baseline.results`);
+* ``results.csv``: one row per sample (:mod:`holofocus.baseline.results`), with the phase
+  error against the ground truth if the split stores it (``storage.store_phase``);
 * ``traces.jsonl``: every probing point ``(z01, MFE, seconds)`` per sample;
 * ``summary.json``: aggregate accuracy and cost, rewritten after every sample.
 
@@ -29,7 +30,7 @@ import torch
 import yaml
 
 from .. import __version__
-from ..asrm import asrm_reconstruct
+from ..asrm import ASRMResult, asrm_reconstruct
 from ..autofocus.search import find_focus
 from ..dataset.storage import _git_commit, read_config, read_labels
 from ..device import get_device, real_dtype
@@ -65,6 +66,13 @@ def _run_key(info: dict) -> tuple:
     """What must match to continue a run: method, settings and dataset content."""
     dataset = info.get("dataset") or {}
     return (info.get("config"), info.get("asrm_settings"), dataset.get("sha256"))
+
+
+def phase_rmse(result: ASRMResult | None, phase: torch.Tensor | None) -> float | None:
+    """RMS error of the reconstructed phase; ``None`` without truth or on another grid."""
+    if result is None or phase is None or tuple(result.obj.shape) != tuple(phase.shape):
+        return None
+    return float((result.obj.real - phase.to(result.obj.real.dtype)).square().mean().sqrt())
 
 
 def select_indices(n_samples: int, indices: Sequence[int] | None, limit: int | None) -> list[int]:
@@ -136,8 +144,10 @@ def run_baseline(
     search = config.search
     with h5py.File(data, "r") as fh:
         holograms = fh["hologram"]
+        phases = fh["phase"] if "phase" in fh else None
         for count, index in enumerate(todo, start=1):
             hologram = torch.from_numpy(np.asarray(holograms[index])).to(torch_device, dtype)
+            phase = None if phases is None else torch.from_numpy(np.asarray(phases[index]))
             z01_true = float(labels["z01"][index])
             z01_guess = float(labels["z01_guess"][index])
             geometry = dataset_config.geometry.at(z01_guess)
@@ -150,12 +160,13 @@ def run_baseline(
                 fatol=search.fatol,
                 max_evaluations=search.max_evaluations,
             )
-            mfe_true = None
+            mfe_true, truth = None, None
             if config.evaluate_truth:
                 truth = asrm_reconstruct(
                     hologram, dataset_config.geometry.at(z01_true).fresnel_number, settings
                 )
                 mfe_true = truth.final_loss
+            phase = None if phase is None else phase.to(torch_device)
             error_um = (result.z01 - z01_true) * 1e6
             recon_seconds = [e.seconds for e in result.evaluations if e.reconstructed]
             row = {
@@ -176,6 +187,8 @@ def run_baseline(
                 "seconds_per_reconstruction": float(np.mean(recon_seconds)),
                 "mfe_est": result.mfe,
                 "mfe_true": mfe_true,
+                "phase_rmse_est": phase_rmse(result.reconstruction, phase),
+                "phase_rmse_true": phase_rmse(truth, phase),
             }
             append_row(results_file, row)
             append_trace(traces_file, {"index": index, **result.to_dict()})

@@ -2,7 +2,9 @@
 
 ``results.csv`` has one row per sample of the split, keyed by ``index``, so that Stage 4 can
 evaluate a learned model on exactly the same samples. Distances are in metres, errors in
-micrometres, times in seconds. ``error_um = (z01_est - z01_true) * 1e6``.
+micrometres, times in seconds. ``error_um = (z01_est - z01_true) * 1e6``. ``phase_rmse_est``
+and ``phase_rmse_true`` (rad) compare the reconstructions at the estimate and at the true
+``z01`` with the ground-truth phase of the split.
 """
 
 from __future__ import annotations
@@ -32,6 +34,8 @@ RESULT_FIELDS = (
     "seconds_per_reconstruction",
     "mfe_est",
     "mfe_true",
+    "phase_rmse_est",
+    "phase_rmse_true",
 )
 INT_FIELDS = {"index", "phantom_type", "n_reconstructions", "n_evaluations", "nm_iterations"}
 BOOL_FIELDS = {"converged"}
@@ -136,4 +140,8 @@ def summarize(rows: list[dict], thresholds_um: tuple[float, ...] = (50, 100, 250
     if truth:
         below = [r["mfe_est"] <= r["mfe_true"] for r in truth if not math.isnan(r["mfe_true"])]
         out["mfe_est_le_mfe_true"] = float(np.mean(below)) if below else math.nan
+    for key in ("phase_rmse_est", "phase_rmse_true"):
+        values = [r[key] for r in rows if r.get(key) is not None]
+        if values:
+            out[key] = {"mean": float(np.mean(values)), "median": float(np.median(values))}
     return out
