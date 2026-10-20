@@ -7,8 +7,11 @@
   samples of a synthetic split (``synthetic-<index>.json``, with the phase error against the
   ground truth) or for measured holograms centred on the visually determined focus of [2]
   Table 1 (``measured-<sample>.json``).
+* ``bias``: a fine MFE scan around the true ``z01`` of synthetic samples for several data
+  models (:data:`BIAS_VARIANTS`), to locate the minimum of the objective without the
+  Nelder-Mead tolerance (``bias-<index>.json``).
 
-Both commands skip outputs that exist already. Usage::
+All commands skip outputs that exist already. Usage::
 
     python scripts/run_stage3_experiments.py measured --holograms DIR --out results/measured/p2
     python scripts/run_stage3_experiments.py measured --holograms DIR --paper-padding \\
@@ -17,6 +20,8 @@ Both commands skip outputs that exist already. Usage::
         --out results/focus-curves
     python scripts/run_stage3_experiments.py curves --holograms DIR --samples spider_hair \\
         --out results/focus-curves
+    python scripts/run_stage3_experiments.py bias --data data/cpu-4x/test.h5 --indices 2 \\
+        --out results/bias
 
 ``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365.
 """
@@ -38,13 +43,24 @@ import torch
 from holofocus.asrm import ASRMSettings, stage_grid
 from holofocus.autofocus import find_focus, reconstruction_focus_curve, symmetric_offsets
 from holofocus.baseline import BaselineConfig
-from holofocus.dataset import read_config, read_labels
+from holofocus.dataset import HologramGenerator, read_config, read_labels
+from holofocus.dataset.config import DatasetConfig
 from holofocus.dataset.storage import _git_commit
+from holofocus.forward import object_from_phase, simulate_hologram
 from holofocus.measured import MEASURED_SAMPLES, MeasuredSample, load_measured
 from holofocus.yamlconfig import plain
 
 REPO = Path(__file__).resolve().parents[1]
 BASELINE_CONFIG = REPO / "configs" / "baseline" / "paper2-cpu.yaml"
+
+BIAS_VARIANTS = {
+    "noisy": "hologram of the split: intensity integrated over the oversampled sub-pixels, "
+    "detector noise",
+    "clean": "the same hologram without noise",
+    "grid": "noise-free hologram simulated on the reconstruction grid from the binned phase "
+    "(the forward model of the reconstruction)",
+    "grid-nofilter": "as grid, reconstructed without the object filters of [2] Table 3",
+}
 
 
 def environment() -> dict:
@@ -82,6 +98,14 @@ def measured_settings(
         settings, padding_factor=sample.padding_for(nominal), a0=sample.a0
     )
     return scaled(settings, scale), nominal
+
+
+def synthetic_settings(config: DatasetConfig, padding: float, scale: float = 1.0) -> ASRMSettings:
+    """The settings of the baseline run for a synthetic split, with ``padding``."""
+    settings = BaselineConfig.from_yaml(BASELINE_CONFIG).reconstruction.settings(
+        config.geometry.binning
+    )
+    return scaled(dataclasses.replace(settings, padding_factor=padding), scale)
 
 
 def write_json(path: Path, record: dict) -> None:
@@ -165,12 +189,7 @@ def cmd_curves(args) -> None:
     if args.data is not None:
         config = read_config(args.data)
         labels = read_labels(args.data)
-        settings = BaselineConfig.from_yaml(BASELINE_CONFIG).reconstruction.settings(
-            config.geometry.binning
-        )
-        settings = scaled(
-            dataclasses.replace(settings, padding_factor=args.padding), args.iteration_scale
-        )
+        settings = synthetic_settings(config, args.padding, args.iteration_scale)
         for index in args.indices:
             target = args.out / f"synthetic-{index}.json"
             if target.exists():
@@ -223,6 +242,113 @@ def cmd_curves(args) -> None:
         print(f"{name}: {len(dz)} reconstructions, {time.perf_counter() - start:.0f} s")
 
 
+def bias_holograms(path: Path, index: int) -> tuple[dict[str, np.ndarray], np.ndarray, dict]:
+    """Sample ``index`` of a split under the data models of :data:`BIAS_VARIANTS`.
+
+    The sample is regenerated from its seed; the stored phase must match. Returns the
+    holograms, the binned phase and the regeneration check.
+    """
+    config = read_config(path)
+    with h5py.File(path, "r") as fh:
+        split = str(fh.attrs["split"])
+        noisy = np.asarray(fh["hologram"][index], dtype=np.float32)
+        phase = np.asarray(fh["phase"][index], dtype=np.float32)
+    generator = HologramGenerator(config, device="cpu")
+    sample = generator.sample(split, index)
+    phase_difference = float(np.abs(sample.phase - phase).max())
+    if phase_difference > 1e-6:
+        raise RuntimeError(f"sample {index} does not regenerate (phase off by {phase_difference})")
+    s = config.simulation.oversample
+    obj = object_from_phase(
+        torch.from_numpy(phase).to(generator.real_dtype), config.phantoms.delta_beta
+    )
+    grid = simulate_hologram(
+        obj,
+        config.geometry.at(sample.labels["z01"]).fresnel_number,
+        padded_shape=tuple(n // s for n in generator.simulation_shape),
+        a0=sample.meta["a0"],
+    ).numpy()
+    holograms = {"noisy": noisy, "clean": sample.clean, "grid": grid, "grid-nofilter": grid}
+    check = {
+        "split": split,
+        "phase_max_difference": phase_difference,
+        "noisy_max_difference": float(np.abs(sample.hologram - noisy).max()),
+    }
+    return holograms, phase, check
+
+
+def without_object_filters(settings: ASRMSettings) -> ASRMSettings:
+    stages = tuple(
+        dataclasses.replace(s, phase_fwhm=0.0, absorption_fwhm=0.0) for s in settings.stages
+    )
+    return dataclasses.replace(settings, stages=stages)
+
+
+def parabola_minimum(dz: np.ndarray, values: np.ndarray, half_width: int = 2) -> float:
+    """Vertex of the parabola through the points around the smallest value (``nan`` if none)."""
+    k = int(np.argmin(values))
+    lo, hi = max(0, k - half_width), min(len(dz), k + half_width + 1)
+    a, b, _ = np.polyfit(dz[lo:hi], values[lo:hi], 2)
+    return float(-b / (2 * a)) if a > 0 else float("nan")
+
+
+def cmd_bias(args) -> None:
+    args.out.mkdir(parents=True, exist_ok=True)
+    config = read_config(args.data)
+    labels = read_labels(args.data)
+    settings = synthetic_settings(config, args.padding, args.iteration_scale)
+    dz = symmetric_offsets(args.points, args.half_range)
+    log = (lambda msg: print(f"  {msg}", flush=True)) if args.verbose else None
+    for index in args.indices:
+        target = args.out / f"bias-{index}.json"
+        record = json.loads(target.read_text()) if target.exists() else None
+        todo = [v for v in args.variants if record is None or v not in record["curves"]]
+        if not todo:
+            print(f"sample {index}: {target} complete, skipped")
+            continue
+        holograms, phase, check = bias_holograms(args.data, index)
+        z01 = float(labels["z01"][index])
+        if record is None:
+            record = {
+                "kind": "bias",
+                "data": str(args.data),
+                "index": index,
+                "phantom_type": int(labels["phantom_type"][index]),
+                "photons": float(labels["photons"][index]),
+                "phase_shift": float(labels["phase_shift"][index]),
+                "z01": z01,
+                "regeneration": check,
+                "settings": plain(dataclasses.asdict(settings)),
+                "variants": {},
+                "curves": {},
+                "minimum_um": {},
+                **environment(),
+            }
+        for variant in todo:
+            start = time.perf_counter()
+            curve = reconstruction_focus_curve(
+                torch.from_numpy(holograms[variant]),
+                config.geometry.at(z01),
+                dz,
+                without_object_filters(settings) if variant == "grid-nofilter" else settings,
+                phase_truth=torch.from_numpy(phase),
+                log=log,
+            )
+            record["variants"][variant] = BIAS_VARIANTS[variant]
+            record["curves"][variant] = {k: [float(x) for x in v] for k, v in curve.items()}
+            record["minimum_um"][variant] = {
+                "argmin": float(dz[np.argmin(curve["MFE"])] * 1e6),
+                "parabola": parabola_minimum(dz, curve["MFE"]) * 1e6,
+            }
+            write_json(target, record)
+            print(
+                f"sample {index} {variant}: MFE minimum at "
+                f"{record['minimum_um'][variant]['parabola']:+.0f} um (parabola), "
+                f"{time.perf_counter() - start:.0f} s",
+                flush=True,
+            )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--threads", type=int, help="torch CPU threads")
@@ -254,6 +380,19 @@ def main() -> None:
     curves.add_argument("--verbose", action="store_true")
     curves.add_argument("--out", type=Path, required=True)
     curves.set_defaults(func=cmd_curves)
+
+    bias = sub.add_parser("bias", help="MFE near the true z01 under several data models")
+    bias.add_argument("--data", type=Path, required=True, help="synthetic split with phase")
+    bias.add_argument("--indices", type=int, nargs="+", required=True)
+    bias.add_argument(
+        "--variants", nargs="+", choices=list(BIAS_VARIANTS), default=list(BIAS_VARIANTS)
+    )
+    bias.add_argument("--padding", type=float, default=2.0)
+    bias.add_argument("--points", type=int, default=7)
+    bias.add_argument("--half-range", type=float, default=0.6e-3, help="metres")
+    bias.add_argument("--verbose", action="store_true")
+    bias.add_argument("--out", type=Path, required=True)
+    bias.set_defaults(func=cmd_bias)
 
     args = parser.parse_args()
     if args.threads:
