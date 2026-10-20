@@ -460,6 +460,23 @@ def search_figure(run_dir: Path, settings: Settings, out: Path) -> dict | None:
     return {"examples": picks}
 
 
+MEASURED_ORDER = ("p2", "b1-p2", "b1-p4", "paper-padding")
+
+
+def measured_runs(directory: Path) -> dict[str, Path]:
+    """Run directories below ``results/measured`` in the order of :data:`MEASURED_ORDER`."""
+    if not directory.is_dir():
+        return {}
+    found = {d.name: d for d in directory.iterdir() if d.is_dir()}
+    order = [n for n in MEASURED_ORDER if n in found] + sorted(set(found) - set(MEASURED_ORDER))
+    return {n: found[n] for n in order}
+
+
+def run_label(record: dict) -> str:
+    data = "4×4 block mean" if record["binning"] > 1 else "ASRM down-sampling"
+    return f"{data}, p = {record['padding_factor']:g}"
+
+
 def measured_figure(directories: dict[str, Path], settings: Settings, out: Path) -> dict | None:
     records: dict[str, dict[str, dict]] = {}
     for label, directory in directories.items():
@@ -475,16 +492,19 @@ def measured_figure(directories: dict[str, Path], settings: Settings, out: Path)
     )
     table = {}
     first = next(iter(directories))
-    markers = dict(zip(directories, ("o", "s", "^"), strict=False))
+    markers = dict(zip(directories, ("o", "s", "^", "D", "v", "P"), strict=False))
     for col, name in enumerate(names):
         sample = MEASURED_SAMPLES[name]
         ax = axes[0, col]
         phase_file = directories[first] / f"{name}-phase.npy"
-        if phase_file.exists():
+        if phase_file.exists() and first in records[name]:
             phase = np.load(phase_file)
             lo, hi = np.percentile(phase, [0.5, 99.5])
             ax.imshow(phase, cmap="gray", vmin=lo, vmax=hi)
-            ax.set_title(f"{sample.label}: phase at the estimate ({first})", fontsize=9)
+            ax.set_title(
+                f"{sample.label}: phase at the estimate\n({run_label(records[name][first])})",
+                fontsize=9,
+            )
         else:
             ax.text(
                 0.5, 0.5, "phase not available", ha="center", va="center", transform=ax.transAxes
@@ -510,10 +530,11 @@ def measured_figure(directories: dict[str, Path], settings: Settings, out: Path)
                 markers[label],
                 ms=5,
                 mfc="none",
-                label=f"{label}: {len(probes)} reconstructions",
+                label=f"{run_label(record)}: {len(probes)} rec.",
             )
             ax.plot(result["z01"] * 1e3, 1.0, markers[label], color="C3", ms=7)
             table[name][label] = {
+                "binning": record["binning"],
                 "z01_mm": result["z01"] * 1e3,
                 "minus_paper2_nm_um": record["z01_minus_paper2_nm_um"],
                 "minus_visual_um": record["z01_minus_visual_um"],
@@ -541,8 +562,9 @@ def measured_figure(directories: dict[str, Path], settings: Settings, out: Path)
         )
         ax.legend(fontsize=7)
     fig.suptitle(
-        "Classical autofocus on the measured holograms of [1]\n"
-        "(Zenodo 10.5281/zenodo.8349365, binned 4x) against [2] Table 1"
+        "Classical autofocus on the measured holograms of [1] "
+        "(Zenodo 10.5281/zenodo.8349365)\non the 4× grid against [2] Table 1 "
+        "(red: estimates; p: padding factor)"
     )
     fig.savefig(out / "stage3-measured.png", dpi=settings.dpi)
     plt.close(fig)
@@ -723,11 +745,7 @@ def main() -> None:
     settings = QUICK if args.quick else FULL
     results = args.results
     baseline = args.baseline or results / "baseline" / "cpu-4x-test"
-    measured = {
-        label: results / "measured" / label
-        for label in ("p2", "paper-padding")
-        if (results / "measured" / label).is_dir()
-    }
+    measured = measured_runs(results / "measured")
     args.out.mkdir(parents=True, exist_ok=True)
     metrics: dict = {"settings": asdict(settings), "quick": args.quick}
     steps = [
