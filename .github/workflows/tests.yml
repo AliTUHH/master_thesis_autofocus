@@ -40,4 +40,19 @@ jobs:
         run: pytest
 
       - name: Figure scripts (quick mode)
-        run: python scripts/make_stage1_figures.py --quick --out ${{ runner.temp }}/figures
+        run: |
+          python scripts/make_stage1_figures.py --quick --out ${{ runner.temp }}/figures
+          python scripts/make_stage2_figures.py --quick --out ${{ runner.temp }}/figures
+
+      - name: Demo dataset (configs/dataset/ci.yaml)
+        run: |
+          holofocus-dataset generate configs/dataset/ci.yaml --out ${{ runner.temp }}/demo-dataset
+          holofocus-dataset inspect ${{ runner.temp }}/demo-dataset/*.h5
+
+      - name: Upload demo dataset
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-dataset-ci
+          path: ${{ runner.temp }}/demo-dataset
+          retention-days: 30
