@@ -1,0 +1,26 @@
+# Classical autofocus of [2] (Stage 3 baseline) for the 4x-binned CPU dataset.
+#
+# Inner reconstruction: ASRM ([1] Alg. 5) with the schedule of [2] Appendix Table 3
+# (700/300/500 iterations at 16x/4x/4x down-sampling of the 2048^2 detector). On 4x-binned
+# data the stages run at 4x/1x/1x of the 512^2 grid, i.e. on the same physical pixel sizes
+# as in [2]; filter widths stay in stage pixels and the fade width becomes 80 // 4 = 20.
+# padding_factor 2 gives 1024^2 arrays (N >= 1/Fr = 664 at z01 = 100 mm); [2] used 7.
+# Outer search: Nelder-Mead on z01_guess +- 5 mm with the interval ends as initial simplex,
+# clipping onto Omega_z and a stop at 100 um simplex length. Lengths in metres.
+name: paper2-cpu
+reconstruction:
+  schedule: paper2
+  padding_factor: 2.0
+  fade_width: null        # default 80 // binning
+  a0: 1.0                 # synthetic data: free space = 1
+  update: reference       # position step from the look-ahead point (reference code)
+  gradient: reference     # psi (1 - sqrt(A / |psi|)) as in the reference code
+  pin_phase: true
+  precision: single
+  device: auto
+search:
+  confidence: 5.0e-3
+  xatol: 1.0e-4
+  fatol: 1.0e6            # disables the tolerance on the MFE values (reference value)
+  max_evaluations: null
+evaluate_truth: true      # one extra reconstruction at the true z01 per sample
