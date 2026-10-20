@@ -14,10 +14,14 @@ dependencies = [
     "torch>=2.1",
     "matplotlib>=3.7",
     "pyyaml>=6.0",
+    "h5py>=3.8",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=7.4", "ruff>=0.5"]
+
+[project.scripts]
+holofocus-dataset = "holofocus.dataset.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
