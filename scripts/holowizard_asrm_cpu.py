@@ -65,7 +65,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--data", type=Path, required=True, help="spider_hair.tiff")
     parser.add_argument("--stages", type=int, nargs="+", default=[16, 4])
-    parser.add_argument("--z01-mm", type=float, default=79.45, help="value of the example")
+    parser.add_argument(
+        "--z01-mm",
+        type=float,
+        default=79.45,
+        help="value of examples/asrm/spider_hair.py ([1] Table 3: 79.95, [2] Table 1: 79.4)",
+    )
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--out", type=Path, default=Path("stage1-holowizard-asrm-cpu.png"))
     parser.add_argument("--log-dir", type=Path, default=Path("/tmp/holowizard-logs"))
@@ -120,7 +125,10 @@ def main() -> None:
     fig.colorbar(im, ax=axes[1], shrink=0.85)
     for ax in axes:
         ax.set_xlabel("detector pixel")
-    fig.suptitle(f"Spider hair, 11 keV, z01 = {args.z01_mm} mm, z02 = 19.661 m ([1] Table 3)")
+    fig.suptitle(
+        f"Spider hair ([1] Zenodo data), 11 keV, z02 = 19.661 m, "
+        f"z01 = {args.z01_mm} mm (holowizard ASRM example)"
+    )
     fig.savefig(args.out, dpi=110)
     print(f"saved {args.out}")
 

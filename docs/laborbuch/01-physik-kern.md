@@ -31,6 +31,11 @@ Entwurf ist **keine Referenz** und wurde aus dem Arbeitsbaum entfernt. Er bleibt
 Git-Historie erhalten (`git show 3579d34 --stat`, Dateien z. B. mit
 `git show 3579d34:src/data/generator.py`).
 
+Außerdem liegen auf GitHub sechs offene Entwurfs-PRs (#1–#6, Branches `cursor/*-6175`) eines
+früheren Agentenlaufs vom 1./2. Oktober 2026. Sie bauen auf holowizard und dem alten Layout auf.
+Ich habe sie weder geprüft noch als Grundlage verwendet. Nach dem Merge dieser Etappe stehen sie
+im Konflikt mit `main`.
+
 ## 3 Was gemacht wurde
 
 ### 3.1 Projektgerüst
@@ -268,10 +273,13 @@ $(I - A_0)W + A_0$. Vergleiche [1] Fig. 3–4.
 ![holowizard ASRM](figures/stage1-holowizard-asrm-cpu.png)
 
 Gemessenes Spinnenhaar-Hologramm aus dem Zenodo-Archiv von [1], rekonstruiert mit holowizard
-3.0.6 (ASRM, Stufen 16× und 4× wie im Beispiel des Pakets, `z01 = 79,45 mm`). Das Ergebnis
-der 4×-Stufe hat 512² Pixel; es ist zurückgedreht (Abschnitt 6) und auf die
-Detektorkoordinaten des Hologramms skaliert. Der Phasenbereich bis etwa −2 rad entspricht
-[2] Fig. 6.
+3.0.6 (ASRM, Stufen 16× und 4× wie im Beispiel des Pakets). `z01 = 79,45 mm` stammt aus
+`examples/asrm/spider_hair.py`. [1] Table 3 nennt 79,95 mm; das ist auch der Startwert von
+`examples/find_focus/spider_hair.py`. [2] Table 1 findet per Nelder–Mead und visuell 79,4 mm
+(Startsimplex 74,8/84,8 mm). Gegenüber [1] beträgt die Korrektur also etwa −0,5 mm und liegt
+klar in der ±5-mm-Box. Das Ergebnis der 4×-Stufe
+hat 512² Pixel; es ist zurückgedreht (Abschnitt 6) und auf die Detektorkoordinaten des
+Hologramms skaliert. Der Phasenbereich bis etwa −2 rad entspricht [2] Fig. 6.
 
 ### 5.6 Laufzeiten (CPU, 4 Threads)
 
@@ -282,7 +290,7 @@ Detektorkoordinaten des Hologramms skaliert. Der Phasenbereich bis etwa −2 rad
 | PGD, 300 Iterationen auf 1024² | ≈ 6 s |
 | alle Stage-1-Abbildungen | ≈ 80 s |
 | holowizard ASRM, Stufe 16× (700 It.) | 27 s |
-| holowizard ASRM, Stufen 16× + 4× (700 + 300 It.) | ≈ 390 s |
+| holowizard ASRM, Stufen 16× + 4× (700 + 300 It.) | 392 s (Abb. 5: 417 s, CPU geteilt) |
 
 Zum Vergleich [2] Table 1: 6 s bzw. 16 s pro innerer Rekonstruktion, 9–13 Rekonstruktionen
 pro Autofokus. Die 4×-Stufe kostet auf dieser CPU etwa 1,2 s pro Iteration (Spinnenhaar,
