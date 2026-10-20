@@ -228,6 +228,7 @@ def test_find_focus_on_a_model_objective(monkeypatch):
     assert result.z01_guess == GEOMETRY.z01
     assert result.converged
     assert abs(result.z01 - z_true) < 1e-4
+    assert result.reconstruction.final_loss == result.mfe == min(e.mfe for e in result.evaluations)
     assert result.n_reconstructions == len(probed) == len(messages)
     assert all(0.095 - 1e-12 <= z <= 0.105 + 1e-12 for z in probed)
     first = result.evaluations[:2]
@@ -239,6 +240,37 @@ def test_find_focus_on_a_model_objective(monkeypatch):
     assert record["n_reconstructions"] == result.n_reconstructions
     assert record["bounds"] == list(result.bounds)
     assert len(record["evaluations"]) == result.n_evaluations
+
+
+@pytest.mark.parametrize("z_true_mm", [97.17899794176402, 101.34605, 104.6])
+def test_find_focus_probes_the_points_of_the_reference_search(monkeypatch, z_true_mm):
+    """Same points as scipy's Nelder-Mead in millimetres with the reference penalty."""
+
+    def mfe(z_mm):
+        return abs(z_mm - z_true_mm) + 0.05 * (z_mm - z_true_mm) ** 2
+
+    probed = []
+
+    def fake_asrm(hologram, fresnel_number, settings):
+        z01 = z01_from_fresnel_number(
+            fresnel_number, GEOMETRY.energy_kev, GEOMETRY.z02, GEOMETRY.pixel_size
+        )
+        probed.append(z01)
+        return SimpleNamespace(final_loss=mfe(z01 * 1e3))
+
+    monkeypatch.setattr(search_module, "asrm_reconstruct", fake_asrm)
+    result = find_focus(torch.zeros((8, 8)), GEOMETRY)
+    _, reference = _scipy_points(
+        _penalized(lambda x: mfe(float(x[0]))),
+        [[95.0], [105.0]],
+        [(95.0, 105.0)],
+        xatol=0.1,
+        fatol=1e6,
+    )
+    unique = [p[0] for i, p in enumerate(reference) if not any(p[0] == q[0] for q in reference[:i])]
+    np.testing.assert_allclose(np.array(probed) * 1e3, unique, rtol=0, atol=1e-9)
+    assert result.n_evaluations == len(reference)
+    assert min(np.diff(np.sort(probed))) > 1e-9
 
 
 def test_find_focus_rejects_an_unphysical_search_interval():

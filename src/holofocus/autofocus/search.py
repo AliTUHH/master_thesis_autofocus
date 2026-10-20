@@ -11,7 +11,10 @@ point ``z01_hat`` is a full ASRM reconstruction (:func:`holofocus.asrm.asrm_reco
   reconstruction (the reference's guard against reflections that are clipped back onto a
   bound), so the optimizer contracts instead,
 * the search stops when the simplex is shorter than ``xatol = 100 um``; ``fatol = 1e6``
-  effectively disables the tolerance on the function values.
+  effectively disables the tolerance on the function values,
+* the simplex lives in millimetres. Revisited points are then bit-identical to the first
+  visit for intervals like 95-105 mm, whereas in metres they can differ in the last bit and
+  would be reconstructed a second time.
 """
 
 from __future__ import annotations
@@ -24,11 +27,12 @@ from dataclasses import asdict, dataclass, field
 import numpy as np
 import torch
 
-from ..asrm import ASRMSettings, asrm_reconstruct
+from ..asrm import ASRMResult, ASRMSettings, asrm_reconstruct
 from ..geometry import ConeBeamGeometry
 from .nelder_mead import nelder_mead
 
 PENALTY = sys.float_info.max
+MM_PER_M = 1e3
 
 
 @dataclass
@@ -43,7 +47,11 @@ class FocusEvaluation:
 
 @dataclass
 class FocusSearchResult:
-    """Estimate ``z01`` with the probing history of the Nelder-Mead search."""
+    """Estimate ``z01`` with the probing history of the Nelder-Mead search.
+
+    ``reconstruction`` is the ASRM result at the estimate (the probing point with the lowest
+    MFE), so the focused object needs no extra reconstruction.
+    """
 
     z01: float
     z01_guess: float
@@ -53,6 +61,7 @@ class FocusSearchResult:
     converged: bool
     seconds: float
     evaluations: list[FocusEvaluation] = field(default_factory=list)
+    reconstruction: ASRMResult | None = field(default=None, repr=False)
 
     @property
     def n_reconstructions(self) -> int:
@@ -63,11 +72,19 @@ class FocusSearchResult:
         return len(self.evaluations)
 
     def to_dict(self) -> dict:
-        out = asdict(self)
-        out["bounds"] = list(self.bounds)
-        out["n_reconstructions"] = self.n_reconstructions
-        out["n_evaluations"] = self.n_evaluations
-        return out
+        """Numbers and probing history (without the reconstruction), JSON-serializable."""
+        return {
+            "z01": self.z01,
+            "z01_guess": self.z01_guess,
+            "bounds": list(self.bounds),
+            "mfe": self.mfe,
+            "nm_iterations": self.nm_iterations,
+            "converged": self.converged,
+            "seconds": self.seconds,
+            "evaluations": [asdict(e) for e in self.evaluations],
+            "n_reconstructions": self.n_reconstructions,
+            "n_evaluations": self.n_evaluations,
+        }
 
 
 def find_focus(
@@ -90,19 +107,25 @@ def find_focus(
     lower, upper = z01_guess - confidence, z01_guess + confidence
     if not 0 < lower < upper < geometry.z02:
         raise ValueError(f"Omega_z = [{lower}, {upper}] m must lie between focus and detector")
+    guess_mm, confidence_mm = z01_guess * MM_PER_M, confidence * MM_PER_M
+    lower_mm, upper_mm = guess_mm - confidence_mm, guess_mm + confidence_mm
     evaluations: list[FocusEvaluation] = []
     seen: set[float] = set()
+    best: list[ASRMResult] = []
 
     def objective(x: np.ndarray) -> float:
-        z01 = float(x[0])
-        if z01 in seen:
+        z01_mm = float(x[0])
+        z01 = z01_mm / MM_PER_M
+        if z01_mm in seen:
             evaluations.append(FocusEvaluation(z01, PENALTY, 0.0, False))
             return PENALTY
-        seen.add(z01)
+        seen.add(z01_mm)
         start = time.perf_counter()
         result = asrm_reconstruct(hologram, geometry.with_z01(z01).fresnel_number, settings)
         seconds = time.perf_counter() - start
         evaluations.append(FocusEvaluation(z01, result.final_loss, seconds, True))
+        if not best or result.final_loss < best[0].final_loss:
+            best[:] = [result]
         if log is not None:
             log(f"z01 = {z01 * 1e3:.4f} mm  MFE = {result.final_loss:.6e}  ({seconds:.1f} s)")
         return result.final_loss
@@ -110,14 +133,14 @@ def find_focus(
     start = time.perf_counter()
     nm = nelder_mead(
         objective,
-        initial_simplex=[[lower], [upper]],
-        bounds=[(lower, upper)],
-        xatol=xatol,
+        initial_simplex=[[lower_mm], [upper_mm]],
+        bounds=[(lower_mm, upper_mm)],
+        xatol=xatol * MM_PER_M,
         fatol=fatol,
         max_evaluations=max_evaluations,
     )
     return FocusSearchResult(
-        z01=float(nm.x[0]),
+        z01=float(nm.x[0]) / MM_PER_M,
         z01_guess=z01_guess,
         bounds=(lower, upper),
         mfe=nm.fun,
@@ -125,4 +148,5 @@ def find_focus(
         converged=nm.converged,
         seconds=time.perf_counter() - start,
         evaluations=evaluations,
+        reconstruction=best[0] if best else None,
     )
