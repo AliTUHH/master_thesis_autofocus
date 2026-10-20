@@ -159,6 +159,8 @@ def cmd_reconstruct(args) -> dict:
         "phase_rms_diff": float(diff.real.square().mean().sqrt()),
         "phase_rms": float(hw_obj.real.square().mean().sqrt()),
         "absorption_max_abs_diff": float(diff.imag.abs().max()),
+        "stage_ends": list(ours.stage_ends),
+        "loss": {"holowizard": hw_loss.tolist(), "holofocus": our_loss.tolist()},
     }
     np.savez_compressed(
         Path(args.out) / f"reconstruct_{args.index}.npz",

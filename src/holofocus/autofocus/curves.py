@@ -28,6 +28,17 @@ from ..propagation import FresnelPropagator
 from .criteria import IMAGE_CRITERIA, image_criteria, model_fit_error
 
 
+def symmetric_offsets(points: int, half_range: float) -> np.ndarray:
+    """``points`` equidistant de-focus values in ``[-half_range, half_range]`` with an exact 0.
+
+    ``symmetric_offsets(201, 10e-3)`` are the sampling points of [2] Fig. 7-8.
+    """
+    if points < 3 or points % 2 == 0:
+        raise ValueError("use an odd number of at least 3 points so that dz01 = 0 is sampled")
+    k = (points - 1) // 2
+    return np.arange(-k, k + 1) * (half_range / k)
+
+
 def simulated_focus_curve(
     obj: torch.Tensor,
     geometry: ConeBeamGeometry,

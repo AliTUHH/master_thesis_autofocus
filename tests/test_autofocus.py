@@ -20,6 +20,7 @@ from holofocus.autofocus import (
     prefilter,
     reconstruction_focus_curve,
     simulated_focus_curve,
+    symmetric_offsets,
 )
 from holofocus.autofocus import search as search_module
 from holofocus.autofocus.criteria import (
@@ -186,6 +187,13 @@ def test_curve_helpers():
     np.testing.assert_array_equal(normalize_curve([2.0, 2.0]), [0.0, 0.0])
     assert extremum_offset([-1.0, 0.0, 1.0], [2.0, 1.0, 3.0], "min") == 0.0
     assert extremum_offset([-1.0, 0.0, 1.0], [2.0, 1.0, 3.0], "max") == 1.0
+    paper = symmetric_offsets(201, 10e-3)
+    assert len(paper) == 201 and paper[100] == 0.0
+    np.testing.assert_allclose(paper[[0, 1, -1]], [-10e-3, -9.9e-3, 10e-3], rtol=0, atol=1e-15)
+    np.testing.assert_allclose(paper, -paper[::-1], rtol=0, atol=0)
+    for points in (2, 1, 40):
+        with pytest.raises(ValueError):
+            symmetric_offsets(points, 1e-3)
 
 
 def test_simulated_focus_curve_has_its_mfe_minimum_at_the_focus(demo):

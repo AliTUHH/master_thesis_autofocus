@@ -36,7 +36,7 @@ import numpy as np
 import torch
 
 from holofocus.asrm import ASRMSettings, stage_grid
-from holofocus.autofocus import find_focus, reconstruction_focus_curve
+from holofocus.autofocus import find_focus, reconstruction_focus_curve, symmetric_offsets
 from holofocus.baseline import BaselineConfig
 from holofocus.dataset import read_config, read_labels
 from holofocus.dataset.storage import _git_commit
@@ -148,14 +148,6 @@ def cmd_measured(args) -> None:
         )
 
 
-def offsets(points: int, half_range: float) -> np.ndarray:
-    """Equidistant de-focus values with an exact zero in the middle."""
-    if points % 2 == 0:
-        raise ValueError("use an odd number of points so that dz01 = 0 is sampled")
-    k = (points - 1) // 2
-    return np.arange(-k, k + 1) * (half_range / k)
-
-
 def curve_record(curve: dict, meta: dict, settings: ASRMSettings, seconds: float) -> dict:
     return {
         **meta,
@@ -168,7 +160,7 @@ def curve_record(curve: dict, meta: dict, settings: ASRMSettings, seconds: float
 
 def cmd_curves(args) -> None:
     args.out.mkdir(parents=True, exist_ok=True)
-    dz = offsets(args.points, args.half_range)
+    dz = symmetric_offsets(args.points, args.half_range)
     log = (lambda msg: print(f"  {msg}", flush=True)) if args.verbose else None
     if args.data is not None:
         config = read_config(args.data)

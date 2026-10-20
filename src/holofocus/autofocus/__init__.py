@@ -10,7 +10,7 @@ from .criteria import (
     normalize_curve,
     prefilter,
 )
-from .curves import reconstruction_focus_curve, simulated_focus_curve
+from .curves import reconstruction_focus_curve, simulated_focus_curve, symmetric_offsets
 from .nelder_mead import NelderMeadResult, nelder_mead
 from .search import FocusEvaluation, FocusSearchResult, find_focus
 
@@ -30,4 +30,5 @@ __all__ = [
     "prefilter",
     "reconstruction_focus_curve",
     "simulated_focus_curve",
+    "symmetric_offsets",
 ]
