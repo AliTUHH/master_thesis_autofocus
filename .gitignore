@@ -1,37 +1,36 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
+*.py[cod]
 *.so
-*.egg
 *.egg-info/
-dist/
+.eggs/
 build/
+dist/
+.pytest_cache/
+.ruff_cache/
 
 # Environments
 .env
+.venv/
 venv/
 env/
-.venv/
 
-# Data & Outputs
-data/raw/
-data/processed/
-data/external/
+# Generated data and run outputs (figures for the lab notebook live in docs/ and are tracked)
+data/
 output/
+runs/
 tmp/
-reports/figures/
-reports/logs/
-reports/trained_models/
-*.npy
-*.pth
 *.h5
+*.hdf5
+*.zarr/
+*.npy
+*.npz
+*.pt
+*.pth
 *.log
 
-# IDE
+# IDE / OS
 .vscode/
 .idea/
 *.swp
-*.swo
+.DS_Store
