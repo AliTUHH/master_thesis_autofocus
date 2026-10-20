@@ -25,6 +25,7 @@ matplotlib.use("Agg")
 import holowizard.core  # noqa: E402
 import holowizard.core.utils.fileio as fileio  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 import torch  # noqa: E402
 from holowizard.core.api.functions.single_projection.reconstruction import (  # noqa: E402
     reconstruct,
@@ -98,23 +99,27 @@ def main() -> None:
     start = time.perf_counter()
     result, loss = reconstruct(params, viewer=[])
     seconds = time.perf_counter() - start
-    phase = result.real.cpu().numpy()
+    # holowizard's process_image applies torch.rot90 to the input, so the result is rotated.
+    phase = np.rot90(result.real.cpu().numpy(), -1)
     print(
         f"device {holowizard.core.torch_running_device_name}, {args.threads} threads, "
         f"stages {args.stages}: {seconds:.0f} s, result {phase.shape}, "
         f"phase [{phase.min():.2f}, {phase.max():.2f}] rad, final loss {float(loss[-1]):.3e}"
     )
 
+    extent = (0, data.shape[1], data.shape[0], 0)
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.6), layout="constrained")
-    im = axes[0].imshow(data, cmap="gray")
+    im = axes[0].imshow(data, cmap="gray", extent=extent)
     axes[0].set_title(f"Measured hologram (flat-field corrected), {data.shape[0]}² px")
     fig.colorbar(im, ax=axes[0], shrink=0.85)
-    im = axes[1].imshow(phase, cmap="gray")
+    im = axes[1].imshow(phase, cmap="gray", extent=extent)
     axes[1].set_title(
         f"holowizard ASRM phase / rad, stages {'x, '.join(map(str, args.stages))}x\n"
-        f"CPU, {args.threads} threads: {seconds:.0f} s"
+        f"CPU, {args.threads} threads: {seconds:.0f} s, {phase.shape[0]}² px"
     )
     fig.colorbar(im, ax=axes[1], shrink=0.85)
+    for ax in axes:
+        ax.set_xlabel("detector pixel")
     fig.suptitle(f"Spider hair, 11 keV, z01 = {args.z01_mm} mm, z02 = 19.661 m ([1] Table 3)")
     fig.savefig(args.out, dpi=110)
     print(f"saved {args.out}")

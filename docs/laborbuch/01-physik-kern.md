@@ -268,8 +268,10 @@ $(I - A_0)W + A_0$. Vergleiche [1] Fig. 3–4.
 ![holowizard ASRM](figures/stage1-holowizard-asrm-cpu.png)
 
 Gemessenes Spinnenhaar-Hologramm aus dem Zenodo-Archiv von [1], rekonstruiert mit holowizard
-3.0.6 (ASRM, Stufen 16× und 4× wie im Beispiel des Pakets, `z01 = 79,45 mm`). Der
-Phasenbereich bis etwa −2 rad entspricht [2] Fig. 6.
+3.0.6 (ASRM, Stufen 16× und 4× wie im Beispiel des Pakets, `z01 = 79,45 mm`). Das Ergebnis
+der 4×-Stufe hat 512² Pixel; es ist zurückgedreht (Abschnitt 6) und auf die
+Detektorkoordinaten des Hologramms skaliert. Der Phasenbereich bis etwa −2 rad entspricht
+[2] Fig. 6.
 
 ### 5.6 Laufzeiten (CPU, 4 Threads)
 
@@ -280,7 +282,7 @@ Phasenbereich bis etwa −2 rad entspricht [2] Fig. 6.
 | PGD, 300 Iterationen auf 1024² | ≈ 6 s |
 | alle Stage-1-Abbildungen | ≈ 80 s |
 | holowizard ASRM, Stufe 16× (700 It.) | 27 s |
-| holowizard ASRM, Stufen 16× + 4× (700 + 300 It.) | ≈ 400 s |
+| holowizard ASRM, Stufen 16× + 4× (700 + 300 It.) | ≈ 390 s |
 
 Zum Vergleich [2] Table 1: 6 s bzw. 16 s pro innerer Rekonstruktion, 9–13 Rekonstruktionen
 pro Autofokus. Die 4×-Stufe kostet auf dieser CPU etwa 1,2 s pro Iteration (Spinnenhaar,
@@ -308,6 +310,11 @@ dauern. Etappe 3 braucht deshalb die GPU oder stärker gebinnte Daten.
   - `forge` (HoloForge): Datengenerator mit Mehrmaterial-Phantomen (xraylib) und
     Flat-Field-Augmentierung aus echten TIFFs. Gespeichert wird $\lvert\psi\rvert$, obwohl der
     Docstring „squared magnitude“ sagt.
+  - Achtung beim Vergleich: `process_image` dreht jedes Eingabebild mit `torch.rot90`. Das
+    Ergebnis von `reconstruct()` ist daher gegenüber dem geladenen Array um 90° gedreht.
+    `scripts/holowizard_asrm_cpu.py` dreht es für Abb. 5 zurück. Geprüft per Korrelation mit
+    der eigenen Rückpropagation: 0,34 für die Drehung um −90°, < 0,1 für alle anderen
+    Orientierungen.
 - **Fazit**: ASRM und die Autofokus-Baseline existieren als öffentlicher Code und laufen auf
   der CPU. Wegen der schweren, festgenagelten Umgebung nutze ich sie als Referenz in eigener
   Umgebung, nicht als Abhängigkeit des Pakets.
