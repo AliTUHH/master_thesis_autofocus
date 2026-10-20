@@ -1,0 +1,117 @@
+import dataclasses
+from pathlib import Path
+
+import numpy as np
+import pytest
+import torch
+
+from holofocus.dataset import LABEL_KEYS, META_KEYS, DatasetConfig, HologramGenerator
+from holofocus.forward import object_from_phase, simulate_hologram
+from holofocus.geometry import ConeBeamGeometry
+from holofocus.phantoms import PHANTOM_TYPES
+
+CI_CONFIG = Path(__file__).resolve().parents[1] / "configs" / "dataset" / "ci.yaml"
+
+
+@pytest.fixture(scope="module")
+def config():
+    return DatasetConfig.from_yaml(CI_CONFIG)
+
+
+@pytest.fixture(scope="module")
+def generator(config):
+    return HologramGenerator(config, device="cpu")
+
+
+def test_sample_shapes_and_keys(generator, config):
+    sample = generator.sample("train", 0)
+    for array in (sample.hologram, sample.clean, sample.phase):
+        assert array.shape == config.geometry.fov_shape
+        assert array.dtype == np.float32
+    assert set(sample.labels) == set(LABEL_KEYS)
+    assert set(sample.meta) == set(META_KEYS)
+    assert sample.phase.max() <= 0
+
+
+def test_reproducible_and_order_independent(config, generator):
+    other = HologramGenerator(config, device="cpu")
+    in_order = [generator.sample("train", i) for i in range(4)]
+    alone = other.sample("train", 2)
+    np.testing.assert_array_equal(alone.hologram, in_order[2].hologram)
+    np.testing.assert_array_equal(alone.phase, in_order[2].phase)
+    assert alone.labels == in_order[2].labels
+    assert alone.meta == in_order[2].meta
+    assert generator.sample("val", 2).labels != alone.labels
+
+
+def test_labels_are_consistent(config, generator):
+    lo, hi = config.sampling.dz01_range
+    for i in range(16):
+        s = generator.sample("train", i)
+        lab = s.labels
+        assert lo <= lab["dz01"] <= hi
+        assert lab["z01_guess"] == config.geometry.z01_guess
+        assert lab["z01"] == pytest.approx(lab["z01_guess"] + lab["dz01"], abs=1e-15)
+        truth = ConeBeamGeometry(11.0, lab["z01"], 20.0, config.geometry.pixel_size)
+        guess = ConeBeamGeometry(11.0, lab["z01_guess"], 20.0, config.geometry.pixel_size)
+        assert lab["fresnel_number"] == pytest.approx(truth.fresnel_number, rel=1e-12)
+        assert lab["fresnel_number_guess"] == pytest.approx(guess.fresnel_number, rel=1e-12)
+        assert s.meta["effective_pixel_size"] == pytest.approx(truth.effective_pixel_size)
+        assert np.sign(lab["fresnel_number"] - lab["fresnel_number_guess"]) == np.sign(lab["dz01"])
+        assert PHANTOM_TYPES[s.meta["phantom_type"]] in config.phantoms.types
+        p_lo, p_hi = config.noise.photons_range
+        assert p_lo <= s.meta["photons"] <= p_hi
+        ps_lo, ps_hi = config.phantoms.phase_shift_range
+        assert -s.phase.min() == pytest.approx(s.meta["phase_shift"], rel=1e-6)
+        assert ps_lo <= s.meta["phase_shift"] <= ps_hi
+
+
+def test_clean_hologram_is_the_forward_model_of_the_labels(config, generator):
+    s = generator.sample("test", 1)
+    phase = torch.from_numpy(s.phase.astype(np.float64))
+    obj = object_from_phase(phase, config.phantoms.delta_beta)
+    expected = simulate_hologram(
+        obj, s.labels["fresnel_number"], padded_shape=config.simulation_shape
+    )
+    np.testing.assert_allclose(s.clean, expected.numpy(), rtol=0, atol=2e-5)
+
+
+def test_noise_free_model_returns_clean(config):
+    quiet = dataclasses.replace(config, noise=dataclasses.replace(config.noise, model="none"))
+    s = HologramGenerator(quiet, device="cpu").sample("train", 0)
+    np.testing.assert_array_equal(s.hologram, s.clean)
+    assert s.meta["photons"] == np.inf
+
+
+def test_phantom_does_not_depend_on_z01(config):
+    """No size cue: the same index gives the same object for any z01 sampling range."""
+    shifted = dataclasses.replace(
+        config, sampling=dataclasses.replace(config.sampling, dz01_range=(-1e-3, 1e-3))
+    )
+    a = HologramGenerator(config, device="cpu").sample("train", 5)
+    b = HologramGenerator(shifted, device="cpu").sample("train", 5)
+    assert a.labels["dz01"] != b.labels["dz01"]
+    np.testing.assert_array_equal(a.phase, b.phase)
+
+
+def test_guess_range(config):
+    data = config.to_dict()
+    data["geometry"]["z01_guess_range"] = [0.08, 0.3]
+    gen = HologramGenerator(DatasetConfig.from_dict(data), device="cpu")
+    guesses = [gen.sample("train", i).labels["z01_guess"] for i in range(8)]
+    assert all(0.08 <= g <= 0.3 for g in guesses)
+    assert len(set(guesses)) == len(guesses)
+
+
+def test_oversampling_bins_the_fine_intensity(config):
+    fine = dataclasses.replace(
+        config,
+        simulation=dataclasses.replace(config.simulation, oversample=2),
+        noise=dataclasses.replace(config.noise, model="none"),
+    )
+    s = HologramGenerator(fine, device="cpu").sample("train", 3)
+    assert s.hologram.shape == config.geometry.fov_shape
+    transmission = np.exp(2 * s.phase / config.phantoms.delta_beta)
+    # Energy conservation: the mean intensity equals the mean transmission (up to the part
+    # of the wave that leaves the field of view).
+    assert s.clean.mean() == pytest.approx(transmission.mean(), rel=5e-3)

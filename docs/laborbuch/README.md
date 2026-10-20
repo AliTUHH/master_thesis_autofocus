@@ -7,6 +7,7 @@ werden von den Skripten in `scripts/` erzeugt.
 | Nr. | Etappe | Eintrag |
 |---|---|---|
 | 01 | Physik-Kern und Projektgerüst | [01-physik-kern.md](01-physik-kern.md) |
+| 02 | Synthetischer Datensatz | [02-datensatz.md](02-datensatz.md) |
 
 Quellen:
 

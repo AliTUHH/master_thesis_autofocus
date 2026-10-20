@@ -19,7 +19,7 @@ from `z01` and is available as an alternative label.
 | Stage | Content | Lab notebook |
 |---|---|---|
 | 1 | Physics core: cone-beam geometry, Fresnel propagator, forward model, preprocessing of [1] Sec. 4.1, simple back-propagation/PGD, defocus figures | [docs/laborbuch/01-physik-kern.md](docs/laborbuch/01-physik-kern.md) |
-| 2 | Synthetic dataset generator (phantoms, noise, `z01` sampling, HDF5) | planned |
+| 2 | Synthetic dataset generator: random single-material phantoms in the spirit of [2] Sec. 3.5, Poisson/Gaussian detector noise, `Δz01` uniform in ±5 mm, labels `Δz01` and `Fr`, YAML configs, per-sample seeds, HDF5 + PyTorch `Dataset`, CLI | [docs/laborbuch/02-datensatz.md](docs/laborbuch/02-datensatz.md) |
 | 3 | Baseline of [2]: ASRM + MFE + Nelder–Mead | planned |
 
 ## Quick start
@@ -30,6 +30,8 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu   # or a CUDA
 pip install -e ".[dev]"
 pytest                                   # ~5 s on a laptop CPU
 python scripts/make_stage1_figures.py    # Stage 1 figures, ~2 min on 4 CPU threads
+holofocus-dataset generate configs/dataset/ci.yaml --out /tmp/demo   # demo dataset, seconds
+holofocus-dataset generate configs/dataset/cpu-4x.yaml --out data/cpu-4x   # ~16 min on CPU
 ```
 
 ```python
@@ -44,16 +46,24 @@ hologram = simulate_hologram(obj, geometry.fresnel_number, padded_shape=(2048, 2
 
 All tensors live on the device you create them on; the same code runs on CPU and CUDA
 (`holofocus.get_device()` picks CUDA if available). See [docs/usage.md](docs/usage.md) for
-installation details, tests, figures and the comparison with the paper code.
+installation details, tests, figures, the dataset generator and the comparison with the paper
+code.
+
+The main dataset uses the P05 detector binned 4x (512² pixels of 26 µm, sample pixel 130 nm
+at `z01 = 100 mm`, `z02 = 20 m`, 11 keV), so `Fr = 1.5e-3` instead of `9.4e-5` with the same
+field of view; it is simulated on a 2x finer grid and binned. Lab notebook entry 02 explains
+the trade-off.
 
 ## Repository layout
 
 ```
-src/holofocus/      package (geometry, propagation, forward model, preprocessing, ...)
-tests/              pytest suite (CPU; CUDA tests are skipped without a GPU)
-scripts/            figure scripts and cross-checks with the paper code (holowizard)
-docs/usage.md       how to run things (English)
-docs/laborbuch/     lab notebook, one entry per stage (German), figures in figures/
+src/holofocus/          package (geometry, propagation, forward model, preprocessing, phantoms, noise)
+src/holofocus/dataset/  dataset generator: YAML config, sampling, HDF5 storage, CLI
+configs/dataset/        dataset configs (cpu-4x, cpu-4x-z01-range, ci)
+tests/                  pytest suite (CPU; CUDA tests are skipped without a GPU)
+scripts/                figure scripts and cross-checks with the paper code (holowizard)
+docs/usage.md           how to run things (English)
+docs/laborbuch/         lab notebook, one entry per stage (German), figures in figures/
 ```
 
 ## History

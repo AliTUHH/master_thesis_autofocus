@@ -1,0 +1,45 @@
+# Main CPU dataset of Stage 2.
+#
+# Geometry of the simulation row of [2] Table 2 (11 keV, z01 = 100 mm, z02 = 20 m) on the P05
+# detector (2048^2 pixels of 6.5 um, [1] Sec. 5.1), binned 4x to 512^2 pixels of 26 um:
+# sample pixel 130 nm, Fr = 1.507e-3 at z01 = 100 mm (1/Fr = 664 px, field of view
+# N^2 Fr = 395 as without binning). dz01 = z01 - z01_guess is uniform in the +-5 mm box of
+# [2] (Omega_z, Eq. (17)). Lengths in metres, energies in keV, phases in rad.
+name: cpu-4x
+seed: 20261020
+geometry:
+  energy_kev: 11.0
+  z02: 20.0
+  z01_guess: 0.100
+  z01_guess_range: null
+  detector_pixel_size: 6.5e-6
+  detector_shape: [2048, 2048]
+  binning: 4
+sampling:
+  dz01_range: [-5.0e-3, 5.0e-3]
+simulation:
+  padding_margin: 1.0     # free space around the field of view in units of 1/Fr
+  oversample: 2           # simulate on the 2x binned grid and bin the intensity (stage2-binning)
+  a0_range: [1.0, 1.0]    # illumination amplitude A0 of [1] Eq. (4)
+  device: auto            # cuda if available, else cpu
+  precision: single
+phantoms:
+  types: {triangle: 1.0, cell: 1.0, ball: 1.0, mixed: 1.0}
+  delta_beta: 200.0       # [2] Fig. 5: phi in [-2, 0] rad, mu in [0, 0.01]
+  phase_shift_range: [0.5, 2.0]
+  size_range: [0.15, 0.6] # object diameter relative to the field of view
+  margin: 0.05
+  supersample: 4
+noise:
+  model: poisson_gaussian # assumption, [2] Sec. 3.5 uses noise-free holograms
+  photons_range: [1.0e3, 1.0e5]  # mean flat-field counts per binned pixel, log-uniform
+  read_noise: 2.0
+storage:
+  store_phase: true
+  store_clean: false
+  compression: gzip
+  compression_level: 4
+splits:
+  train: 2000
+  val: 250
+  test: 250

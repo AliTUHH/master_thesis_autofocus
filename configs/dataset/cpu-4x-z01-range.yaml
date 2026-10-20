@@ -1,0 +1,25 @@
+# Variant of cpu-4x.yaml with the manual guess itself drawn uniformly from 80-300 mm. This
+# covers spider hair (79.4 mm), tooth (80.9 mm) and cactus needle (284.2 mm) of [2] Table 1;
+# the wire in the flow-cell (329.3 mm) and the magnesium wire (470.8 mm) lie outside. The
+# relative Fresnel-number change of a 5 mm offset then varies between about 6 % and 1.7 %
+# (Delta Fr / Fr ~ dz01 / z01), the case for comparing the targets dz01 and fresnel_ratio.
+name: cpu-4x-z01-range
+seed: 20261021
+geometry:
+  energy_kev: 11.0
+  z02: 20.0
+  z01_guess: 0.100
+  z01_guess_range: [0.080, 0.300]
+  binning: 4
+sampling:
+  dz01_range: [-5.0e-3, 5.0e-3]
+simulation:
+  oversample: 2
+noise:
+  model: poisson_gaussian
+  photons_range: [1.0e3, 1.0e5]
+  read_noise: 2.0
+splits:
+  train: 2000
+  val: 250
+  test: 250
