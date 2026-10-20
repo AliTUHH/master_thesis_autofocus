@@ -38,7 +38,7 @@
       "ball": 0.14634227752685547,
       "mixed": 0.042115211486816406
     },
-    "seconds": 6.610754250999889
+    "seconds": 6.763684544000171
   },
   "samples": {
     "labels": [
@@ -101,11 +101,11 @@
         "effective_pixel_size": 1.3544763356199157e-07
       }
     ],
-    "seconds": 2.3749478519994227
+    "seconds": 2.3352291370001694
   },
   "labels": {
     "samples": 250,
-    "seconds_per_sample": 0.40368849595199935,
+    "seconds_per_sample": 0.3869391739079983,
     "megabytes_per_sample": 0.732757128,
     "dz01_mm_range": [
       -4.931719740187829,
@@ -121,7 +121,7 @@
       "ball": 58,
       "mixed": 70
     },
-    "seconds": 101.30521555900032
+    "seconds": 97.10544921600012
   },
   "noise": {
     "rms_change_offsets_mm": [
@@ -155,7 +155,7 @@
       "1e+04": 0.01,
       "1e+05": 0.003162277660168379
     },
-    "seconds": 5.009912964999785
+    "seconds": 5.032582378999905
   },
   "binning": {
     "reference_binning": 1,
@@ -166,35 +166,35 @@
         "fov": 2048,
         "simulation_shape": 13230,
         "fresnel_number": 9.418245087645844e-05,
-        "seconds_per_sample": 4.66053843499958,
+        "seconds_per_sample": 4.6567184200002885,
         "complex64_array_mb": 1400.2632
       },
       "2": {
         "fov": 1024,
         "simulation_shape": 3840,
         "fresnel_number": 0.00037672980350583377,
-        "seconds_per_sample": 0.4122323250003319,
+        "seconds_per_sample": 0.4349150020007073,
         "complex64_array_mb": 117.9648
       },
       "4": {
         "fov": 512,
         "simulation_shape": 1215,
         "fresnel_number": 0.001506919214023335,
-        "seconds_per_sample": 0.04049413399934565,
+        "seconds_per_sample": 0.03836048599987407,
         "complex64_array_mb": 11.8098
       },
       "8": {
         "fov": 256,
         "simulation_shape": 432,
         "fresnel_number": 0.00602767685609334,
-        "seconds_per_sample": 0.009050534999914817,
+        "seconds_per_sample": 0.008890516000064963,
         "complex64_array_mb": 1.492992
       },
       "16": {
         "fov": 128,
         "simulation_shape": 175,
         "fresnel_number": 0.02411070742437336,
-        "seconds_per_sample": 0.0029424840004139696,
+        "seconds_per_sample": 0.002900587000112864,
         "complex64_array_mb": 0.245
       }
     },
@@ -350,7 +350,7 @@
         }
       }
     },
-    "seconds": 60.02627122499962
+    "seconds": 59.96656085599989
   },
   "measured_noise": {
     "holograms": {
@@ -459,6 +459,6 @@
         }
       }
     },
-    "seconds": 0.3601068240004679
+    "seconds": 0.3157223629996224
   }
 }

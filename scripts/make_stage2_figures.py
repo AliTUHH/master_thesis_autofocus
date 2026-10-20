@@ -216,7 +216,7 @@ def noise_figure(config: DatasetConfig, settings: Settings, out: Path) -> dict:
     s = HologramGenerator(cfg, device="cpu").sample("train", 0)
     guess = s.labels["z01_guess"]
     phase = s.phase.astype(np.float32)
-    clean = s.clean.astype(np.float64)
+    clean = simulate(cfg, phase, guess)
     rows, cols = np.nonzero(phase < -1e-3)
     cy, cx = int(rows.mean()), int(cols.mean())
     n = phase.shape[0]
