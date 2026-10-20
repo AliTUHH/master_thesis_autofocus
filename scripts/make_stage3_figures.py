@@ -11,6 +11,8 @@
 * ``stage3-search.png``: Nelder-Mead probing sequences on the MFE.
 * ``stage3-measured.png``: the autofocus on the measured holograms of [1] against [2] Table 1
   (``results/measured``); the phase panels need the ``*-phase.npy`` files of that run.
+* ``stage3-bias.png``: fine MFE scans around the true ``z01`` for noisy, noise-free and
+  grid-simulated holograms (``results/bias``).
 * ``stage3-crosscheck.png``: ASRM port and ``find_focus`` against holowizard 3.0.6
   (``results/crosscheck``).
 * ``stage3-metrics.json``: the numbers quoted in the lab notebook.
@@ -547,6 +549,75 @@ def measured_figure(directories: dict[str, Path], settings: Settings, out: Path)
     return table
 
 
+BIAS_STYLES = {
+    "noisy": {"color": "tab:red", "marker": "o"},
+    "clean": {"color": "tab:blue", "marker": "s"},
+    "grid": {"color": "black", "marker": "^"},
+    "grid-nofilter": {"color": "tab:green", "marker": "v", "ls": "--"},
+}
+BIAS_LABELS = {
+    "noisy": "noisy (dataset)",
+    "clean": "noise-free",
+    "grid": "noise-free, reconstruction grid",
+    "grid-nofilter": "noise-free, reconstruction grid,\nno object filters",
+}
+
+
+def bias_figure(directory: Path, run_dir: Path, settings: Settings, out: Path) -> dict | None:
+    files = sorted(directory.glob("bias-*.json"))
+    if not files:
+        return None
+    nm = {r["index"]: r for r in read_rows(run_dir / "results.csv")}
+    fig, axes = plt.subplots(
+        len(files), 2, figsize=(11.0, 4.2 * len(files)), layout="constrained", squeeze=False
+    )
+    metrics = {}
+    for (ax_mfe, ax_phase), path in zip(axes, files, strict=True):
+        rec = json.loads(path.read_text())
+        kind = PHANTOM_TYPES[rec["phantom_type"]]
+        entry = {"phantom_type": kind, "photons": rec["photons"], "minimum_um": rec["minimum_um"]}
+        for variant, curve in rec["curves"].items():
+            style = BIAS_STYLES.get(variant, {})
+            dz_um = np.asarray(curve["dz01"]) * 1e6
+            vertex = rec["minimum_um"][variant]["parabola"]
+            ax_mfe.plot(
+                dz_um,
+                normalize_curve(curve["MFE"]),
+                ms=4,
+                lw=1.0,
+                label=f"{BIAS_LABELS.get(variant, variant)}: {vertex:+.0f} µm",
+                **style,
+            )
+            ax_mfe.axvline(vertex, color=style.get("color"), lw=0.8, ls=":")
+            ax_phase.plot(dz_um, curve["phase_rmse"], ms=4, lw=1.0, **style)
+            entry.setdefault("mfe_range", {})[variant] = [min(curve["MFE"]), max(curve["MFE"])]
+        if rec["index"] in nm:
+            error = nm[rec["index"]]["error_um"]
+            entry["nelder_mead_error_um"] = error
+            ax_mfe.axvline(
+                error, color="tab:purple", lw=2.0, alpha=0.5, label="Nelder–Mead estimate"
+            )
+        for ax in (ax_mfe, ax_phase):
+            ax.axvline(0.0, color="gray", lw=0.8)
+        ax_mfe.set(
+            xlabel=r"$\hat z_{01} - z_{01}$ / µm",
+            ylabel="MFE, normalized",
+            title=f"test {rec['index']} ({kind}, N = {rec['photons']:.0f}): MFE\n"
+            "(dotted: parabola vertex)",
+        )
+        ax_mfe.legend(fontsize=7)
+        ax_phase.set(
+            xlabel=r"$\hat z_{01} - z_{01}$ / µm",
+            ylabel="phase RMSE / rad",
+            title="phase error of the reconstruction",
+        )
+        metrics[rec["index"]] = entry
+    fig.suptitle("Location of the MFE minimum for different data models")
+    fig.savefig(out / "stage3-bias.png", dpi=settings.dpi)
+    plt.close(fig)
+    return metrics
+
+
 def crosscheck_figure(directory: Path, settings: Settings, out: Path) -> dict | None:
     reco_files = sorted(directory.glob("reconstruct_*.json"))
     focus_files = sorted(
@@ -668,6 +739,7 @@ def main() -> None:
         ("baseline", lambda: baseline_figure(baseline, settings, args.out)),
         ("search", lambda: search_figure(baseline, settings, args.out)),
         ("measured", lambda: measured_figure(measured, settings, args.out)),
+        ("bias", lambda: bias_figure(results / "bias", baseline, settings, args.out)),
         ("crosscheck", lambda: crosscheck_figure(results / "crosscheck", settings, args.out)),
     ]
     for name, fn in steps:
