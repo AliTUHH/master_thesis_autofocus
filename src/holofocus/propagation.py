@@ -102,6 +102,19 @@ def propagate(field: torch.Tensor, fresnel_number: float, **kwargs) -> torch.Ten
     return propagator(field)
 
 
+def next_fast_len(n: int) -> int:
+    """Smallest integer ``>= n`` whose prime factors are 2, 3, 5 or 7 (fast FFT sizes)."""
+    m = max(int(math.ceil(n)), 1)
+    while True:
+        k = m
+        for p in (2, 3, 5, 7):
+            while k % p == 0:
+                k //= p
+        if k == 1:
+            return m
+        m += 1
+
+
 def compose_fresnel_numbers(*fresnel_numbers: float) -> float:
     """Fresnel number of consecutive propagations on one grid: ``1/Fr = sum(1/Fr_i)``."""
     inverse = sum(0.0 if math.isinf(fr) else 1.0 / fr for fr in fresnel_numbers)
