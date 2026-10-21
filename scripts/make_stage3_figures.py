@@ -666,6 +666,8 @@ def bias_figure(directory: Path, run_dir: Path, settings: Settings, out: Path) -
 PADDING_STYLES = {
     "p2": {"color": "black", "marker": "o", "label": "p = 2"},
     "p2-l2": {"color": "tab:orange", "marker": "s", "label": "p = 2, L2 weight × 2/3"},
+    "p2-1022": {"color": "tab:purple", "marker": "v", "label": "array 2n − 2 (mirror period)"},
+    "p3": {"color": "tab:red", "marker": "P", "label": "p = 3"},
     "p4": {"color": "tab:blue", "marker": "^", "label": "p = 4"},
     "p7": {"color": "tab:green", "marker": "D", "label": "p = 7"},
 }
@@ -683,21 +685,33 @@ def vertex(z: np.ndarray, values: np.ndarray) -> float:
 
 
 def padding_figure(
-    directory: Path, measured: Path, bias: Path, settings: Settings, out: Path
+    directory: Path, measured: Path, bias: Path, curves: Path, settings: Settings, out: Path
 ) -> dict | None:
     """MFE of the spider hair and of a synthetic sample for several padding factors.
 
-    Spider hair: five-point curves (``<directory>/<run>/measured-spider_hair.json``) and the
-    Nelder-Mead probes of ``<measured>/b1-p2`` and ``b1-p4`` near the minimum. Synthetic:
-    the noisy variant of ``<bias>/bias-<i>.json`` (p = 2) and ``<directory>/bias-<run>``.
+    Spider hair: five-point curves (``<directory>/<run>/measured-spider_hair.json``), for
+    p = 2 merged with the 21-point curve ``<curves>/measured-spider_hair.json`` if it was
+    computed with the same settings, and the Nelder-Mead probes of ``<measured>/b1-p2`` and
+    ``b1-p4`` near the minimum. Synthetic: the noisy variant of ``<bias>/bias-<i>.json``
+    (p = 2) and ``<directory>/bias-<run>``.
     """
     spider = {}
-    for run in ("p2", "p2-l2", "p7"):
+    for run in ("p2", "p2-l2", "p2-1022", "p3", "p7"):
         path = directory / run / "measured-spider_hair.json"
         if path.exists():
             rec = json.loads(path.read_text())
-            z = (rec["z01_reference"] + np.asarray(rec["curve"]["dz01"])) * 1e3
-            spider[run] = {"kind": "curve", "z": z, "mfe": np.asarray(rec["curve"]["MFE"])}
+            records = [rec]
+            wide = curves / "measured-spider_hair.json"
+            if run == "p2" and wide.exists():
+                other = json.loads(wide.read_text())
+                if other["settings"] == rec["settings"] and other["binning"] == rec["binning"]:
+                    records.append(other)
+            points: dict[float, float] = {}
+            for r in records:
+                for dz, mfe in zip(r["curve"]["dz01"], r["curve"]["MFE"], strict=True):
+                    points[round((r["z01_reference"] + dz) * 1e3, 6)] = mfe
+            z = np.array(sorted(points))
+            spider[run] = {"kind": "curve", "z": z, "mfe": np.array([points[k] for k in z])}
     for run, name in (("p2", "b1-p2"), ("p4", "b1-p4")):
         path = measured / name / "spider_hair.json"
         if path.exists():
@@ -736,9 +750,16 @@ def padding_figure(
         if series["kind"] == "curve":
             order = np.argsort(z)
             at = vertex(series["z"], series["mfe"])
-            ax.plot(z[order], rel[order], lw=1.2, ms=6, label=f"{label}: {at:.2f} mm", **style)
+            edge = "≥ " if at >= series["z"].max() else "≤ " if at <= series["z"].min() else ""
+            ax.plot(
+                z[order], rel[order], lw=1.2, ms=6, label=f"{label}: {edge}{at:.2f} mm", **style
+            )
             ax.axvline(at, color=style["color"], ls=":", lw=0.9)
-            metrics["spider_hair"][run] = {"vertex_mm": at, "points": len(series["z"])}
+            metrics["spider_hair"][run] = {
+                "vertex_mm": at,
+                "at_edge": bool(edge),
+                "points": len(series["z"]),
+            }
         else:
             est = series["estimate"]
             ax.plot(
@@ -914,7 +935,12 @@ def main() -> None:
         (
             "padding",
             lambda: padding_figure(
-                results / "padding", results / "measured", results / "bias", settings, args.out
+                results / "padding",
+                results / "measured",
+                results / "bias",
+                results / "focus-curves",
+                settings,
+                args.out,
             ),
         ),
         ("crosscheck", lambda: crosscheck_figure(results / "crosscheck", settings, args.out)),
