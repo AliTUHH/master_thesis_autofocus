@@ -770,6 +770,9 @@ Was daraus folgt:
   null; den größeren Teil machen die Objektfilter (5.6). Ein Hauptlauf mit Padding 4 bräuchte
   auf dieser CPU etwa 31 h (48 Samples × 12 Rekonstruktionen × 190 s) und ist ein Fall für die
   GPU (6.5).
+  *Nachtrag (21.10.2026):* Bei den Samples 0 und 1 (Zellen mit 1100 und 2700 Photonen pro
+  Pixel) verschiebt Padding 4 das Minimum um 150 bzw. 287 µm, auf −33 und +2 µm. Der Schluss
+  aus Sample 2 gilt also nicht allgemein (Laborbuch 04, Abschnitt 7).
 - **Für die Arbeit:** Das Padding gehört zur Methode und ist nicht nur eine Frage der
   Abtastung. $N \ge 1/Fr$ ist mit Padding 2 erfüllt, und trotzdem verschiebt es das Minimum
   beim Spinnenhaar um 0,75 mm. Wer [2] nachrechnet, braucht mindestens Padding 4 (Typ 2 von
