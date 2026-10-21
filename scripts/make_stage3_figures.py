@@ -10,7 +10,8 @@
   split (``results/baseline/cpu-4x-test``).
 * ``stage3-search.png``: Nelder-Mead probing sequences on the MFE.
 * ``stage3-measured.png``: the autofocus on the measured holograms of [1] against [2] Table 1
-  (``results/measured``); the phase panels need the ``*-phase.npy`` files of that run.
+  and the ``z01`` of the example scripts of [1] (``results/measured``); the phase panels need
+  the ``*-phase.npy`` files of that run.
 * ``stage3-bias.png``: fine MFE scans around the true ``z01`` for noisy, noise-free and
   grid-simulated holograms (``results/bias``).
 * ``stage3-crosscheck.png``: ASRM port and ``find_focus`` against holowizard 3.0.6
@@ -527,7 +528,8 @@ def measured_figure(directories: dict[str, Path], settings: Settings, out: Path)
                 "z01_nm_mm": sample.z01_nm * 1e3,
                 "z01_visual_mm": sample.z01_visual * 1e3,
                 "samples": sample.nm_samples,
-            }
+            },
+            "paper1_example_z01_mm": sample.z01_example * 1e3,
         }
         for label, record in records[name].items():
             result = record["result"]
@@ -548,6 +550,8 @@ def measured_figure(directories: dict[str, Path], settings: Settings, out: Path)
                 "z01_mm": result["z01"] * 1e3,
                 "minus_paper2_nm_um": record["z01_minus_paper2_nm_um"],
                 "minus_visual_um": record["z01_minus_visual_um"],
+                "minus_paper1_example_um": (result["z01"] - sample.z01_example) * 1e6,
+                "mfe_range_percent": 100.0 * (mfe.max() / mfe.min() - 1.0),
                 "reconstructions": result["n_reconstructions"],
                 "seconds": result["seconds"],
                 "seconds_per_reconstruction": record["seconds_per_reconstruction"],
@@ -564,6 +568,13 @@ def measured_figure(directories: dict[str, Path], settings: Settings, out: Path)
             ls="--",
             lw=0.9,
             label=f"[2] visual {sample.z01_visual * 1e3:.1f} mm",
+        )
+        ax.axvline(
+            sample.z01_example * 1e3,
+            color="tab:green",
+            ls=":",
+            lw=1.2,
+            label=f"[1] example {sample.z01_example * 1e3:.2f} mm",
         )
         ax.set(
             xlabel=r"$z_{01}$ / mm",
