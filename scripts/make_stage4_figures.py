@@ -17,7 +17,10 @@
   offset-corrected baseline, the learned model and the warm start, paired errors and the
   time per estimate.
 * ``stage4-warmstart.png``: Nelder-Mead from the learned estimate against the cold start:
-  errors, reconstructions per autofocus and probing sequences.
+  errors, reconstructions per autofocus, probing sequences and the MFE at both estimates;
+  below, the MFE of all probes of both searches for the four samples where their estimates
+  differ most, with the probes of ``--warm-vertex`` (a warm start with ``--anchor vertex``)
+  if that run used the same dataset.
 * ``stage4-metrics.json``: the numbers quoted in the lab notebook.
 
 Usage::
@@ -95,6 +98,11 @@ def _run_info(run: Path) -> dict:
 
 def _read_comparison(directory: Path) -> list[dict]:
     return read_comparison(directory) if (directory / "comparison.csv").exists() else []
+
+
+def _same_dataset(a: Path, b: Path) -> bool:
+    sha = [(_run_info(run).get("dataset") or {}).get("sha256") for run in (a, b)]
+    return sha[0] is not None and sha[0] == sha[1]
 
 
 def inputs_figure(data: Path, runs: list[Path], out: Path, dpi: int) -> dict | None:
@@ -564,13 +572,73 @@ def comparison_figure(comparison: Path, baseline_val: Path, out: Path, dpi: int)
     return summary
 
 
-def warm_figure(comparison: Path, baseline: Path, warm: Path, out: Path, dpi: int) -> dict | None:
+def _probe_panel(
+    ax, row: dict, cold: dict | None, warm: dict | None, vertex: dict | None = None
+) -> None:
+    """MFE of all probes of the searches of one sample around the truth."""
+    if cold is None or warm is None:
+        ax.set_visible(False)
+        return
+    z01_true = cold["z01_guess"] + row["dz01_true_um"] * 1e-6
+    styles = [
+        (cold, "tab:red", "s", "probes, baseline [2]"),
+        (warm, "tab:purple", "o", "probes, warm start"),
+    ]
+    if vertex is not None:
+        styles.append((vertex, "tab:green", "^", "probes, warm start with --anchor vertex"))
+    estimates = [((trace["z01"] - z01_true) * 1e6, color) for trace, color, *_ in styles]
+    probes = [
+        np.array(
+            [
+                ((e["z01"] - z01_true) * 1e6, e["mfe"])
+                for e in trace["evaluations"]
+                if e["reconstructed"]
+            ]
+        )
+        for trace, *_ in styles
+    ]
+    best = min(p[:, 1].min() for p in probes)
+    marks = [0.0, row["learned_error_um"], *(error for error, _ in estimates)]
+    lim = (min(marks) - 1000.0, max(marks) + 1000.0)
+    lo, hi = (np.array(warm["initial_simplex"]) - z01_true) * 1e6
+    ax.axvspan(lo, hi, color="tab:purple", alpha=0.1, label="initial simplex of the warm start")
+    shown = []
+    for k, (_, color, marker, label) in enumerate(styles):
+        p = probes[k]
+        rel = 100 * (p[:, 1] / best - 1)
+        ax.plot(p[:, 0], rel, marker, ms=5, color=color, mfc="none", label=label)
+        shown.extend(rel[(p[:, 0] >= lim[0]) & (p[:, 0] <= lim[1])])
+    for error, color in estimates:
+        ax.axvline(error, color=color, lw=1.0)
+    ax.axvline(row["learned_error_um"], color="tab:blue", lw=1.0, ls="--", label="learned estimate")
+    ax.axvline(0.0, color="0.3", lw=0.8, ls=":")
+    top = max(max(shown, default=0.0), 1e-3)
+    ax.set_xlim(*lim)
+    ax.set_ylim(-0.1 * top, 1.1 * top)
+    ax.set_xlabel("z01 of the probe - true z01 (um); dotted: truth, solid: estimates")
+    ax.set_ylabel("MFE above the smallest probe (%)")
+    title = (
+        f"sample {row['index']}: learned {row['learned_error_um']:+.0f} um\n"
+        f"baseline {estimates[0][0]:+.0f} um, warm start {estimates[1][0]:+.0f} um"
+    )
+    if vertex is not None:
+        title += f", vertex anchor {estimates[2][0]:+.0f} um"
+    ax.set_title(title, fontsize=9)
+
+
+def warm_figure(
+    comparison: Path, baseline: Path, warm: Path, out: Path, dpi: int, vertex: Path | None = None
+) -> dict | None:
     rows = _read_comparison(comparison)
     if not rows or rows[0]["warm_error_um"] is None or not (warm / "traces.jsonl").exists():
         return None
     raw_traces = {t["index"]: t for t in read_traces(baseline / "traces.jsonl")}
     warm_traces = {t["index"]: t for t in read_traces(warm / "traces.jsonl")}
-    fig, axes = plt.subplots(1, 3, figsize=(16.0, 4.8), layout="constrained")
+    vertex_traces = {}
+    if vertex is not None and (vertex / "traces.jsonl").exists() and _same_dataset(vertex, warm):
+        vertex_traces = {t["index"]: t for t in read_traces(vertex / "traces.jsonl")}
+    fig, grid = plt.subplots(2, 4, figsize=(20.0, 9.0), layout="constrained")
+    axes = grid[0]
     raw = np.array([r["raw_error_um"] for r in rows])
     hot = np.array([r["warm_error_um"] for r in rows])
     axes[0].scatter(raw, hot, s=12, color="tab:purple")
@@ -604,12 +672,52 @@ def warm_figure(comparison: Path, baseline: Path, warm: Path, out: Path, dpi: in
     axes[2].set_xlabel("reconstruction")
     axes[2].set_ylabel("probed dz01 (mm); dotted: truth")
     axes[2].set_title("first three samples: baseline (red), warm start (purple)", fontsize=9)
+    pairs = [
+        (raw_traces[r["index"]], warm_traces[r["index"]])
+        for r in rows
+        if r["index"] in raw_traces and r["index"] in warm_traces
+    ]
+    shift = np.array([(w["z01"] - c["z01"]) * 1e6 for c, w in pairs])
+    gain = np.array([100 * (w["mfe"] / c["mfe"] - 1) for c, w in pairs])
+    axes[3].scatter(shift, gain, s=12, color="tab:purple")
+    axes[3].axhline(0, color="0.3", lw=0.8)
+    axes[3].axvline(0, color="0.3", lw=0.8)
+    axes[3].set_xlabel("estimate of the warm start - estimate of the baseline (um)")
+    axes[3].set_ylabel("MFE at the warm-start estimate relative to the baseline (%)")
+    axes[3].set_title("below 0: the warm start found the lower MFE", fontsize=9)
+    divergent = sorted(rows, key=lambda r: -abs(r["warm_error_um"] - r["raw_error_um"]))[:4]
+    for k, row in enumerate(divergent):
+        index = row["index"]
+        _probe_panel(
+            grid[1][k],
+            row,
+            raw_traces.get(index),
+            warm_traces.get(index),
+            vertex_traces.get(index),
+        )
+    for ax in grid[1][len(divergent) :]:
+        ax.set_visible(False)
+    handles, labels = grid[1][0].get_legend_handles_labels()
+    if handles:
+        fig.legend(handles, labels, loc="outside lower center", ncols=len(handles), fontsize=8)
     _save(fig, out / "stage4-warmstart.png", dpi)
+    vertex_samples = {}
+    for row in rows:
+        trace = vertex_traces.get(row["index"])
+        if trace is not None:
+            z01_true = trace["z01_guess"] + row["dz01_true_um"] * 1e-6
+            vertex_samples[row["index"]] = {
+                "error_um": (trace["z01"] - z01_true) * 1e6,
+                "reconstructions": trace["n_reconstructions"],
+                "mfe_relative_to_baseline": trace["mfe"] / raw_traces[row["index"]]["mfe"] - 1,
+            }
     return {
         "reconstructions_raw": float(np.mean(n_raw)),
         "reconstructions_warm": float(np.mean(n_warm)),
         "warm": point_metrics(hot),
         "raw": point_metrics(raw),
+        "divergent": [row["index"] for row in divergent],
+        "vertex": vertex_samples,
     }
 
 
@@ -630,6 +738,12 @@ def main() -> None:
     parser.add_argument("--baseline", type=Path, default=RESULTS / "baseline" / "cpu-4x-test")
     parser.add_argument("--baseline-val", type=Path, default=RESULTS / "baseline" / "cpu-4x-val")
     parser.add_argument("--warm", type=Path, default=RESULTS / "baseline" / "cpu-4x-test-warm")
+    parser.add_argument(
+        "--warm-vertex",
+        type=Path,
+        default=RESULTS / "baseline" / "cpu-4x-test-warm-vertex",
+        help="warm start with --anchor vertex (used only if it ran on the dataset of --warm)",
+    )
     parser.add_argument("--data", type=Path, default=REPO / "data" / "cpu-4x")
     args = parser.parse_args()
     dpi = 60 if args.quick else 120
@@ -651,7 +765,9 @@ def main() -> None:
         ),
         (
             "warmstart",
-            lambda: warm_figure(args.comparison, args.baseline, args.warm, args.out, dpi),
+            lambda: warm_figure(
+                args.comparison, args.baseline, args.warm, args.out, dpi, args.warm_vertex
+            ),
         ),
     ]
     for name, fn in steps:
