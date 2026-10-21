@@ -8,7 +8,8 @@ build.
 ```bash
 python -m venv .venv && source .venv/bin/activate          # or: conda create -n holofocus python=3.12
 pip install torch --index-url https://download.pytorch.org/whl/cpu   # CPU only (VM, CI)
-# pip install torch --index-url https://download.pytorch.org/whl/cu124  # GPU machine
+# pip install torch --index-url https://download.pytorch.org/whl/cu126  # GPU machine
+# (DESY Maxwell: cluster/maxwell/setup_env.sh, see docs/maxwell-gpu.md)
 pip install -e ".[dev]"
 ```
 
@@ -58,12 +59,14 @@ numbers quoted in the lab notebook.
 ## Synthetic dataset (Stage 2)
 
 A YAML file describes the geometry, the sampling of `z01`, the phantoms, the noise model, the
-storage options and the size of every split. Three configs are provided:
+storage options and the size of every split. The provided configs:
 
 | Config | Detector grid | `z01` | Samples (train/val/test) | CPU time | Size |
 |---|---|---|---|---|---|
 | `configs/dataset/cpu-4x.yaml` | P05 binned 4x: 512² px of 26 µm, simulated 2x finer | 100 mm ± 5 mm | 2000/250/250 | ~16 min | ~1.8 GB |
 | `configs/dataset/cpu-4x-z01-range.yaml` | as above | guess 80–300 mm, ± 5 mm | 2000/250/250 | ~23 min | ~1.8 GB |
+| `configs/dataset/cpu-4x-extra.yaml` | as above, another seed, no phase maps (Stage 4) | 100 mm ± 5 mm | 8000/–/– | ~60 min | ~5.4 GB |
+| `configs/dataset/cpu-4x-large.yaml` | as above, a third seed, no phase maps (for the GPU) | 100 mm ± 5 mm | 50 000/–/– | ~5–8 h (estimated) | ~34 GB |
 | `configs/dataset/ci.yaml` | binned 16x: 128² px of 104 µm | 100 mm ± 5 mm | 32/8/8 | < 1 s | ~4 MB |
 
 ```bash
@@ -178,6 +181,8 @@ the reference values of [2] Table 1 are in `holofocus.measured` (`MEASURED_SAMPL
 | Config | Data | ASRM | Search |
 |---|---|---|---|
 | `configs/baseline/paper2-cpu.yaml` | `cpu-4x` (512², binning 4) | [2] Table 3 at 4×/1×/1×, padding 2 (1024² arrays) | ± 5 mm, stop at 100 µm |
+| `configs/baseline/paper2-cpu-warm.yaml` | `cpu-4x` | as above | as above, initial simplex from `--warm-start` (Stage 4), no reconstruction at the true `z01` |
+| `configs/baseline/paper2-cpu-p4.yaml`, `paper2-cpu-warm-p4.yaml` | `cpu-4x` | as above with padding 4 (2048² arrays, about 190 s per reconstruction on CPU; for the GPU) | as the two above |
 | `configs/baseline/ci.yaml` | `ci` (128², binning 16) | Table 3 with 20× fewer iterations | ± 5 mm, stop at 1 mm |
 
 ```bash
@@ -186,6 +191,12 @@ holofocus-baseline run configs/baseline/paper2-cpu.yaml --data data/cpu-4x/test.
 holofocus-baseline run configs/baseline/paper2-cpu.yaml --data data/cpu-4x/test.h5 \
     --out runs/subset --indices 3 5 8 --device cuda
 holofocus-baseline summary results/baseline/cpu-4x-test
+# a split in 10 contiguous chunks (e.g. the tasks of a job array), then one run directory
+for k in $(seq 0 9); do
+    holofocus-baseline run configs/baseline/paper2-cpu.yaml --data data/cpu-4x/test.h5 \
+        --out runs/test/chunk-$k-of-10 --chunk $k --chunks 10
+done
+holofocus-baseline merge runs/test/chunk-*-of-10 --out runs/test
 ```
 
 A run directory holds:
@@ -205,6 +216,14 @@ A run directory holds:
 Runs are resumable: an interrupted run continues with the missing samples, and a directory
 that holds a run with another config or dataset is refused. To compare a learned estimator
 with the baseline (Stage 4), evaluate it on the `index` values of `results.csv`.
+
+`--chunk k --chunks n` keeps the k-th (from 0) of `n` contiguous parts of the selected samples
+(after `--indices` and `--limit`; the sizes differ by at most one). `merge` joins runs with the
+same config, dataset and warm start: `results.csv` and `traces.jsonl` sorted by `index`, a new
+`summary.json`, and the `run.yaml` of the first run with `merged_from` (path, number of
+samples, software, device and host of every run). A sample in two runs is refused; `--out` may
+contain the runs, and an earlier merge there is replaced. The Maxwell kit runs the chunks as a
+SLURM job array ([maxwell-gpu.md](maxwell-gpu.md), German).
 
 On CPU, one reconstruction at 1024² takes about 25–30 s with 3 threads; an autofocus needs
 11–13 reconstructions (plus one at the true `z01` for `mfe_true`), so about 5–6 min per sample.
@@ -371,7 +390,9 @@ python scripts/make_stage4_figures.py
 
 `--device cuda` (or `device: cuda` in the config) trains and predicts on a GPU; `auto` takes
 CUDA when it is available. Several `--train` files are concatenated in the given order, and
-`--limit N` keeps the first `N` samples of the concatenation. `--warm-start` reads `index`,
+`--limit N` keeps the first `N` samples of the concatenation. `--seed k` replaces
+`training.seed` of the config (the copy in the run directory records it), e.g. for an
+ensemble of seeds. `--warm-start` reads `index`,
 `z01_est` and, with `--sigmas k`, `sigma` from a `predictions.csv`; the half width of the
 initial simplex is `max(--half-width, k * sigma)`, shifted inside `Omega_z` if needed.
 `--anchor vertex` starts from `(z01_est, z01_est + w)` instead (`z01_est - w` at the upper end
@@ -404,6 +425,24 @@ results/comparison/cpu-4x-test/  learned vs. baseline on those samples
 results/padding/bias-p2/         MFE scans of test samples 0 and 1 at padding 2 (padding check;
                                  bias-p4/ holds them at padding 4)
 ```
+
+## GPU runs on DESY Maxwell
+
+`cluster/maxwell/` is a SLURM kit for the A100 nodes of DESY Maxwell; [maxwell-gpu.md](maxwell-gpu.md)
+(German) explains it step by step, including the settings to look up on Maxwell (`CHECK_ME` in
+`config.example.sh`; the scripts refuse to run while one is left). In short:
+
+```bash
+cp cluster/maxwell/config.example.sh cluster/maxwell/config.sh   # replace every CHECK_ME
+cluster/maxwell/setup_env.sh                 # venv or conda with CUDA PyTorch on scratch
+cluster/maxwell/submit.sh gpu-check          # a GPU node against the CPU and the committed results
+cluster/maxwell/submit.sh --local gpu-check  # the same without SLURM, with --device cpu
+```
+
+`scripts/check_cluster_run.py` compares runs made elsewhere with the committed ones: `data` a
+split against its fingerprint in `results/datasets/` (labels, and SHA-256, mean and standard
+deviation of every hologram; `fingerprint` writes one), `predictions` and `baseline` sample by
+sample against committed runs, and `device` PyTorch on a device against the CPU.
 
 ## Comparison with the paper code (optional)
 

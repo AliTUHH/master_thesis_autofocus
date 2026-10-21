@@ -23,13 +23,18 @@ from `z01` and is available as an alternative label.
 | 3 | Classical autofocus baseline of [2]: ASRM ([1] Alg. 5) ported from the paper code with the [2] Table 3 schedule, model fit error, projected Nelder–Mead, image criteria and focus curves; runs on the synthetic test split and on the Zenodo holograms of [1], cross-checked against holowizard; per-sample results in `results/` | [docs/laborbuch/03-baseline.md](docs/laborbuch/03-baseline.md) |
 | 4 | First learned autofocus: a small CNN estimates `Δz01` with a Gaussian uncertainty from the radial power spectrum (or the binned hologram), trained on 10 000 synthetic samples on CPU; compared per sample with the raw and offset-corrected baseline of [2], and used as a warm start for its Nelder–Mead search | [docs/laborbuch/04-lernmodell.md](docs/laborbuch/04-lernmodell.md) |
 
+**GPU runs.** The heavy runs (the baseline on the whole synthetic test split, larger training
+runs, later NPE) go to the A100 nodes of DESY Maxwell with the SLURM kit in `cluster/maxwell/`;
+[docs/maxwell-gpu.md](docs/maxwell-gpu.md) is the step-by-step guide (German).
+`scripts/check_cluster_run.py` compares those runs sample by sample with the committed results.
+
 ## Quick start
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install torch --index-url https://download.pytorch.org/whl/cpu   # or a CUDA build
 pip install -e ".[dev]"
-pytest                                   # ~15 s on a laptop CPU
+pytest                                   # ~40 s on a laptop CPU
 python scripts/make_stage1_figures.py    # Stage 1 figures, ~2 min on 4 CPU threads
 holofocus-dataset generate configs/dataset/ci.yaml --out /tmp/demo   # demo dataset, seconds
 holofocus-dataset generate configs/dataset/cpu-4x.yaml --out data/cpu-4x   # ~16 min on CPU
@@ -72,15 +77,20 @@ src/holofocus/autofocus/  MFE and image criteria, Nelder-Mead, nested autofocus,
 src/holofocus/baseline/   baseline runs on dataset splits: YAML config, per-sample results, CLI
 src/holofocus/learned/    learned autofocus: representations, CNNs with a Gaussian head,
                           training, inference, metrics, comparison with the baseline, CLI
-configs/dataset/          dataset configs (cpu-4x, cpu-4x-extra, cpu-4x-z01-range, ci)
-configs/baseline/         baseline configs (paper2-cpu, paper2-cpu-warm, ci)
+configs/dataset/          dataset configs (cpu-4x, cpu-4x-extra, cpu-4x-large, cpu-4x-z01-range,
+                          ci)
+configs/baseline/         baseline configs (paper2-cpu, paper2-cpu-warm, both at padding 4 as
+                          -p4, ci)
 configs/learned/          learned-model configs (spectrum-cnn, spectrum-cnn-wide, image-cnn, ci)
 results/                  per-sample results quoted in the lab notebook (baseline, learned
-                          models, comparison)
+                          models, comparison) and fingerprints of the cpu-4x val and test splits
+cluster/maxwell/          SLURM run kit for the A100 nodes of DESY Maxwell: settings template,
+                          environment setup, submit script, jobs
 tests/                    pytest suite (CPU; CUDA tests are skipped without a GPU)
 scripts/                  figure scripts, Stage 3 experiments, Stage 4 study, cross-checks
-                          with holowizard
+                          with holowizard, checks of cluster runs against the committed results
 docs/usage.md             how to run things (English)
+docs/maxwell-gpu.md       GPU runs on DESY Maxwell, step by step (German)
 docs/laborbuch/           lab notebook, one entry per stage (German), figures in figures/
 ```
 
