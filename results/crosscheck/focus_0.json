@@ -1,0 +1,77 @@
+{
+  "index": 0,
+  "z01_true_mm": 97.17899794176402,
+  "z01_guess_mm": 100.0,
+  "fresnel_number_rel_diff": -3.3862647444760086e-05,
+  "settings": "ASRMSettings(stages=(ASRMStage(iterations=70, step=0.9, down_sampling=4, momentum=1.0, momentum_fwhm=8.0, phase_fwhm=2.0, absorption_fwhm=0.0, l2_weight=10.0), ASRMStage(iterations=30, step=1.1, down_sampling=1, momentum=1.0, momentum_fwhm=16.0, phase_fwhm=2.0, absorption_fwhm=8.0, l2_weight=10.0), ASRMStage(iterations=50, step=1.1, down_sampling=1, momentum=1.0, momentum_fwhm=16.0, phase_fwhm=2.0, absorption_fwhm=8.0, l2_weight=1.0)), padding_factor=2.0, fade_width=20, a0=1.0, update='reference', gradient='reference', pin_phase=True)",
+  "holowizard": {
+    "z01_mm": 97.1875,
+    "points_mm": [
+      95.0,
+      105.0,
+      100.0,
+      97.5,
+      96.25,
+      98.75,
+      96.875,
+      98.125,
+      97.1875,
+      97.34375,
+      97.03125,
+      97.265625
+    ],
+    "mfe": [
+      0.0002102389553328976,
+      0.00022103387163951993,
+      0.000212901781196706,
+      0.00020527958986349404,
+      0.00020703207701444626,
+      0.00020854224567301571,
+      0.00020562944700941443,
+      0.0002065543521894142,
+      0.0002050917682936415,
+      0.0002051312621915713,
+      0.00020546882296912372,
+      0.00020510006288532168
+    ],
+    "reconstructions": 12,
+    "seconds": 187.47585838600025
+  },
+  "holofocus": {
+    "z01_mm": 97.1875,
+    "points_mm": [
+      95.0,
+      105.0,
+      100.0,
+      97.5,
+      96.25,
+      98.75,
+      96.875,
+      98.125,
+      97.1875,
+      97.34375,
+      97.03125,
+      97.265625
+    ],
+    "mfe": [
+      0.00021024751185905188,
+      0.00022102720686234534,
+      0.00021289318101480603,
+      0.00020527573360595852,
+      0.00020704013877548277,
+      0.0002085306914523244,
+      0.000205634452868253,
+      0.00020654477702919394,
+      0.00020509169553406537,
+      0.00020512942865025252,
+      0.00020547087478917092,
+      0.00020509836031123996
+    ],
+    "reconstructions": 12,
+    "evaluations": 16,
+    "seconds": 100.2825372389998
+  },
+  "estimate_diff_um": 0.0,
+  "same_points": true,
+  "points_max_abs_diff_um": 0.0
+}
