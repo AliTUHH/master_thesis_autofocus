@@ -22,6 +22,8 @@ All commands skip outputs that exist already. Usage::
         --out results/focus-curves
     python scripts/run_stage3_experiments.py bias --data data/cpu-4x/test.h5 --indices 2 \\
         --out results/bias
+    python scripts/run_stage3_experiments.py --l2-scale 0.6667 bias --data data/cpu-4x/test.h5 \\
+        --indices 2 --variants noisy --out results/padding/p2-l2
 
 ``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365.
 """
@@ -73,19 +75,29 @@ def environment() -> dict:
     }
 
 
-def scaled(settings: ASRMSettings, scale: float) -> ASRMSettings:
-    """Fewer iterations per stage, for smoke tests of this script."""
-    if scale == 1.0:
+def scaled(settings: ASRMSettings, scale: float, l2_scale: float = 1.0) -> ASRMSettings:
+    """Scale the iterations (``scale``) and the L2 weight on ``mu`` (``l2_scale``) of every stage.
+
+    The L2 term is normalized by the norm of ``mu`` over the whole padded array, so its
+    weight per pixel depends on the padding; ``l2_scale`` compensates that in experiments.
+    """
+    if scale == 1.0 and l2_scale == 1.0:
         return settings
     stages = tuple(
-        dataclasses.replace(s, iterations=max(1, round(s.iterations * scale)))
+        dataclasses.replace(
+            s, iterations=max(1, round(s.iterations * scale)), l2_weight=s.l2_weight * l2_scale
+        )
         for s in settings.stages
     )
     return dataclasses.replace(settings, stages=stages)
 
 
 def measured_settings(
-    sample: MeasuredSample, binning: int, padding: float | None, scale: float = 1.0
+    sample: MeasuredSample,
+    binning: int,
+    padding: float | None,
+    scale: float = 1.0,
+    l2_scale: float = 1.0,
 ) -> tuple[ASRMSettings, float]:
     """[2] Table 3 on the binned detector with the flat-field offset ``A0`` of the sample.
 
@@ -97,15 +109,17 @@ def measured_settings(
     settings = dataclasses.replace(
         settings, padding_factor=sample.padding_for(nominal), a0=sample.a0
     )
-    return scaled(settings, scale), nominal
+    return scaled(settings, scale, l2_scale), nominal
 
 
-def synthetic_settings(config: DatasetConfig, padding: float, scale: float = 1.0) -> ASRMSettings:
+def synthetic_settings(
+    config: DatasetConfig, padding: float, scale: float = 1.0, l2_scale: float = 1.0
+) -> ASRMSettings:
     """The settings of the baseline run for a synthetic split, with ``padding``."""
     settings = BaselineConfig.from_yaml(BASELINE_CONFIG).reconstruction.settings(
         config.geometry.binning
     )
-    return scaled(dataclasses.replace(settings, padding_factor=padding), scale)
+    return scaled(dataclasses.replace(settings, padding_factor=padding), scale, l2_scale)
 
 
 def write_json(path: Path, record: dict) -> None:
@@ -121,7 +135,9 @@ def cmd_measured(args) -> None:
             continue
         sample = MEASURED_SAMPLES[name]
         padding = None if args.paper_padding else args.padding
-        settings, nominal = measured_settings(sample, args.binning, padding, args.iteration_scale)
+        settings, nominal = measured_settings(
+            sample, args.binning, padding, args.iteration_scale, args.l2_scale
+        )
         hologram = load_measured(args.holograms, sample, args.binning)
         geometry = sample.geometry(args.binning)
         grids = [
@@ -189,7 +205,7 @@ def cmd_curves(args) -> None:
     if args.data is not None:
         config = read_config(args.data)
         labels = read_labels(args.data)
-        settings = synthetic_settings(config, args.padding, args.iteration_scale)
+        settings = synthetic_settings(config, args.padding, args.iteration_scale, args.l2_scale)
         for index in args.indices:
             target = args.out / f"synthetic-{index}.json"
             if target.exists():
@@ -222,7 +238,7 @@ def cmd_curves(args) -> None:
             continue
         sample = MEASURED_SAMPLES[name]
         settings, nominal = measured_settings(
-            sample, args.binning, args.padding, args.iteration_scale
+            sample, args.binning, args.padding, args.iteration_scale, args.l2_scale
         )
         hologram = load_measured(args.holograms, sample, args.binning)
         start = time.perf_counter()
@@ -296,7 +312,7 @@ def cmd_bias(args) -> None:
     args.out.mkdir(parents=True, exist_ok=True)
     config = read_config(args.data)
     labels = read_labels(args.data)
-    settings = synthetic_settings(config, args.padding, args.iteration_scale)
+    settings = synthetic_settings(config, args.padding, args.iteration_scale, args.l2_scale)
     dz = symmetric_offsets(args.points, args.half_range)
     log = (lambda msg: print(f"  {msg}", flush=True)) if args.verbose else None
     for index in args.indices:
@@ -354,6 +370,12 @@ def main() -> None:
     parser.add_argument("--threads", type=int, help="torch CPU threads")
     parser.add_argument(
         "--iteration-scale", type=float, default=1.0, help="scale the ASRM iterations (smoke test)"
+    )
+    parser.add_argument(
+        "--l2-scale",
+        type=float,
+        default=1.0,
+        help="scale the L2 weight on the absorption of every stage (padding experiments)",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
