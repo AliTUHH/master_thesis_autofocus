@@ -47,9 +47,10 @@ from pathlib import Path
 import h5py
 import numpy as np
 import torch
+import yaml
 
 from holofocus.baseline.runner import file_sha256
-from holofocus.dataset import HologramGenerator, read_config, read_labels
+from holofocus.dataset import DatasetConfig, HologramGenerator, read_config, read_labels
 from holofocus.dataset.storage import _git_commit, write_split
 from holofocus.learned import (
     LearnedAutofocus,
@@ -250,12 +251,32 @@ def perturbation_row(name: str, summary: dict, shifts: dict | None) -> dict:
     return row
 
 
+def set_is_current(path: Path, config: DatasetConfig, n: int) -> bool:
+    """Whether the perturbed split ``path`` was made from ``config`` with at least ``n`` samples."""
+    return (
+        path.exists()
+        and read_config(path).to_dict() == config.to_dict()
+        and len(read_labels(path)["dz01"]) >= n
+    )
+
+
+def predictions_are_current(out: Path, model_sha256: str, data: Path) -> bool:
+    """Whether ``out`` holds the predictions of the model ``model_sha256`` on ``data``."""
+    info = out / "run.yaml"
+    if not (out / "summary.json").exists() or not info.exists():
+        return False
+    run = yaml.safe_load(info.read_text())
+    dataset = run.get("dataset") or {}
+    return run.get("model_sha256") == model_sha256 and dataset.get("sha256") == file_sha256(data)
+
+
 def cmd_perturb(args) -> None:
     if (args.data or args.model or args.reference) and len(args.samples) != 1:
         raise SystemExit("--data, --model and --reference need exactly one sample")
     for name in args.samples:
         data = args.data or REPO / "data" / f"matched-{name}" / "test.h5"
         model = args.model or selected_run(args.learned, name)
+        model_sha256 = file_sha256(model / "model.pt")
         reference_path = args.reference or model / "test" / "predictions.csv"
         config = read_config(data)
         n = len(read_labels(data)["dz01"])
@@ -263,38 +284,46 @@ def cmd_perturb(args) -> None:
         autofocus = LearnedAutofocus.load(model, args.device)
         reference = [r for r in read_predictions(reference_path) if r["index"] < n]
         target = args.out / f"{name}.json"
-        record = (
-            json.loads(target.read_text())
-            if target.exists()
-            else {
+        record = json.loads(target.read_text()) if target.exists() else {}
+        if record.get("model_sha256") != model_sha256 or record.get("data") != str(data):
+            record = {
                 "sample": name,
                 "data": str(data),
                 "model": str(model),
-                "model_sha256": file_sha256(model / "model.pt"),
+                "model_sha256": model_sha256,
                 "reference": str(reference_path),
                 "measured_model": dataclasses.asdict(MEASURED_MODELS[name]),
                 "regeneration": regeneration_check(data),
                 "perturbations": {},
                 **environment(),
             }
-        )
+        record["measured_model"] = dataclasses.asdict(MEASURED_MODELS[name])
         reference_summary = summarize_predictions(reference)
         record["reference"] = {
             "n": len(reference),
             "error_um": reference_summary["error_um"],
             "interval": reference_summary["interval"],
         }
+        for pert in list(record["perturbations"]):
+            entry = record["perturbations"][pert]
+            cfg = perturbed_config(config, entry["changes"], f"{config.name}-{pert}")
+            if entry["changes"] != perturbation_changes(pert, name) or not (
+                set_is_current(args.sets / name / f"{pert}.h5", cfg, 0)
+                and predictions_are_current(
+                    args.out / name / pert, model_sha256, args.sets / name / f"{pert}.h5"
+                )
+            ):
+                del record["perturbations"][pert]
         for pert in args.perturbations:
             sets = args.sets / name / f"{pert}.h5"
             out = args.out / name / pert
             changes = perturbation_changes(pert, name)
-            if not sets.exists():
-                cfg = perturbed_config(config, changes, f"{config.name}-{pert}")
-                sets.parent.mkdir(parents=True, exist_ok=True)
+            cfg = perturbed_config(config, changes, f"{config.name}-{pert}")
+            if not set_is_current(sets, cfg, n):
                 start = time.perf_counter()
                 write_split(cfg, "test", sets, n_samples=n, device="cpu", log=None)
                 print(f"{name} {pert}: {n} samples in {time.perf_counter() - start:.0f} s")
-            if not (out / "summary.json").exists():
+            if not predictions_are_current(out, model_sha256, sets):
                 predict_split(autofocus, sets, out, model_path=model, log=None)
             summary = json.loads((out / "summary.json").read_text())
             shifts = paired_shifts(reference, read_predictions(out / "predictions.csv"))
@@ -310,6 +339,8 @@ def cmd_perturb(args) -> None:
                 f"(reference {shifts['reference_error_um']['mae']:.0f}), shift "
                 f"{shifts['shift_um']['mean']:+.0f} um (median {shifts['shift_um']['median']:+.0f})"
             )
+        done = record["perturbations"]
+        record["perturbations"] = {p: done[p] for p in PERTURBATIONS if p in done}
         write_json(target, record)
         rows = [
             perturbation_row("none", {"n_samples": len(reference), **record["reference"]}, None)
