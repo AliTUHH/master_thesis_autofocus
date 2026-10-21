@@ -392,6 +392,29 @@ def calibration_figure(model: Path, out: Path, dpi: int) -> dict | None:
     return metrics
 
 
+def finals_metrics(finals: list[Path], comparison: Path) -> dict | None:
+    """Test metrics of the models trained on all samples, overall and on the baseline samples."""
+    indices = {r["index"] for r in _read_comparison(comparison)}
+    metrics = {}
+    for run in finals:
+        path = run / "test" / "predictions.csv"
+        if not path.exists():
+            continue
+        sets = {"test": read_predictions(path)}
+        if indices:
+            sets["baseline_samples"] = [r for r in sets["test"] if r["index"] in indices]
+        metrics[run.name] = {
+            name: {
+                "error_um": point_metrics([r["error_um"] for r in rows]),
+                "interval": interval_metrics(
+                    [r["error_um"] for r in rows], [r["sigma"] * 1e6 for r in rows]
+                ),
+            }
+            for name, rows in sets.items()
+        }
+    return metrics or None
+
+
 def dependence_figure(model: Path, comparison: Path, out: Path, dpi: int) -> dict | None:
     path = model / "test" / "predictions.csv"
     if not path.exists():
@@ -613,6 +636,7 @@ def main() -> None:
         ("training", lambda: training_figure(finals, args.study, args.out, dpi)),
         ("test", lambda: test_figure(model / "test" / "predictions.csv", args.out, dpi)),
         ("calibration", lambda: calibration_figure(model, args.out, dpi)),
+        ("finals", lambda: finals_metrics(finals, args.comparison)),
         ("dependence", lambda: dependence_figure(model, args.comparison, args.out, dpi)),
         (
             "comparison",
