@@ -14,7 +14,8 @@
   shifts and the errors against the unchanged test split go to
   ``results/sim2real/<sample>.{json,csv}``.
 * ``spectra``: features of the radial power spectrum of the measured hologram against those of
-  the matched test split and of the perturbed sets, and the CNN inputs (5/50/95 % per bin)
+  the matched test split, of the perturbed sets and, if generated, of the test split of the
+  realistic set, and the CNN inputs (5/50/95 % per bin)
   (``results/sim2real/spectra-<sample>.json``).
 * ``compare``: every estimate on the measured holograms in one table, with the error of the
   CNN on the matched test split (``results/measured/comparison.{json,csv}``).
@@ -408,6 +409,9 @@ def cmd_spectra(args) -> None:
                 if (args.sets / name / f"{p}.h5").exists()
             }
         )
+        realistic = args.data_root / f"matched-{name}{REALISTIC}" / "test.h5"
+        if realistic.exists():
+            sets["realistic"] = realistic
         record = {
             "sample": name,
             "model": repo_relative(run),
