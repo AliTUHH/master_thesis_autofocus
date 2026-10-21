@@ -1,0 +1,212 @@
+{
+  "sample": "magnesium_wire",
+  "label": "Mg wire",
+  "binning": 1,
+  "cutting_band": 0,
+  "input_shape": [
+    2048,
+    2048
+  ],
+  "padding_factor": 4.0,
+  "padding_factor_input": 4.0,
+  "stage_arrays": [
+    [
+      512,
+      512
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "settings": {
+    "stages": [
+      {
+        "iterations": 700,
+        "step": 0.9,
+        "down_sampling": 16,
+        "momentum": 1.0,
+        "momentum_fwhm": 8.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 0.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 300,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 500,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 1.0
+      }
+    ],
+    "padding_factor": 4.0,
+    "fade_width": 80,
+    "a0": 1.1,
+    "update": "reference",
+    "gradient": "reference",
+    "pin_phase": true
+  },
+  "geometry_guess": {
+    "energy_kev": 11.0,
+    "z01": 0.4724,
+    "z02": 19.661,
+    "pixel_size": 6.5e-06,
+    "wavelength": 1.1271290766654569e-10,
+    "z12": 19.1886,
+    "magnification": 41.619390347163424,
+    "effective_pixel_size": 1.5617720360103756e-07,
+    "effective_distance": 0.4610495213875184,
+    "fresnel_number": 0.00046936862502965245
+  },
+  "paper2": {
+    "simplex": [
+      0.4674,
+      0.4774
+    ],
+    "z01_nm": 0.4708,
+    "z01_visual": 0.4707,
+    "samples": 9,
+    "padding_factor": 4.0
+  },
+  "result": {
+    "z01": 0.471228125,
+    "z01_guess": 0.4724,
+    "bounds": [
+      0.4674,
+      0.4774
+    ],
+    "initial_simplex": [
+      0.4674,
+      0.4774
+    ],
+    "mfe": 0.0011739188339561224,
+    "nm_iterations": 8,
+    "converged": true,
+    "seconds": 2548.227050362999,
+    "evaluations": [
+      {
+        "z01": 0.4674,
+        "mfe": 0.0011779520427808166,
+        "seconds": 201.73789373099862,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.4774,
+        "mfe": 0.0011822455562651157,
+        "seconds": 218.7035391029931,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.4674,
+        "mfe": 1.7976931348623157e+308,
+        "seconds": 0.0,
+        "reconstructed": false
+      },
+      {
+        "z01": 0.4724,
+        "mfe": 0.001174256787635386,
+        "seconds": 199.39906169001188,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.4774,
+        "mfe": 1.7976931348623157e+308,
+        "seconds": 0.0,
+        "reconstructed": false
+      },
+      {
+        "z01": 0.4699,
+        "mfe": 0.0011743971845135093,
+        "seconds": 196.92922922299476,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.4749,
+        "mfe": 0.0011770782293751836,
+        "seconds": 191.19632867399196,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.47114999999999996,
+        "mfe": 0.0011739225592464209,
+        "seconds": 194.5532058480021,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.4699,
+        "mfe": 1.7976931348623157e+308,
+        "seconds": 0.0,
+        "reconstructed": false
+      },
+      {
+        "z01": 0.471775,
+        "mfe": 0.0011739936890080571,
+        "seconds": 204.92898038899875,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.47052499999999997,
+        "mfe": 0.0011740567861124873,
+        "seconds": 241.74141514999792,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.47146249999999995,
+        "mfe": 0.0011739344336092472,
+        "seconds": 221.6065449269954,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.47083749999999996,
+        "mfe": 0.0011739631881937385,
+        "seconds": 218.0765021529951,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.47130625,
+        "mfe": 0.001173919765278697,
+        "seconds": 215.77141872500943,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.47146249999999995,
+        "mfe": 1.7976931348623157e+308,
+        "seconds": 0.0,
+        "reconstructed": false
+      },
+      {
+        "z01": 0.471228125,
+        "mfe": 0.0011739188339561224,
+        "seconds": 243.54700158900232,
+        "reconstructed": true
+      }
+    ],
+    "n_reconstructions": 12,
+    "n_evaluations": 16
+  },
+  "z01_minus_paper2_nm_um": 428.1250000000014,
+  "z01_minus_visual_um": 528.1249999999905,
+  "seconds_per_reconstruction": 212.34926010016594,
+  "git_commit": "3f7f87e",
+  "torch_version": "2.14.1+cpu",
+  "threads": 3,
+  "host": "cursor",
+  "cpu_count": 4
+}
