@@ -58,6 +58,7 @@ from holofocus.learned import (  # noqa: E402
 from holofocus.learned.compare import read_comparison  # noqa: E402
 from holofocus.learned.metrics import (  # noqa: E402
     PHOTON_EDGES,
+    interval_metrics,
     interval_quantile,
     photon_bin_labels,
     photon_bin_names,
@@ -77,6 +78,7 @@ METHOD_STYLE = {
     "warm": ("warm start", "tab:purple"),
     "warm_corrected": ("warm start - offset", "plum"),
 }
+SEED_RUNS = ("spectrum-n2000", "spectrum-seed1", "spectrum-seed2")
 
 
 def _save(fig, path: Path, dpi: int) -> None:
@@ -170,6 +172,24 @@ def _training_row(run: Path) -> dict:
     return row
 
 
+def _seed_average(runs: list[Path]) -> dict:
+    """Validation metrics of the mean of several models (Gaussian mixture moments)."""
+    tables = [
+        {r["index"]: r for r in read_predictions(run / "val" / "predictions.csv")} for run in runs
+    ]
+    indices = sorted(tables[0])
+    est = np.array([[t[i]["dz01_est"] for i in indices] for t in tables])
+    var = np.array([[t[i]["sigma"] ** 2 for i in indices] for t in tables])
+    truth = np.array([tables[0][i]["dz01_true"] for i in indices])
+    err = (est.mean(axis=0) - truth) * 1e6
+    sigma = np.sqrt(var.mean(axis=0) + est.var(axis=0)) * 1e6
+    return {
+        "runs": [run.name for run in runs],
+        "error_um": point_metrics(err),
+        "interval": interval_metrics(err, sigma),
+    }
+
+
 def training_figure(main: Path, study: Path, out: Path, dpi: int) -> dict | None:
     runs = {main.name: main} if (main / "summary.json").exists() else {}
     runs.update({file.parent.name: file.parent for file in sorted(study.glob("*/summary.json"))})
@@ -202,7 +222,7 @@ def training_figure(main: Path, study: Path, out: Path, dpi: int) -> dict | None
 
     metrics: dict = {"runs": rows}
     curve = [n for n in rows if n == main.name or n.startswith("spectrum-n")]
-    points = sorted((rows[n]["n_train"], rows[n]["val_error_um"]["mae"]) for n in curve)
+    points = sorted({rows[n]["n_train"]: rows[n]["val_error_um"]["mae"] for n in curve}.items())
     if points:
         n, mae = np.array(points, dtype=float).T
         axes[1].loglog(n, mae, "o-", color="tab:blue", label="spectrum CNN, seed 0")
@@ -228,14 +248,22 @@ def training_figure(main: Path, study: Path, out: Path, dpi: int) -> dict | None
 
     variants = [n for n in rows if rows[n]["n_train"] == 2000]
     if variants:
+        labels = list(variants)
         mae = [rows[n]["val_error_um"]["mae"] for n in variants]
         colors = ["tab:green" if rows[n]["kind"] == "image" else "tab:blue" for n in variants]
-        axes[2].bar(range(len(variants)), mae, color=colors)
-        for i, name in enumerate(variants):
-            ms = rows[name].get("seconds_per_estimate")
+        notes = [rows[n].get("seconds_per_estimate") for n in variants]
+        seeds = [runs[n] for n in SEED_RUNS if n in runs]
+        if len(seeds) == len(SEED_RUNS) and all((r / "val").is_dir() for r in seeds):
+            metrics["seed_average"] = _seed_average(seeds)
+            labels.append("mean of 3 seeds")
+            mae.append(metrics["seed_average"]["error_um"]["mae"])
+            colors.append("navy")
+            notes.append(None)
+        axes[2].bar(range(len(labels)), mae, color=colors)
+        for i, ms in enumerate(notes):
             note = f"{mae[i]:.0f}" + ("" if ms is None else f"\n{1e3 * ms:.1f} ms")
             axes[2].text(i, mae[i] * 1.02, note, ha="center", va="bottom", fontsize=8)
-        axes[2].set_xticks(range(len(variants)), variants, rotation=30, ha="right", fontsize=8)
+        axes[2].set_xticks(range(len(labels)), labels, rotation=30, ha="right", fontsize=8)
         axes[2].set_ylim(0, 1.25 * max(mae))
     axes[2].set_ylabel("validation MAE (um)")
     axes[2].set_title("variants at n = 2000 (MAE; time per estimate)", fontsize=10)
