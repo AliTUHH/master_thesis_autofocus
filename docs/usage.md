@@ -345,6 +345,12 @@ taskset -c 0-2 holofocus-baseline run configs/baseline/paper2-cpu.yaml \
 taskset -c 0-2 holofocus-baseline run configs/baseline/paper2-cpu-warm.yaml \
     --data data/cpu-4x/test.h5 --out results/baseline/cpu-4x-test-warm --limit 48 --threads 3 \
     --warm-start results/learned/spectrum-cnn-wide/test/predictions.csv --half-width 5e-4
+# diagnosis: the four samples where warm and cold start ended farthest apart, from
+# (z01_est, z01_est + 0.5 mm), so that the estimate itself is the first probe
+taskset -c 0-2 holofocus-baseline run configs/baseline/paper2-cpu-warm.yaml \
+    --data data/cpu-4x/test.h5 --out results/baseline/cpu-4x-test-warm-vertex \
+    --indices 30 35 40 41 --threads 3 --anchor vertex --half-width 5e-4 \
+    --warm-start results/learned/spectrum-cnn-wide/test/predictions.csv
 # learned vs. raw and offset-corrected baseline (and the warm start) on the same samples
 holofocus-learn compare --learned results/learned/spectrum-cnn-wide/test/predictions.csv \
     --baseline results/baseline/cpu-4x-test --baseline-val results/baseline/cpu-4x-val \
@@ -368,6 +374,10 @@ CUDA when it is available. Several `--train` files are concatenated in the given
 `--limit N` keeps the first `N` samples of the concatenation. `--warm-start` reads `index`,
 `z01_est` and, with `--sigmas k`, `sigma` from a `predictions.csv`; the half width of the
 initial simplex is `max(--half-width, k * sigma)`, shifted inside `Omega_z` if needed.
+`--anchor vertex` starts from `(z01_est, z01_est + w)` instead (`z01_est - w` at the upper end
+of `Omega_z`), so the MFE at the estimate is always evaluated; the default `center` keeps
+`z01_est ± w`. The source file, its SHA-256, the widths and a non-default anchor belong to the
+run key, so a run only resumes with the same warm start.
 
 A training run directory holds `config.yaml`, `history.csv` (loss, validation MAE, RMSE, bias,
 NLL and 68 % coverage per epoch), `model.pt` (weights of the selected epoch, config, field of
@@ -389,6 +399,7 @@ results/learned/spectrum-cnn/    the standard width on the same samples, with mo
 results/learned/study/<run>/     runs of scripts/run_stage4_study.py with val/ (no weights)
 results/baseline/cpu-4x-val/     baseline on the first validation samples (offset)
 results/baseline/cpu-4x-test-warm/  warm-started baseline on the 48 baseline test samples
+results/baseline/cpu-4x-test-warm-vertex/  the same with --anchor vertex on samples 30, 35, 40, 41
 results/comparison/cpu-4x-test/  learned vs. baseline on those samples
 results/padding/bias-p2/         MFE scans of test samples 0 and 1 at padding 2 (padding check;
                                  bias-p4/ holds them at padding 4)
