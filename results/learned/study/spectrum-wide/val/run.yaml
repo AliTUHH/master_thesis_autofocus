@@ -1,0 +1,50 @@
+model: /workspace/results/learned/study/spectrum-wide
+model_sha256: ef7b62e1c2ec8055a2afaaa957d5b60b33f42cf86241795b9a3c4a77ac5c6f43
+config:
+  name: spectrum-wide
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  model:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    min_sigma: 0.001
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    beta: 0.5
+    augment: false
+    limit: 2000
+    patience: null
+    seed: 0
+  device: auto
+sigma_scale: 1.326931863398538
+dataset:
+  path: data/cpu-4x/val.h5
+  sha256: a1ec6282a33899f531c17a34711fdd069376e4525e0ab054d5e062ca1cbdfb81
+  split: val
+  n_samples: 250
+  seed: 20261020
+  generator_commit: 2970b8b
+  created_utc: '2026-10-21T07:02:08+00:00'
+holofocus_version: 0.1.0
+git_commit: c2c21e1
+torch_version: 2.14.1+cpu
+device: cpu
+threads: 1
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-21T08:21:38+00:00'

@@ -1,0 +1,50 @@
+model: results/learned/spectrum-cnn-wide
+model_sha256: 1c4ecf5a41044685fbf2acd4e41ff12238a465cb22dded704972c295ea396458
+config:
+  name: spectrum-cnn-wide
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  model:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    min_sigma: 0.001
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    beta: 0.5
+    augment: false
+    limit: null
+    patience: null
+    seed: 0
+  device: auto
+sigma_scale: 1.138501423952376
+dataset:
+  path: data/cpu-4x/test.h5
+  sha256: 147e633662b32414262f0860f4192a22939e6c06ae41cad22090b0c67efa4519
+  split: test
+  n_samples: 250
+  seed: 20261020
+  generator_commit: 222f75f
+  created_utc: '2026-10-20T21:40:07+00:00'
+holofocus_version: 0.1.0
+git_commit: a8fb361
+torch_version: 2.14.1+cpu
+device: cpu
+threads: 1
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-21T09:35:21+00:00'
