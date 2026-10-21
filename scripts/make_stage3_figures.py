@@ -14,6 +14,8 @@
   the ``*-phase.npy`` files of that run.
 * ``stage3-bias.png``: fine MFE scans around the true ``z01`` for noisy, noise-free and
   grid-simulated holograms (``results/bias``).
+* ``stage3-padding.png``: the MFE minimum of the spider hair and of a synthetic sample for
+  padding factors 2, 4 and 7 and a compensated L2 weight (``results/padding``).
 * ``stage3-crosscheck.png``: ASRM port and ``find_focus`` against holowizard 3.0.6
   (``results/crosscheck``).
 * ``stage3-metrics.json``: the numbers quoted in the lab notebook.
@@ -471,7 +473,7 @@ def search_figure(run_dir: Path, settings: Settings, out: Path) -> dict | None:
     return {"examples": picks}
 
 
-MEASURED_ORDER = ("p2", "b1-p2", "b1-p4", "paper-padding")
+MEASURED_ORDER = ("b1-p2", "p2", "b1-p4", "paper-padding")
 
 
 def measured_runs(directory: Path) -> dict[str, Path]:
@@ -661,6 +663,136 @@ def bias_figure(directory: Path, run_dir: Path, settings: Settings, out: Path) -
     return metrics
 
 
+PADDING_STYLES = {
+    "p2": {"color": "black", "marker": "o", "label": "p = 2"},
+    "p2-l2": {"color": "tab:orange", "marker": "s", "label": "p = 2, L2 weight × 2/3"},
+    "p4": {"color": "tab:blue", "marker": "^", "label": "p = 4"},
+    "p7": {"color": "tab:green", "marker": "D", "label": "p = 7"},
+}
+
+
+def vertex(z: np.ndarray, values: np.ndarray) -> float:
+    """Vertex of the parabola through the smallest sample and its neighbours."""
+    order = np.argsort(z)
+    z, values = np.asarray(z)[order], np.asarray(values)[order]
+    i = int(np.argmin(values))
+    if i == 0 or i == len(z) - 1:
+        return float(z[i])
+    a, b, _ = np.polyfit(z[i - 1 : i + 2], values[i - 1 : i + 2], 2)
+    return float(-b / (2 * a)) if a > 0 else float(z[i])
+
+
+def padding_figure(
+    directory: Path, measured: Path, bias: Path, settings: Settings, out: Path
+) -> dict | None:
+    """MFE of the spider hair and of a synthetic sample for several padding factors.
+
+    Spider hair: five-point curves (``<directory>/<run>/measured-spider_hair.json``) and the
+    Nelder-Mead probes of ``<measured>/b1-p2`` and ``b1-p4`` near the minimum. Synthetic:
+    the noisy variant of ``<bias>/bias-<i>.json`` (p = 2) and ``<directory>/bias-<run>``.
+    """
+    spider = {}
+    for run in ("p2", "p2-l2", "p7"):
+        path = directory / run / "measured-spider_hair.json"
+        if path.exists():
+            rec = json.loads(path.read_text())
+            z = (rec["z01_reference"] + np.asarray(rec["curve"]["dz01"])) * 1e3
+            spider[run] = {"kind": "curve", "z": z, "mfe": np.asarray(rec["curve"]["MFE"])}
+    for run, name in (("p2", "b1-p2"), ("p4", "b1-p4")):
+        path = measured / name / "spider_hair.json"
+        if path.exists():
+            result = json.loads(path.read_text())["result"]
+            probes = [e for e in result["evaluations"] if e["reconstructed"]]
+            spider.setdefault(f"{run} search", {}).update(
+                kind="search",
+                z=np.array([e["z01"] * 1e3 for e in probes]),
+                mfe=np.array([e["mfe"] for e in probes]),
+                estimate=result["z01"] * 1e3,
+            )
+    synthetic = {}
+    for path in sorted(bias.glob("bias-*.json")):
+        synthetic.setdefault(path.stem, {})["p2"] = json.loads(path.read_text())
+    for sub in sorted(directory.glob("bias-*")):
+        for path in sorted(sub.glob("bias-*.json")):
+            if path.stem in synthetic:
+                synthetic[path.stem][sub.name.removeprefix("bias-")] = json.loads(path.read_text())
+    synthetic = {k: v for k, v in synthetic.items() if len(v) > 1}
+    if not spider or not any(v["kind"] == "curve" for v in spider.values()):
+        return None
+    sample = MEASURED_SAMPLES["spider_hair"]
+    ncols = 1 + len(synthetic)
+    fig, axes = plt.subplots(1, ncols, figsize=(6.0 * ncols, 4.6), layout="constrained")
+    axes = np.atleast_1d(axes)
+    ax = axes[0]
+    lo, hi = sample.z01_nm * 1e3 - 1.2, sample.z01_nm * 1e3 + 1.2
+    metrics: dict = {"spider_hair": {}}
+    for key, series in spider.items():
+        run = key.split()[0]
+        style = dict(PADDING_STYLES[run])
+        label = style.pop("label")
+        keep = (series["z"] >= lo) & (series["z"] <= hi)
+        z, mfe = series["z"][keep], series["mfe"][keep]
+        rel = mfe / mfe.min()
+        if series["kind"] == "curve":
+            order = np.argsort(z)
+            at = vertex(series["z"], series["mfe"])
+            ax.plot(z[order], rel[order], lw=1.2, ms=6, label=f"{label}: {at:.2f} mm", **style)
+            ax.axvline(at, color=style["color"], ls=":", lw=0.9)
+            metrics["spider_hair"][run] = {"vertex_mm": at, "points": len(series["z"])}
+        else:
+            est = series["estimate"]
+            ax.plot(
+                z,
+                rel,
+                ls="none",
+                ms=5,
+                mfc="none",
+                color=style["color"],
+                marker=style["marker"],
+                label=f"{label}, Nelder–Mead probes: {est:.2f} mm",
+            )
+            metrics["spider_hair"][key.replace(" ", "_")] = {"estimate_mm": est}
+    ax.axvline(sample.z01_nm * 1e3, color="gray", lw=2.0, alpha=0.5, label="[2] Table 1 79.4 mm")
+    ax.set(
+        xlabel=r"$z_{01}$ / mm",
+        ylabel="MFE / minimum of the series",
+        title="spider hair (ASRM down-sampling to the 4× grid)\n(dotted: parabola vertex)",
+    )
+    ax.legend(fontsize=7)
+    for ax, (stem, runs) in zip(axes[1:], synthetic.items(), strict=True):
+        first = runs["p2"]
+        entry = {"phantom_type": PHANTOM_TYPES[first["phantom_type"]], "photons": first["photons"]}
+        for run, rec in runs.items():
+            style = dict(PADDING_STYLES.get(run, {"color": "gray", "marker": "x", "label": run}))
+            label = style.pop("label")
+            curve = rec["curves"]["noisy"]
+            at = rec["minimum_um"]["noisy"]["parabola"]
+            dz_um = np.asarray(curve["dz01"]) * 1e6
+            ax.plot(
+                dz_um,
+                normalize_curve(curve["MFE"]),
+                lw=1.2,
+                ms=5,
+                label=f"{label}: {at:+.0f} µm",
+                **style,
+            )
+            ax.axvline(at, color=style["color"], ls=":", lw=0.9)
+            entry[run] = {"parabola_um": at, "padding_factor": rec["settings"]["padding_factor"]}
+        ax.axvline(0.0, color="gray", lw=0.8)
+        ax.set(
+            xlabel=r"$\hat z_{01} - z_{01}$ / µm",
+            ylabel="MFE, normalized",
+            title=f"test {first['index']} ({entry['phantom_type']}, N = {first['photons']:.0f}), "
+            "noisy hologram\n(dotted: parabola vertex)",
+        )
+        ax.legend(fontsize=7)
+        metrics[stem] = entry
+    fig.suptitle("Influence of the padding factor p on the minimum of the MFE")
+    fig.savefig(out / "stage3-padding.png", dpi=settings.dpi)
+    plt.close(fig)
+    return metrics
+
+
 def crosscheck_figure(directory: Path, settings: Settings, out: Path) -> dict | None:
     reco_files = sorted(directory.glob("reconstruct_*.json"))
     focus_files = sorted(
@@ -779,6 +911,12 @@ def main() -> None:
         ("search", lambda: search_figure(baseline, settings, args.out)),
         ("measured", lambda: measured_figure(measured, settings, args.out)),
         ("bias", lambda: bias_figure(results / "bias", baseline, settings, args.out)),
+        (
+            "padding",
+            lambda: padding_figure(
+                results / "padding", results / "measured", results / "bias", settings, args.out
+            ),
+        ),
         ("crosscheck", lambda: crosscheck_figure(results / "crosscheck", settings, args.out)),
     ]
     for name, fn in steps:
