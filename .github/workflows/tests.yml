@@ -75,6 +75,18 @@ jobs:
             --baseline-val ${{ runner.temp }}/baseline-ci --warm ${{ runner.temp }}/warm-ci \
             --data $demo --out ${{ runner.temp }}/figures
 
+      - name: Sim-to-real smoke run (perturbed demo test split) and Stage 5 figures (quick mode)
+        run: |
+          demo=${{ runner.temp }}/demo-dataset
+          learned=${{ runner.temp }}/learned-ci
+          python scripts/run_stage5_study.py --threads 2 perturb --samples cactus_needle \
+            --data $demo/test.h5 --model $learned --reference $learned/test/predictions.csv \
+            --limit 4 --sets ${{ runner.temp }}/sim2real-sets --out ${{ runner.temp }}/sim2real-ci
+          python scripts/make_stage5_figures.py --quick --learned $learned/none \
+            --measured $learned/none --sim2real ${{ runner.temp }}/sim2real-ci \
+            --out ${{ runner.temp }}/figures-ci
+          python scripts/make_stage5_figures.py --quick --out ${{ runner.temp }}/figures
+
       - name: Upload demo dataset
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4

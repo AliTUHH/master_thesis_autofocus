@@ -1,0 +1,47 @@
+# Training data matched to the measured Mg wire (Stage 5, holofocus.measured).
+#
+# Setup of MEASURED_SAMPLES["magnesium_wire"]: 11 keV, z02 = 19.661 m, z01_guess = 472.4 mm
+# (centre of the initial simplex of [2] Table 1, the guess of the Stage 3 measured runs), dz01
+# in the +-5 mm box Omega_z. Detector path of the measured runs on the 4x grid
+# (holofocus.measured.load_measured): the P05 detector binned 4x by the block mean, 512^2 pixels
+# of 26 um. Fr = 7.510e-3 at the guess, only +-1.1 % over Omega_z (17 minima of the contrast
+# transfer function up to f^2 = 0.125). Phantoms, noise and numerics as in cpu-4x.yaml, so only
+# the setup differs from the Stage 4 data. Simulation grid 1568^2.
+name: matched-magnesium_wire
+seed: 20261034
+geometry:
+  energy_kev: 11.0
+  z02: 19.661
+  z01_guess: 0.4724
+  z01_guess_range: null
+  detector_pixel_size: 6.5e-6
+  detector_shape: [2048, 2048]
+  binning: 4
+sampling:
+  dz01_range: [-5.0e-3, 5.0e-3]
+simulation:
+  padding_margin: 1.0
+  oversample: 2
+  a0_range: [1.0, 1.0]
+  device: auto
+  precision: single
+phantoms:
+  types: {triangle: 1.0, cell: 1.0, ball: 1.0, mixed: 1.0}
+  delta_beta: 200.0
+  phase_shift_range: [0.5, 2.0]
+  size_range: [0.15, 0.6]
+  margin: 0.05
+  supersample: 4
+noise:
+  model: poisson_gaussian
+  photons_range: [1.0e3, 1.0e5]
+  read_noise: 2.0
+storage:
+  store_phase: false
+  store_clean: false
+  compression: gzip
+  compression_level: 4
+splits:
+  train: 6000
+  val: 250
+  test: 250

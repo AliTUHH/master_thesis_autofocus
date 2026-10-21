@@ -59,7 +59,7 @@ from holofocus.baseline.results import read_rows, read_traces, summarize  # noqa
 from holofocus.dataset import DatasetConfig, HologramGenerator, read_config, read_labels  # noqa: E402
 from holofocus.forward import object_from_phase  # noqa: E402
 from holofocus.measured import MEASURED_SAMPLES  # noqa: E402
-from holofocus.phantoms import PHANTOM_TYPES  # noqa: E402
+from holofocus.phantoms import COMPACT_TYPES as PHANTOM_TYPES  # noqa: E402  (Stage 2 types)
 
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = REPO / "docs" / "laborbuch" / "figures"
@@ -474,15 +474,13 @@ def search_figure(run_dir: Path, settings: Settings, out: Path) -> dict | None:
 
 
 MEASURED_ORDER = ("b1-p2", "p2", "b1-p4", "paper-padding")
+"""Runs below ``results/measured`` shown in ``stage3-measured.png``, in this order; the other
+directories there (CNN estimates and warm starts of Stage 5) are not part of it."""
 
 
 def measured_runs(directory: Path) -> dict[str, Path]:
-    """Run directories below ``results/measured`` in the order of :data:`MEASURED_ORDER`."""
-    if not directory.is_dir():
-        return {}
-    found = {d.name: d for d in directory.iterdir() if d.is_dir()}
-    order = [n for n in MEASURED_ORDER if n in found] + sorted(set(found) - set(MEASURED_ORDER))
-    return {n: found[n] for n in order}
+    """The run directories of :data:`MEASURED_ORDER` that exist below ``directory``."""
+    return {n: directory / n for n in MEASURED_ORDER if (directory / n).is_dir()}
 
 
 def run_label(record: dict) -> str:

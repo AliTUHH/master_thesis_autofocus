@@ -68,6 +68,7 @@ storage options and the size of every split. The provided configs:
 | `configs/dataset/cpu-4x-extra.yaml` | as above, another seed, no phase maps (Stage 4) | 100 mm ± 5 mm | 8000/–/– | ~60 min | ~5.4 GB |
 | `configs/dataset/cpu-4x-large.yaml` | as above, a third seed, no phase maps (for the GPU) | 100 mm ± 5 mm | 50 000/–/– | ~5–8 h (estimated) | ~34 GB |
 | `configs/dataset/ci.yaml` | binned 16x: 128² px of 104 µm | 100 mm ± 5 mm | 32/8/8 | < 1 s | ~4 MB |
+| `configs/dataset/matched-*.yaml` | the setups of the four measured holograms (Stage 5) | see [Measured holograms](#measured-holograms-stage-5) | | | |
 
 ```bash
 holofocus-dataset generate configs/dataset/cpu-4x.yaml --out data/cpu-4x
@@ -424,6 +425,96 @@ results/baseline/cpu-4x-test-warm-vertex/  the same with --anchor vertex on samp
 results/comparison/cpu-4x-test/  learned vs. baseline on those samples
 results/padding/bias-p2/         MFE scans of test samples 0 and 1 at padding 2 (padding check;
                                  bias-p4/ holds them at padding 4)
+```
+
+## Measured holograms (Stage 5)
+
+The four holograms of the Zenodo record of [1] (10.5281/zenodo.8349365,
+`Examples/data/holograms`, called `$H` below) each get a spectrum CNN trained on data with
+their energy, geometry and detector path (`MEASURED_SAMPLES`): the guess is the centre of the
+initial simplex of [2] Table 1 (as in the Stage 3 runs), `dz01` uniform in ±5 mm, the P05
+detector binned 4x by the block mean (the tooth without its 80 px cutting band). Phantoms,
+noise and numerics are those of `cpu-4x`.
+
+| Config | Sample | Guess | Field of view / simulation | Samples (train/val/test) | CPU time, 3 threads | Size |
+|---|---|---|---|---|---|---|
+| `matched-spider_hair.yaml` | spider hair, 11 keV | 79.8 mm | 512² / 4480² | 6000/250/250 | 72 min | 4.4 GB |
+| `matched-tooth.yaml` | tooth, 17 keV | 82.9 mm | 472² / 3087² | 6000/250/250 | 34 min | 3.8 GB |
+| `matched-cactus_needle.yaml` | cactus needle, 17 keV | 286.1 mm | 512² / 1620² | 6000/250/250 | 16 min | 4.3 GB |
+| `matched-magnesium_wire.yaml` | Mg wire, 11 keV | 472.4 mm | 512² / 1568² | 6000/250/250 | 13 min | 4.3 GB |
+| `matched-<sample>-large.yaml` | as above, own seeds (for Maxwell, [maxwell-gpu.md](maxwell-gpu.md) 7.1) | | | 50 000/–/– | | 29–34 GB |
+| `matched-<sample>-realistic.yaml` | cactus needle and Mg wire with the measured detector blur, noise, flat-field residual and object as ranges | | | 6000/250/250 | 28 min (cactus needle), Mg wire 38 min with 1 thread | 4.7–4.8 GB |
+
+`holofocus.learned.sim2real` holds what the measured holograms show about these assumptions
+(`MEASURED_MODELS`, `PSF_SIGMA`, `FLAT_FIELD_CUTOFF`), the perturbations of a test split that
+change one of them (`PERTURBATIONS`; same seed, so every perturbed sample pairs with the
+original) and `realistic_changes`, the changes of the realistic sets.
+
+```bash
+for s in spider_hair tooth cactus_needle magnesium_wire; do
+    holofocus-dataset generate configs/dataset/matched-$s.yaml --out data/matched-$s
+    holofocus-learn train configs/learned/spectrum-cnn-wide.yaml --train data/matched-$s/train.h5 \
+        --val data/matched-$s/val.h5 --out results/learned/matched-$s --threads 1
+    for split in test val; do
+        holofocus-learn predict results/learned/matched-$s --data data/matched-$s/$split.h5 \
+            --out results/learned/matched-$s/$split --threads 1
+    done
+done
+# cactus needle and Mg wire: the spectrum up to f^2 = 0.25 as a variant (-hf), and the
+# realistic set; the realistic model is also predicted on the matched test split
+for s in cactus_needle magnesium_wire; do
+    holofocus-learn train configs/learned/spectrum-cnn-wide-hf.yaml \
+        --train data/matched-$s/train.h5 --val data/matched-$s/val.h5 \
+        --out results/learned/matched-$s-hf --threads 1
+    holofocus-dataset generate configs/dataset/matched-$s-realistic.yaml \
+        --out data/matched-$s-realistic
+    holofocus-learn train configs/learned/spectrum-cnn-wide.yaml \
+        --train data/matched-$s-realistic/train.h5 --val data/matched-$s-realistic/val.h5 \
+        --out results/learned/matched-$s-realistic --threads 1
+    holofocus-learn predict results/learned/matched-$s-realistic \
+        --data data/matched-$s/test.h5 --out results/learned/matched-$s-realistic/matched-test
+done   # and predict test/ and val/ of every run as above
+# cold padding-4 search of Stage 3 for the two samples that had none
+python scripts/run_stage3_experiments.py --threads 3 measured --holograms $H --binning 1 \
+    --padding 4 --samples cactus_needle magnesium_wire --out results/measured/b1-p4
+# the CNNs on the measured holograms: every variant, the one with the lower validation MAE
+# is the estimate; references [2], [1] and the cold baselines; 16 binning phases; timing
+python scripts/run_stage5_study.py --threads 1 measured --holograms $H
+# padding-4 search from the CNN estimate +- 0.5 mm (records the SHA-256 of its source, so
+# run it after the last `measured`)
+python scripts/run_stage3_experiments.py --threads 3 measured --holograms $H --binning 1 \
+    --padding 4 --warm-start results/measured/cnn --out results/measured/warm-b1-p4
+# sim-to-real gap: perturbed test splits (data/sim2real/, not tracked), paired shifts
+python scripts/run_stage5_study.py --threads 1 perturb
+for s in cactus_needle magnesium_wire; do   # the same perturbed splits, realistic model
+    python scripts/run_stage5_study.py --threads 1 perturb --samples $s \
+        --model results/learned/matched-$s-realistic \
+        --reference results/learned/matched-$s-realistic/matched-test/predictions.csv \
+        --out results/sim2real/realistic
+done
+python scripts/run_stage5_study.py --threads 1 spectra --holograms $H
+python scripts/run_stage5_study.py --threads 1 noise --holograms $H
+python scripts/run_stage5_study.py compare
+# figures and stage5-metrics.json
+python scripts/make_stage5_figures.py --holograms $H
+```
+
+`perturb` reuses perturbed splits and predictions that still match their config and model.
+The results:
+
+```
+results/learned/matched-<sample>/        CNN per measured setup with model.pt, val/, test/
+results/learned/matched-<sample>-hf/     spectrum up to f^2 = 0.25 (cactus needle, Mg wire)
+results/learned/matched-<sample>-realistic/  CNN of the realistic set, also matched-test/
+results/datasets/matched-*-{val,test}.csv  fingerprints of the val and test splits
+results/measured/cnn/<sample>.json       CNN estimates with intervals, references, timing
+results/measured/b1-p4/, warm-b1-p4/     padding-4 searches, cold and from the CNN
+results/measured/comparison.{csv,json}   all estimates per sample and the matched test errors
+results/sim2real/<sample>.{json,csv}     perturbations: paired shifts, errors, coverage
+results/sim2real/<sample>/<perturbation>/  predictions on each perturbed test split
+results/sim2real/realistic/              the same for the models of the realistic sets
+results/sim2real/spectra-<sample>.json   spectral features, measured against simulated
+results/sim2real/noise.json              noise spectra of the background corners and fits
 ```
 
 ## GPU runs on DESY Maxwell

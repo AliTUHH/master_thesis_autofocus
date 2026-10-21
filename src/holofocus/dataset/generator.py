@@ -11,7 +11,13 @@ physical object size is unknown as well.
 
 Every sample has its own random stream ``SeedSequence(seed, spawn_key=(crc32(split), i))``,
 so a sample can be regenerated on its own and the result does not depend on the order or the
-number of samples generated.
+number of samples generated. The detector effects of Stage 5 (PSF width, flat-field residual)
+draw from a second stream with the spawn key ``(crc32(split), i, 1)``: switching them on
+leaves the setup, phantom and photon number of a sample unchanged, and configs without them
+give the same samples as before.
+
+Fibers cross the field of view, so they are rendered on the whole simulation grid instead of
+being embedded in free space.
 """
 
 from __future__ import annotations
@@ -23,20 +29,29 @@ from dataclasses import dataclass
 import numpy as np
 import torch
 
-from ..arrays import bin_sum
+from ..arrays import bin_sum, crop_center
 from ..device import complex_dtype, get_device, real_dtype
 from ..forward import object_from_phase, simulate_hologram
-from ..noise import add_detector_noise
+from ..noise import add_detector_noise, flat_field_residual
 from ..phantoms import PHANTOM_TYPES, random_phantom
 from .config import DatasetConfig
 
 LABEL_KEYS = ("dz01", "z01", "z01_guess", "fresnel_number", "fresnel_number_guess")
-META_KEYS = ("phantom_type", "phase_shift", "photons", "a0", "effective_pixel_size")
+META_KEYS = (
+    "phantom_type",
+    "phase_shift",
+    "photons",
+    "a0",
+    "effective_pixel_size",
+    "psf_sigma",
+    "flat_field_rms",
+)
 
 
-def sample_seed(seed: int, split: str, index: int) -> np.random.SeedSequence:
-    """Seed sequence of sample ``index`` in ``split``."""
-    return np.random.SeedSequence(entropy=seed, spawn_key=(zlib.crc32(split.encode()), index))
+def sample_seed(seed: int, split: str, index: int, stream: int = 0) -> np.random.SeedSequence:
+    """Seed sequence of sample ``index`` in ``split`` (``stream=1``: detector effects)."""
+    key = (zlib.crc32(split.encode()), index) + ((stream,) if stream else ())
+    return np.random.SeedSequence(entropy=seed, spawn_key=key)
 
 
 @dataclass
@@ -64,9 +79,10 @@ class HologramGenerator:
 
     def sample(self, split: str, index: int) -> Sample:
         rng = np.random.default_rng(sample_seed(self.config.seed, split, index))
-        return self.draw(rng)
+        detector_rng = np.random.default_rng(sample_seed(self.config.seed, split, index, 1))
+        return self.draw(rng, detector_rng)
 
-    def draw(self, rng: np.random.Generator) -> Sample:
+    def draw(self, rng: np.random.Generator, detector_rng: np.random.Generator) -> Sample:
         cfg = self.config
         lo, hi = cfg.geometry.guess_bounds
         z01_guess = float(rng.uniform(lo, hi)) if hi > lo else lo
@@ -76,9 +92,12 @@ class HologramGenerator:
         a0 = float(rng.uniform(*cfg.simulation.a0_range))
         log_lo, log_hi = (math.log(v) for v in cfg.noise.photons_range)
         photons = float(math.exp(rng.uniform(log_lo, log_hi)))
+        psf_sigma = float(detector_rng.uniform(*cfg.simulation.psf_sigma_range))
+        flat_field_rms = float(detector_rng.uniform(*cfg.noise.flat_field_range))
 
         s = cfg.simulation.oversample
         fine_shape = (self.fov_shape[0] * s, self.fov_shape[1] * s)
+        extended = kind == "fiber"
         thickness = random_phantom(
             rng,
             kind,
@@ -86,13 +105,21 @@ class HologramGenerator:
             size_range=cfg.phantoms.size_range,
             margin=cfg.phantoms.margin,
             supersample=cfg.phantoms.supersample,
+            canvas=self.simulation_shape if extended else None,
+            fiber_diameter_range=cfg.phantoms.fiber_diameter_range,
         )
         geometry = cfg.geometry.at(z01_guess + dz01)
         phase = torch.from_numpy(-phase_shift * thickness).to(self.device, self.real_dtype)
         obj = object_from_phase(phase, cfg.phantoms.delta_beta)
-        clean = simulate_hologram(
-            obj, geometry.fresnel_number / s**2, padded_shape=self.simulation_shape, a0=a0
-        )
+        fresnel_number = geometry.fresnel_number / s**2
+        psf = psf_sigma * s / cfg.geometry.binning
+        if extended:
+            clean = simulate_hologram(obj, fresnel_number, a0=a0, psf_sigma=psf)
+            clean, phase = crop_center(clean, fine_shape), crop_center(phase, fine_shape)
+        else:
+            clean = simulate_hologram(
+                obj, fresnel_number, padded_shape=self.simulation_shape, a0=a0, psf_sigma=psf
+            )
         if s > 1:
             clean = bin_sum(clean, s) / s**2
             phase = bin_sum(phase, s) / s**2
@@ -100,6 +127,13 @@ class HologramGenerator:
         noisy = add_detector_noise(
             clean_np, rng, cfg.noise.model, photons=photons, read_noise=cfg.noise.read_noise
         )
+        if flat_field_rms > 0:
+            noisy = noisy * (
+                1.0
+                + flat_field_residual(
+                    self.fov_shape, detector_rng, flat_field_rms, cfg.noise.flat_field_cutoff
+                )
+            )
         guess = cfg.geometry.at(z01_guess)
         return Sample(
             hologram=noisy.astype(np.float32),
@@ -118,5 +152,7 @@ class HologramGenerator:
                 "photons": photons if cfg.noise.model != "none" else math.inf,
                 "a0": a0,
                 "effective_pixel_size": geometry.effective_pixel_size,
+                "psf_sigma": psf_sigma,
+                "flat_field_rms": flat_field_rms,
             },
         )

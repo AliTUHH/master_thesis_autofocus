@@ -1,0 +1,187 @@
+{
+  "sample": "tooth",
+  "label": "tooth",
+  "binning": 1,
+  "cutting_band": 80,
+  "input_shape": [
+    1888,
+    1888
+  ],
+  "padding_factor": 4.0,
+  "padding_factor_input": 4.338983050847458,
+  "stage_arrays": [
+    [
+      512,
+      512
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "settings": {
+    "stages": [
+      {
+        "iterations": 700,
+        "step": 0.9,
+        "down_sampling": 16,
+        "momentum": 1.0,
+        "momentum_fwhm": 8.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 0.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 300,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 500,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 1.0
+      }
+    ],
+    "padding_factor": 4.338983050847458,
+    "fade_width": 80,
+    "a0": 0.96,
+    "update": "reference",
+    "gradient": "reference",
+    "pin_phase": true
+  },
+  "geometry_guess": {
+    "energy_kev": 17.0,
+    "z01": 0.0829,
+    "z02": 19.652,
+    "pixel_size": 6.5e-06,
+    "wavelength": 7.293188143129427e-11,
+    "z12": 19.569100000000002,
+    "magnification": 237.05669481302775,
+    "effective_pixel_size": 2.7419601058416443e-08,
+    "effective_distance": 0.08255029462650113,
+    "fresnel_number": 0.0001248780816566809
+  },
+  "paper2": {
+    "simplex": [
+      0.0779,
+      0.0879
+    ],
+    "z01_nm": 0.0809,
+    "z01_visual": 0.081,
+    "samples": 11,
+    "padding_factor": 4.0
+  },
+  "result": {
+    "z01": 0.08064330833554269,
+    "z01_guess": 0.0829,
+    "bounds": [
+      0.0779,
+      0.0879
+    ],
+    "initial_simplex": [
+      0.08114330833554267,
+      0.08214330833554268
+    ],
+    "mfe": 0.00031603124807588756,
+    "nm_iterations": 5,
+    "converged": true,
+    "seconds": 2194.2712055650045,
+    "evaluations": [
+      {
+        "z01": 0.08114330833554267,
+        "mfe": 0.00031758923432789743,
+        "seconds": 206.5824329580064,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08214330833554268,
+        "mfe": 0.0003233593888580799,
+        "seconds": 189.40559891499288,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08014330833554267,
+        "mfe": 0.0003198534541297704,
+        "seconds": 203.86973256699275,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08064330833554269,
+        "mfe": 0.00031603124807588756,
+        "seconds": 215.74067784000363,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.0801433083355427,
+        "mfe": 0.0003198534541297704,
+        "seconds": 216.27239042699512,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08089330833554269,
+        "mfe": 0.000316900375764817,
+        "seconds": 233.1657331969909,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08039330833554269,
+        "mfe": 0.00031755189411342144,
+        "seconds": 239.18306752300123,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08076830833554269,
+        "mfe": 0.00031652601319365203,
+        "seconds": 229.70324101200094,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08051830833554269,
+        "mfe": 0.0003164719673804939,
+        "seconds": 246.69843897198734,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08058080833554268,
+        "mfe": 0.0003161763888783753,
+        "seconds": 213.6233844399976,
+        "reconstructed": true
+      }
+    ],
+    "n_reconstructions": 10,
+    "n_evaluations": 10
+  },
+  "z01_minus_paper2_nm_um": -256.69166445731196,
+  "z01_minus_visual_um": -356.6916644573148,
+  "seconds_per_reconstruction": 219.42446978509687,
+  "git_commit": "3f7f87e",
+  "torch_version": "2.14.1+cpu",
+  "threads": 3,
+  "host": "cursor",
+  "cpu_count": 4,
+  "warm_start": {
+    "source": "results/measured/cnn/tooth.json",
+    "sha256": "57c000e1eea24903774f94a6670a40a18e49b2065473defa5e858f063b9c0a7c",
+    "half_width": 0.0005,
+    "sigmas": 0.0,
+    "z01_est": 0.08164330833554267,
+    "initial_simplex": [
+      0.08114330833554267,
+      0.08214330833554268
+    ]
+  }
+}

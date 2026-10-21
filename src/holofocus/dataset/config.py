@@ -66,19 +66,25 @@ class SimulationConfig:
     ``padding_margin``: free space around the field of view in units of ``1/Fr`` (at the
     smallest ``Fr`` of the dataset). ``oversample``: simulate on an ``s`` times finer grid and
     average ``s x s`` blocks of the intensity (pixel integration). ``a0_range``: uniform range
-    of the illumination amplitude ``A0`` of [1] Eq. (4).
+    of the illumination amplitude ``A0`` of [1] Eq. (4). ``psf_sigma_range``: uniform range of
+    the standard deviation of a Gaussian detector PSF in unbinned detector pixels (0: none).
     """
 
     padding_margin: float = 1.0
     oversample: int = 1
     a0_range: tuple[float, float] = (1.0, 1.0)
+    psf_sigma_range: tuple[float, float] = (0.0, 0.0)
     device: str = "auto"
     precision: str = "single"
 
 
 @dataclass(frozen=True)
 class PhantomConfig:
-    """Single-material phantoms in the spirit of [2] Sec. 3.5 (fixed ``delta/beta``)."""
+    """Single-material phantoms in the spirit of [2] Sec. 3.5 (fixed ``delta/beta``).
+
+    ``size_range`` and ``margin`` apply to the compact types, ``fiber_diameter_range``
+    (relative to the field of view, log-uniform) to fibers, which cross the field of view.
+    """
 
     types: dict[str, float] = field(
         default_factory=lambda: {"triangle": 1.0, "cell": 1.0, "ball": 1.0, "mixed": 1.0}
@@ -88,6 +94,7 @@ class PhantomConfig:
     size_range: tuple[float, float] = (0.15, 0.6)
     margin: float = 0.05
     supersample: int = 4
+    fiber_diameter_range: tuple[float, float] = (0.03, 1.0)
 
 
 @dataclass(frozen=True)
@@ -95,11 +102,16 @@ class NoiseConfig:
     """Poisson (+ Gaussian read-out) noise, see :mod:`holofocus.noise`.
 
     ``photons_range``: mean flat-field counts per binned pixel, drawn log-uniformly per sample.
+    ``flat_field_range``: uniform range of the RMS of a correlated, multiplicative flat-field
+    residual with the corner frequency ``flat_field_cutoff`` in cycles per binned pixel
+    (:func:`holofocus.noise.flat_field_residual`; 0: none).
     """
 
     model: str = "poisson_gaussian"
     photons_range: tuple[float, float] = (1.0e3, 1.0e5)
     read_noise: float = 2.0
+    flat_field_range: tuple[float, float] = (0.0, 0.0)
+    flat_field_cutoff: float = 0.15
 
 
 @dataclass(frozen=True)
@@ -142,6 +154,8 @@ class DatasetConfig:
             raise ValueError("padding_margin must be >= 0")
         if not 0 < sim.a0_range[0] <= sim.a0_range[1]:
             raise ValueError("a0_range must be positive and increasing")
+        if not 0 <= sim.psf_sigma_range[0] <= sim.psf_sigma_range[1]:
+            raise ValueError("psf_sigma_range must be >= 0 and increasing")
         if sim.precision not in ("single", "double"):
             raise ValueError(f"precision must be 'single' or 'double', got {sim.precision!r}")
         if not 0 < ph.phase_shift_range[0] <= ph.phase_shift_range[1]:
@@ -156,12 +170,18 @@ class DatasetConfig:
         weights = list(ph.types.values())
         if any(w < 0 for w in weights) or sum(weights) <= 0:
             raise ValueError("phantom type weights must be >= 0 with a positive sum")
+        if not 0 < ph.fiber_diameter_range[0] <= ph.fiber_diameter_range[1]:
+            raise ValueError("fiber_diameter_range must be positive and increasing")
         if self.noise.model not in NOISE_MODELS:
             raise ValueError(f"unknown noise model {self.noise.model!r}")
         if not 0 < self.noise.photons_range[0] <= self.noise.photons_range[1]:
             raise ValueError("photons_range must be positive and increasing")
         if self.noise.read_noise < 0:
             raise ValueError("read_noise must be >= 0")
+        if not 0 <= self.noise.flat_field_range[0] <= self.noise.flat_field_range[1]:
+            raise ValueError("flat_field_range must be >= 0 and increasing")
+        if self.noise.flat_field_cutoff <= 0:
+            raise ValueError("flat_field_cutoff must be positive")
         if self.storage.compression not in (None, "gzip", "lzf"):
             raise ValueError("compression must be null, 'gzip' or 'lzf'")
         if any(n < 0 for n in self.splits.values()):

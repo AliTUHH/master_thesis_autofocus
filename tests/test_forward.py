@@ -3,8 +3,9 @@ import math
 import pytest
 import torch
 
-from holofocus.arrays import crop_center
+from holofocus.arrays import crop_center, pad_center
 from holofocus.forward import (
+    detector_blur,
     exit_wave,
     object_from_phase,
     refractive_object,
@@ -80,3 +81,30 @@ def test_free_space_padding_matches_larger_simulation():
     big[208:304, 208:304] = obj
     reference = crop_center(propagate(exit_wave(big), fr).abs().pow(2), (96, 96))
     torch.testing.assert_close(padded, reference, rtol=0, atol=2e-3)
+
+
+def test_detector_blur_is_a_normalised_gaussian():
+    delta = torch.zeros((128, 96), dtype=torch.float64)
+    delta[64, 48] = 1.0
+    sigma = 2.5
+    psf = detector_blur(delta, sigma)
+    assert psf.sum().item() == pytest.approx(1.0, abs=1e-12)
+    y, x = torch.meshgrid(
+        torch.arange(128, dtype=torch.float64) - 64,
+        torch.arange(96, dtype=torch.float64) - 48,
+        indexing="ij",
+    )
+    gauss = torch.exp(-(x**2 + y**2) / (2 * sigma**2)) / (2 * math.pi * sigma**2)
+    torch.testing.assert_close(psf, gauss, rtol=0, atol=1e-10)
+
+
+def test_psf_blurs_the_padded_intensity_before_the_crop():
+    fr = 2e-2
+    obj = object_from_phase(-1.0 * torch.from_numpy(demo_object((96, 96))), 200.0)
+    sharp = simulate_hologram(obj, fr, padded_shape=(256, 256))
+    blurred = simulate_hologram(obj, fr, padded_shape=(256, 256), psf_sigma=1.5)
+    full = simulate_hologram(pad_center(obj, (256, 256)), fr)
+    expected = crop_center(detector_blur(full, 1.5), (96, 96))
+    torch.testing.assert_close(blurred, expected, rtol=0, atol=1e-12)
+    assert blurred.mean().item() == pytest.approx(sharp.mean().item(), rel=2e-3)
+    assert blurred.std().item() < sharp.std().item()

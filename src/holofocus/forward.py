@@ -57,6 +57,7 @@ def simulate_hologram(
     fresnel_number: float,
     padded_shape: tuple[int, int] | None = None,
     a0: float = 1.0,
+    psf_sigma: float = 0.0,
 ) -> torch.Tensor:
     """Noise-free hologram ``|D_Fr(exp(i O~))|^2`` on the grid of ``obj``.
 
@@ -64,6 +65,8 @@ def simulate_hologram(
     before propagation and the intensity is cropped back to ``obj.shape``. This removes the
     periodic wrap-around of the FFT for objects inside the field of view; it is the physical
     counterpart of the data padding in [1] Sec. 4.1, which is needed only for measured data.
+    ``psf_sigma > 0`` blurs the intensity with a Gaussian detector PSF of that standard
+    deviation in pixels of ``obj`` (:func:`detector_blur`), before the crop.
     """
     shape = tuple(obj.shape[-2:])
     work = obj if padded_shape is None else pad_center(obj, tuple(padded_shape), 0.0)
@@ -74,7 +77,22 @@ def simulate_hologram(
     )
     field = propagator(exit_wave(work, a0=a0))
     intensity = field.real**2 + field.imag**2
+    if psf_sigma > 0:
+        intensity = detector_blur(intensity, psf_sigma)
     return intensity if padded_shape is None else crop_center(intensity, shape)
+
+
+def detector_blur(intensity: torch.Tensor, sigma: float) -> torch.Tensor:
+    """Periodic convolution with a normalised Gaussian of standard deviation ``sigma`` pixels.
+
+    Models the point spread function of scintillator and optics, which neither [1] nor [2]
+    specify; the transfer function is ``exp(-2 pi^2 sigma^2 f^2)``.
+    """
+    h, w = intensity.shape[-2:]
+    fy = torch.fft.fftfreq(h, device=intensity.device, dtype=intensity.dtype)[:, None]
+    fx = torch.fft.rfftfreq(w, device=intensity.device, dtype=intensity.dtype)[None, :]
+    transfer = torch.exp(-2.0 * math.pi**2 * sigma**2 * (fx**2 + fy**2))
+    return torch.fft.irfft2(torch.fft.rfft2(intensity) * transfer, s=(h, w))
 
 
 def intensity(field: torch.Tensor) -> torch.Tensor:
