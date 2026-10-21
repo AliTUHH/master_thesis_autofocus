@@ -23,6 +23,14 @@ def test_yaml_round_trip():
     assert DatasetConfig.from_dict(yaml.safe_load(config.to_yaml())) == config
 
 
+def test_extra_training_data_has_the_physics_of_cpu_4x():
+    main = DatasetConfig.from_yaml(CONFIG_DIR / "cpu-4x.yaml")
+    extra = DatasetConfig.from_yaml(CONFIG_DIR / "cpu-4x-extra.yaml")
+    for section in ("geometry", "sampling", "simulation", "phantoms", "noise"):
+        assert getattr(extra, section) == getattr(main, section), section
+    assert extra.seed != main.seed and list(extra.splits) == ["train"]
+
+
 def test_exponent_without_dot_is_a_number():
     # YAML 1.1 (PyYAML) reads 1e5 as a string; the loader converts it.
     config = DatasetConfig.from_dict(yaml.safe_load("noise: {photons_range: [1e3, 1e5]}"))
