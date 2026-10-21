@@ -5,6 +5,8 @@ import pytest
 import yaml
 
 from holofocus.dataset import DatasetConfig
+from holofocus.geometry import P05_DETECTOR_SHAPE, P05_PIXEL_SIZE
+from holofocus.measured import MEASURED_SAMPLES
 from holofocus.propagation import next_fast_len
 
 CONFIG_DIR = Path(__file__).resolve().parents[1] / "configs" / "dataset"
@@ -32,10 +34,29 @@ def test_extra_training_data_has_the_physics_of_cpu_4x(name):
     assert list(extra.splits) == ["train"] and not extra.storage.store_phase
 
 
-def test_cpu_4x_datasets_have_their_own_seeds():
-    names = ("cpu-4x", "cpu-4x-extra", "cpu-4x-large")
-    seeds = {DatasetConfig.from_yaml(CONFIG_DIR / f"{name}.yaml").seed for name in names}
-    assert len(seeds) == len(names)
+def test_repository_datasets_have_their_own_seeds():
+    seeds = [DatasetConfig.from_yaml(path).seed for path in sorted(CONFIG_DIR.glob("*.yaml"))]
+    assert len(set(seeds)) == len(seeds)
+
+
+@pytest.mark.parametrize("name", list(MEASURED_SAMPLES))
+def test_matched_datasets_follow_the_measured_setup(name):
+    sample = MEASURED_SAMPLES[name]
+    config = DatasetConfig.from_yaml(CONFIG_DIR / f"matched-{name}.yaml")
+    g = config.geometry
+    assert (g.energy_kev, g.z02) == (sample.energy_kev, sample.z02)
+    assert g.z01_guess == pytest.approx(sample.z01_guess, abs=1e-12)
+    assert g.z01_guess_range is None
+    assert config.sampling.dz01_range == pytest.approx((-sample.confidence, sample.confidence))
+    # Detector path of the measured runs: cutting band removed, 4x block mean (load_measured).
+    n = P05_DETECTOR_SHAPE[0] - 2 * sample.cutting_band
+    assert (g.detector_shape, g.binning, g.detector_pixel_size) == ((n, n), 4, P05_PIXEL_SIZE)
+    guess = sample.geometry(binning=4)
+    assert g.at(g.z01_guess).fresnel_number == pytest.approx(guess.fresnel_number, rel=1e-12)
+    # Everything else as in the Stage 2/4 data.
+    main = DatasetConfig.from_yaml(CONFIG_DIR / "cpu-4x.yaml")
+    for section in ("simulation", "phantoms", "noise"):
+        assert getattr(config, section) == getattr(main, section), section
 
 
 def test_exponent_without_dot_is_a_number():
@@ -93,6 +114,12 @@ def test_next_fast_len_is_smallest_7_smooth_number():
         ({"storage": {"store_phase": "yes"}}, "cannot read"),
         ({"storage": {"compression": "zstd"}}, "compression"),
         ({"simulation": {"precision": "half"}}, "precision"),
+        ({"simulation": {"psf_sigma_range": [1.0, 0.5]}}, "psf_sigma_range"),
+        ({"simulation": {"psf_sigma_range": [-1.0, 0.5]}}, "psf_sigma_range"),
+        ({"noise": {"flat_field_range": [0.02, 0.01]}}, "flat_field_range"),
+        ({"noise": {"flat_field_cutoff": 0.0}}, "flat_field_cutoff"),
+        ({"phantoms": {"fiber_diameter_range": [0.0, 0.5]}}, "fiber_diameter_range"),
+        ({"phantoms": {"types": {"fibre": 1}}}, "unknown phantom types"),
         ({"splits": {"train": -1}}, "split sizes"),
     ],
 )
