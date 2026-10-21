@@ -70,7 +70,7 @@ jobs:
           holofocus-learn compare --learned $learned/test/predictions.csv \
             --baseline ${{ runner.temp }}/baseline-ci --baseline-val ${{ runner.temp }}/baseline-ci \
             --warm ${{ runner.temp }}/warm-ci --out ${{ runner.temp }}/comparison-ci
-          python scripts/make_stage4_figures.py --quick --main $learned --study $learned/none \
+          python scripts/make_stage4_figures.py --quick --main $learned --finals $learned --study $learned/none \
             --comparison ${{ runner.temp }}/comparison-ci --baseline ${{ runner.temp }}/baseline-ci \
             --baseline-val ${{ runner.temp }}/baseline-ci --warm ${{ runner.temp }}/warm-ci \
             --data $demo --out ${{ runner.temp }}/figures

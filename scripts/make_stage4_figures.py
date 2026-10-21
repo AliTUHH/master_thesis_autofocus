@@ -3,8 +3,9 @@
 * ``stage4-inputs.png``: what the networks see, for three validation samples: the binned
   hologram (image CNN) and the radial power spectrum on the ``f^2`` axis with the CTF minima
   ``f^2 = k Fr`` of the true Fresnel number (spectrum CNN).
-* ``stage4-training.png``: validation MAE per epoch of the main model and of the families at
-  2000 training samples, the learning curve of the spectrum CNN and the variants of
+* ``stage4-training.png``: validation MAE per epoch of the models trained on all samples
+  (``--finals``) and of the study runs at 2000 and 10000 samples, learning curves per family
+  (representation and channels) and the variants at 2000 samples of
   ``scripts/run_stage4_study.py`` (``results/learned/study``).
 * ``stage4-test.png``: the main model on the full synthetic test split: estimate against
   truth with the predicted 1-sigma interval, error against ``dz01`` and the error histogram.
@@ -22,9 +23,10 @@
 Usage::
 
     python scripts/make_stage4_figures.py                       # results/ and data/cpu-4x
-    python scripts/make_stage4_figures.py --quick --main /tmp/learned-ci --study /tmp/none \\
-        --comparison /tmp/comparison --baseline /tmp/baseline --baseline-val /tmp/baseline \\
-        --warm /tmp/warm --data /tmp/demo-dataset --out /tmp/figures   # smoke test (CI)
+    python scripts/make_stage4_figures.py --quick --main /tmp/learned-ci --finals /tmp/learned-ci \\
+        --study /tmp/none --comparison /tmp/comparison --baseline /tmp/baseline \\
+        --baseline-val /tmp/baseline --warm /tmp/warm --data /tmp/demo-dataset \\
+        --out /tmp/figures   # smoke test (CI)
 
 Figures whose inputs are missing are skipped.
 """
@@ -190,20 +192,38 @@ def _seed_average(runs: list[Path]) -> dict:
     }
 
 
-def training_figure(main: Path, study: Path, out: Path, dpi: int) -> dict | None:
-    runs = {main.name: main} if (main / "summary.json").exists() else {}
-    runs.update({file.parent.name: file.parent for file in sorted(study.glob("*/summary.json"))})
+def _family(info: dict, any_seed: bool = False) -> str | None:
+    """Learning-curve family of a run: representation and channels.
+
+    Runs with another seed or ``beta`` than the configs (0 and 0.5) are variants without a
+    family; ``any_seed`` admits other seeds.
+    """
+    config = info.get("config", {})
+    training = config.get("training", {})
+    if training.get("beta") != 0.5 or (training.get("seed") != 0 and not any_seed):
+        return None
+    channels = "/".join(str(c) for c in config.get("model", {}).get("channels", []))
+    return f"{config.get('representation', {}).get('kind')} CNN, {channels}"
+
+
+def training_figure(finals: list[Path], study: Path, out: Path, dpi: int) -> dict | None:
+    runs = {run.name: run for run in finals if (run / "summary.json").exists()}
+    for file in sorted(study.glob("*/summary.json")):
+        runs.setdefault(file.parent.name, file.parent)
     if not runs:
         return None
     rows = {name: _training_row(run) for name, run in runs.items()}
+    infos = {name: _run_info(run) for name, run in runs.items()}
     fig, axes = plt.subplots(
         1, 3, figsize=(17.5, 4.8), layout="constrained", gridspec_kw={"width_ratios": [1.2, 1, 1.2]}
     )
-    curves = (
-        (main.name, "tab:blue"),
+    final_colors = ("tab:blue", "navy", "tab:cyan")
+    curves = [(run.name, final_colors[i % 3]) for i, run in enumerate(finals) if run.name in runs]
+    curves += [
         ("spectrum-n2000", "lightskyblue"),
-        ("image-n2000", "tab:green"),
-    )
+        ("image-n10000", "tab:green"),
+        ("image-n2000", "yellowgreen"),
+    ]
     for name, color in curves:
         if name not in runs:
             continue
@@ -220,29 +240,52 @@ def training_figure(main: Path, study: Path, out: Path, dpi: int) -> dict | None
     axes[0].legend(fontsize=8)
     axes[0].set_title("validation MAE per epoch (dot: selected epoch)", fontsize=10)
 
-    metrics: dict = {"runs": rows}
-    curve = [n for n in rows if n == main.name or n.startswith("spectrum-n")]
-    points = sorted({rows[n]["n_train"]: rows[n]["val_error_um"]["mae"] for n in curve}.items())
-    if points:
-        n, mae = np.array(points, dtype=float).T
-        axes[1].loglog(n, mae, "o-", color="tab:blue", label="spectrum CNN, seed 0")
+    metrics: dict = {"runs": rows, "learning_curves": {}}
+    families: dict[str, dict[int, tuple[float, str]]] = {}
+    for name in runs:
+        family = _family(infos[name])
+        if family is not None and rows[name]["n_train"]:
+            families.setdefault(family, {}).setdefault(
+                rows[name]["n_train"], (rows[name]["val_error_um"]["mae"], name)
+            )
+    spectrum_colors = iter(("tab:blue", "navy", "tab:cyan", "tab:purple"))
+    colors = {
+        family: "tab:green" if family.startswith("image") else next(spectrum_colors, "0.4")
+        for family in sorted(families, key=lambda f: (f.startswith("image"), f))
+    }
+    for family, color in colors.items():
+        points = sorted(families[family].items())
+        n = np.array([p[0] for p in points], dtype=float)
+        mae = np.array([p[1][0] for p in points])
+        entry: dict = {
+            "points": [
+                {"n_train": int(a), "val_mae_um": float(b), "run": run} for a, (b, run) in points
+            ]
+        }
+        label = family
+        if len(points) >= 3:
+            entry["slope"] = float(np.polyfit(np.log(n), np.log(mae), 1)[0])
+            label += f" (MAE ~ n^{entry['slope']:.2f})"
+        metrics["learning_curves"][family] = entry
+        axes[1].loglog(n, mae, "o-", color=color, label=label)
         for x, y in zip(n, mae, strict=True):
             axes[1].annotate(f"{y:.0f}", (x, y), textcoords="offset points", xytext=(5, 3))
-        seeds = [rows[s] for s in rows if s.startswith("spectrum-seed")]
-        if seeds:
-            axes[1].plot(
-                [r["n_train"] for r in seeds],
-                [r["val_error_um"]["mae"] for r in seeds],
-                "x",
-                color="tab:blue",
-                label="other seeds",
-            )
-        metrics["learning_curve"] = [{"n_train": int(a), "val_mae_um": float(b)} for a, b in points]
-        if len(points) >= 3:
-            slope = float(np.polyfit(np.log(n), np.log(mae), 1)[0])
-            metrics["learning_curve_slope"] = slope
-            axes[1].set_title(f"learning curve: MAE ~ n^{slope:.2f}", fontsize=10)
+    seeds = [
+        name
+        for name in runs
+        if _family(infos[name]) is None and _family(infos[name], any_seed=True) in colors
+    ]
+    for i, name in enumerate(seeds):
+        axes[1].plot(
+            rows[name]["n_train"],
+            rows[name]["val_error_um"]["mae"],
+            "x",
+            color=colors[_family(infos[name], any_seed=True)],
+            label="other seeds" if i == 0 else None,
+        )
+    if families:
         axes[1].legend(fontsize=8)
+    axes[1].set_title("learning curves (validation, seed 0)", fontsize=10)
     axes[1].set_xlabel("training samples")
     axes[1].set_ylabel("validation MAE (um)")
 
@@ -257,7 +300,7 @@ def training_figure(main: Path, study: Path, out: Path, dpi: int) -> dict | None
             metrics["seed_average"] = _seed_average(seeds)
             labels.append("mean of 3 seeds")
             mae.append(metrics["seed_average"]["error_um"]["mae"])
-            colors.append("navy")
+            colors.append("lightsteelblue")
             notes.append(None)
         axes[2].bar(range(len(labels)), mae, color=colors)
         for i, ms in enumerate(notes):
@@ -545,6 +588,13 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--quick", action="store_true", help="low resolution (CI)")
     parser.add_argument("--main", type=Path, default=RESULTS / "learned" / "spectrum-cnn")
+    parser.add_argument(
+        "--finals",
+        type=Path,
+        nargs="+",
+        default=[RESULTS / "learned" / "spectrum-cnn", RESULTS / "learned" / "spectrum-cnn-wide"],
+        help="models trained on all samples (training figure, with --main)",
+    )
     parser.add_argument("--study", type=Path, default=RESULTS / "learned" / "study")
     parser.add_argument("--comparison", type=Path, default=RESULTS / "comparison" / "cpu-4x-test")
     parser.add_argument("--baseline", type=Path, default=RESULTS / "baseline" / "cpu-4x-test")
@@ -554,12 +604,13 @@ def main() -> None:
     args = parser.parse_args()
     dpi = 60 if args.quick else 120
     model = args.main
-    runs = [model, *sorted(p for p in args.study.glob("*") if p.is_dir())]
+    finals = list(dict.fromkeys([model, *args.finals]))
+    runs = [*finals, *sorted(p for p in args.study.glob("*") if p.is_dir())]
     args.out.mkdir(parents=True, exist_ok=True)
     metrics: dict = {"quick": args.quick, "main": str(model)}
     steps = [
         ("inputs", lambda: inputs_figure(args.data, runs, args.out, dpi)),
-        ("training", lambda: training_figure(model, args.study, args.out, dpi)),
+        ("training", lambda: training_figure(finals, args.study, args.out, dpi)),
         ("test", lambda: test_figure(model / "test" / "predictions.csv", args.out, dpi)),
         ("calibration", lambda: calibration_figure(model, args.out, dpi)),
         ("dependence", lambda: dependence_figure(model, args.comparison, args.out, dpi)),
