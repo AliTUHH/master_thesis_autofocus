@@ -290,6 +290,110 @@ results/padding/                spider-hair curves (p2, p2-l2, p2-1022, p3, p7) 
 results/crosscheck/             reports of scripts/crosscheck_asrm_holowizard.py
 ```
 
+## Learned autofocus (Stage 4)
+
+`holofocus.learned` estimates `dz01 = z01 - z01_guess` (±5 mm) from one hologram as a Gaussian
+mean and standard deviation. Two input representations are implemented:
+
+| `representation.kind` | Input | Model |
+|---|---|---|
+| `spectrum` | radially averaged power spectrum of the Hann-windowed hologram on a uniform `f^2` axis (1024 bins up to 0.125 cycles²/px²), log, standardized; its minima lie at `f^2 = k Fr` | `SpectrumCNN` (1-D convolutions) |
+| `image` | the hologram binned 2×2, standardized; random D4 transforms (rotations by 90°, flips) during training | `ImageCNN` (2-D convolutions) |
+
+Both models end in a Gaussian head (mean and variance) trained with the β-NLL. Training keeps
+the epoch with the lowest validation MAE and calibrates the standard deviation on the
+validation split (`sigma_scale`).
+
+```python
+from holofocus.learned import LearnedAutofocus
+
+autofocus = LearnedAutofocus.load("results/learned/spectrum-cnn-wide")  # run dir or model.pt
+dz01, sigma, sigma_raw = autofocus.estimate(holograms)  # (B, H, W) or (H, W) tensor; metres
+z01_est = z01_guess + dz01
+```
+
+### Training, prediction and comparison
+
+| Config | Representation | Model |
+|---|---|---|
+| `configs/learned/spectrum-cnn.yaml` | spectrum, 1024 bins | 4 stages (16/32/64/64 channels), 178k parameters, 100 epochs |
+| `configs/learned/spectrum-cnn-wide.yaml` | spectrum, 1024 bins | 4 stages (32/64/128/128 channels), 450k parameters, 100 epochs |
+| `configs/learned/image-cnn.yaml` | image, binning 2 (256²) | 4 stages (16/32/64/128 channels), 308k parameters, 40 epochs |
+| `configs/learned/ci.yaml` | spectrum, 128 bins | 2 stages, 3 epochs (CI) |
+
+```bash
+# 8000 more training samples with the physics of cpu-4x (about 60 min with 3 threads)
+holofocus-dataset generate configs/dataset/cpu-4x-extra.yaml --out data/cpu-4x-extra --splits train
+# train both spectrum CNNs on 10000 samples (both files in this order), select and calibrate
+# on val; the main model is the one with the lower validation MAE (spectrum-cnn-wide)
+for name in spectrum-cnn spectrum-cnn-wide; do
+    holofocus-learn train configs/learned/$name.yaml \
+        --train data/cpu-4x/train.h5 data/cpu-4x-extra/train.h5 --val data/cpu-4x/val.h5 \
+        --out results/learned/$name --threads 1
+    holofocus-learn predict results/learned/$name --data data/cpu-4x/val.h5 \
+        --out results/learned/$name/val
+    holofocus-learn predict results/learned/$name --data data/cpu-4x/test.h5 \
+        --out results/learned/$name/test
+done
+# baseline on the first 24 validation samples: its mean error is the offset of the
+# corrected baseline
+taskset -c 0-2 holofocus-baseline run configs/baseline/paper2-cpu.yaml \
+    --data data/cpu-4x/val.h5 --out results/baseline/cpu-4x-val --limit 24 --threads 3
+# warm start: Nelder-Mead from (z01_est - 0.5 mm, z01_est + 0.5 mm) instead of the ends of
+# Omega_z; the bounds and the stopping rule stay those of [2]. Same cores and threads as
+# results/baseline/cpu-4x-test, so the times compare.
+taskset -c 0-2 holofocus-baseline run configs/baseline/paper2-cpu-warm.yaml \
+    --data data/cpu-4x/test.h5 --out results/baseline/cpu-4x-test-warm --limit 48 --threads 3 \
+    --warm-start results/learned/spectrum-cnn-wide/test/predictions.csv --half-width 5e-4
+# learned vs. raw and offset-corrected baseline (and the warm start) on the same samples
+holofocus-learn compare --learned results/learned/spectrum-cnn-wide/test/predictions.csv \
+    --baseline results/baseline/cpu-4x-test --baseline-val results/baseline/cpu-4x-val \
+    --warm results/baseline/cpu-4x-test-warm --out results/comparison/cpu-4x-test
+# study of plan step 11 (learning curve, seeds, loss and width variants, image CNN on 2000
+# and 10000 samples); every run takes the first n samples of the concatenated files
+python scripts/run_stage4_study.py --train data/cpu-4x/train.h5 data/cpu-4x-extra/train.h5 \
+    --val data/cpu-4x/val.h5 --threads 1
+# padding check: MFE scans around the true z01 of test samples 0 and 1 at padding 2 and 4
+# (sample 2 is in results/bias and results/padding/bias-p4 from Stage 3)
+for p in 2 4; do
+    python scripts/run_stage3_experiments.py --threads 1 bias --data data/cpu-4x/test.h5 \
+        --indices 0 1 --variants noisy --padding $p --out results/padding/bias-p$p
+done
+# figures and stage4-metrics.json from results/
+python scripts/make_stage4_figures.py
+```
+
+`--device cuda` (or `device: cuda` in the config) trains and predicts on a GPU; `auto` takes
+CUDA when it is available. Several `--train` files are concatenated in the given order, and
+`--limit N` keeps the first `N` samples of the concatenation. `--warm-start` reads `index`,
+`z01_est` and, with `--sigmas k`, `sigma` from a `predictions.csv`; the half width of the
+initial simplex is `max(--half-width, k * sigma)`, shifted inside `Omega_z` if needed.
+
+A training run directory holds `config.yaml`, `history.csv` (loss, validation MAE, RMSE, bias,
+NLL and 68 % coverage per epoch), `model.pt` (weights of the selected epoch, config, field of
+view, `sigma_scale`), `summary.json` (validation metrics) and `run.yaml` (datasets with SHA-256
+and generator commit, sizes, timing, software, host). `predict` writes `predictions.csv` (one
+row per sample: true and estimated `dz01`, `z01_est`, `error_um`, calibrated and raw `sigma`,
+`z_score`, true and estimated Fresnel number, seconds), `summary.json` (metrics overall, per
+phantom type and per flat-field count range) and `run.yaml`. `compare` writes
+`comparison.csv` (per sample: learned, raw, corrected and warm-start errors, reconstructions
+and seconds) and `comparison.json` (metrics per method, the offset with its standard error and
+bootstrap interval, paired differences of the absolute errors).
+
+The time per estimate is that of one hologram (batch 1, 1 thread) including the spectrum,
+after a warm-up call. The `results/learned/` directory holds:
+
+```
+results/learned/spectrum-cnn-wide/  main model (10000 training samples) with model.pt, val/, test/
+results/learned/spectrum-cnn/    the standard width on the same samples, with model.pt, val/, test/
+results/learned/study/<run>/     runs of scripts/run_stage4_study.py with val/ (no weights)
+results/baseline/cpu-4x-val/     baseline on the first validation samples (offset)
+results/baseline/cpu-4x-test-warm/  warm-started baseline on the 48 baseline test samples
+results/comparison/cpu-4x-test/  learned vs. baseline on those samples
+results/padding/bias-p2/         MFE scans of test samples 0 and 1 at padding 2 (padding check;
+                                 bias-p4/ holds them at padding 4)
+```
+
 ## Comparison with the paper code (optional)
 
 The code of [1] is published on Zenodo (v1.0.0, `livereco_server`) and maintained as
