@@ -147,6 +147,25 @@ def test_job_names_give_the_log_names(script):
     assert f"#SBATCH --job-name=holofocus-{script.stem}\n" in script.read_text()
 
 
+def test_setup_env_refuses_python_older_than_3_12(tmp_path):
+    old = tmp_path / "python3.11"
+    old.write_text('#!/bin/bash\n[[ $1 == -V ]] && echo "Python 3.11.9" && exit 0\nexit 1\n')
+    old.chmod(0o755)
+    env = tmp_path / "env"
+    config = kit_config(
+        tmp_path, HOLOFOCUS_ENV_KIND="venv", HOLOFOCUS_ENV=str(env), HOLOFOCUS_PYTHON=str(old)
+    )
+    result = subprocess.run(
+        ["bash", str(KIT / "setup_env.sh")],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "HOLOFOCUS_CONFIG": str(config)},
+        cwd=REPO,
+    )
+    assert result.returncode != 0 and "older than Python 3.12 (Python 3.11.9)" in result.stderr
+    assert not env.exists()
+
+
 def test_local_pipeline_datagen_train_baseline_merge(tmp_path):
     config = kit_config(tmp_path)
     scratch, dust = tmp_path / "scratch", tmp_path / "dust"

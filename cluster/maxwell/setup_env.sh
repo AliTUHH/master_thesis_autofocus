@@ -10,7 +10,8 @@
 # versions to HOLOFOCUS_ENV/holofocus-env.txt. --with-sbi adds sbi for the NPE stage without
 # changing torch or the pinned packages (pip stops if they conflict), --recreate deletes the
 # environment first. With HOLOFOCUS_ENV_KIND=none nothing is installed; the script only
-# reports the environment on PATH.
+# reports the environment on PATH. pip and conda cache their downloads in
+# HOLOFOCUS_SCRATCH/cache unless PIP_CACHE_DIR or CONDA_PKGS_DIRS are set.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=SCRIPTDIR/lib.sh
@@ -31,6 +32,9 @@ done
 kit_load_config
 kit_require_checked
 kit_load_modules
+# By default both caches live in the home directory; the CUDA wheels alone take several GB.
+export PIP_CACHE_DIR=${PIP_CACHE_DIR:-$HOLOFOCUS_SCRATCH/cache/pip}
+export CONDA_PKGS_DIRS=${CONDA_PKGS_DIRS:-$HOLOFOCUS_SCRATCH/cache/conda-pkgs}
 
 glibc=$(getconf GNU_LIBC_VERSION 2>/dev/null || echo "glibc unknown")
 echo "$glibc on $(hostname); the PyTorch wheels need glibc 2.28 or newer"
@@ -41,8 +45,11 @@ case $HOLOFOCUS_ENV_KIND in
             kit_do rm -rf "$HOLOFOCUS_ENV"
         fi
         if [[ ! -d $HOLOFOCUS_ENV ]]; then
-            if ! "$HOLOFOCUS_PYTHON" -c 'import sys; sys.exit(sys.version_info < (3, 10))'; then
-                kit_die "$HOLOFOCUS_PYTHON is older than Python 3.10 ($("$HOLOFOCUS_PYTHON" -V 2>&1))"
+            # numpy 2.5.4 and scipy 1.18.1 of requirements-vm.txt need Python 3.12.
+            if ! "$HOLOFOCUS_PYTHON" -c 'import sys; sys.exit(sys.version_info < (3, 12))'; then
+                kit_die "$HOLOFOCUS_PYTHON is older than Python 3.12" \
+                    "($("$HOLOFOCUS_PYTHON" -V 2>&1)), which the pinned numpy and scipy need;" \
+                    "load a newer Python module or use HOLOFOCUS_ENV_KIND=conda"
             fi
             kit_do "$HOLOFOCUS_PYTHON" -m venv "$HOLOFOCUS_ENV"
         fi

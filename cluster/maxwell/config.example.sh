@@ -9,7 +9,7 @@
 HOLOFOCUS_SCRATCH="/gpfs/petra3/scratch/CHECK_ME/holofocus"
 HOLOFOCUS_DUST="CHECK_ME"
 
-# Python environment, created by setup_env.sh: "venv" (with HOLOFOCUS_PYTHON >= 3.10),
+# Python environment, created by setup_env.sh: "venv" (with HOLOFOCUS_PYTHON >= 3.12),
 # "conda" (with the conda executable HOLOFOCUS_CONDA) or "none" (use the python on PATH
 # after loading HOLOFOCUS_MODULES, for an environment you manage yourself).
 HOLOFOCUS_ENV_KIND="venv"
