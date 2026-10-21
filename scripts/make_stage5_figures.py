@@ -225,16 +225,22 @@ def sim2real_figure(learned: Path, measured: Path, sim2real: Path, out: Path, dp
             for r in read_predictions(learned / row["cnn_run"] / "test" / "predictions.csv")
         ]
         _cdf(ax, test, color="tab:blue", label="matched test split")
+        d2 = abs(row["cnn_minus_paper2_um"])
+        rank = row["disagreement_paper2_percentile"]
+        title = (
+            f"{_short(name)}\n|CNN - [2]| = {d2:.0f} um, larger than\n"
+            f"{rank:.0f} % of the matched test errors"
+        )
         combined = sim2real / name / "combined" / "predictions.csv"
         entry = {"test_median_abs_um": float(np.median(test))}
         if combined.exists():
-            errors = [abs(r["error_um"]) for r in read_predictions(combined)]
+            errors = np.array([abs(r["error_um"]) for r in read_predictions(combined)])
             _cdf(ax, errors, color="tab:green", label="test split, all measured properties")
             entry["combined_median_abs_um"] = float(np.median(errors))
-        d2 = abs(row["cnn_minus_paper2_um"])
+            pct = float(100 * np.mean(errors < d2))
+            entry["measured_percentile_in_combined"] = pct
+            title += f",\n{pct:.0f} % with all measured properties"
         ax.axvline(d2, color="black", label="measured: |CNN - [2]|")
-        rank = row["disagreement_paper2_percentile"]
-        title = f"{_short(name)}\n|CNN - [2]| = {d2:.0f} um, {rank:.0f} % of the test errors below"
         if "cnn_minus_b1_p4_um" in row:
             ax.axvline(
                 abs(row["cnn_minus_b1_p4_um"]),
