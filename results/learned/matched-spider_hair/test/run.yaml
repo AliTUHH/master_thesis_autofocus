@@ -1,0 +1,50 @@
+model: results/learned/matched-spider_hair
+model_sha256: eb07960f1db3c176e65dc295dcc148f8edc8092abc32d82f2600c66d88299363
+config:
+  name: spectrum-cnn-wide
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  model:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    min_sigma: 0.001
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    beta: 0.5
+    augment: false
+    limit: null
+    patience: null
+    seed: 0
+  device: auto
+sigma_scale: 1.0006184781062757
+dataset:
+  path: data/matched-spider_hair/test.h5
+  sha256: 50c2fffda721de4d832f4f0340f2f1f35aeac298e3ded40676a55f54ccae4c73
+  split: test
+  n_samples: 250
+  seed: 20261031
+  generator_commit: 2dc11b5
+  created_utc: '2026-10-21T18:44:08+00:00'
+holofocus_version: 0.1.0
+git_commit: e90171d
+torch_version: 2.14.1+cpu
+device: cpu
+threads: 1
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-21T19:08:02+00:00'

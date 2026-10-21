@@ -1,0 +1,50 @@
+model: results/learned/matched-cactus_needle-realistic
+model_sha256: 6aac956dfa4d055ae1dec56826fb993d44ab345508eeac0f14e71fd2400b3c5f
+config:
+  name: spectrum-cnn-wide
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  model:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    min_sigma: 0.001
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    beta: 0.5
+    augment: false
+    limit: null
+    patience: null
+    seed: 0
+  device: auto
+sigma_scale: 1.0974771982207487
+dataset:
+  path: data/matched-cactus_needle-realistic/val.h5
+  sha256: fcb3bfde9b2874684bacf90995c247c7611514bc8bc7e1336ae0e448468dcfb9
+  split: val
+  n_samples: 250
+  seed: 20261053
+  generator_commit: 3f7f87e
+  created_utc: '2026-10-21T19:14:49+00:00'
+holofocus_version: 0.1.0
+git_commit: 3f7f87e
+torch_version: 2.14.1+cpu
+device: cpu
+threads: 1
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-21T20:05:30+00:00'
