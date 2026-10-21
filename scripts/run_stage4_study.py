@@ -10,7 +10,8 @@ the first ``n_train`` samples of the training files and predicts the validation 
 * ``spectrum-beta0``, ``spectrum-beta1``: Gaussian NLL without and with full variance
   weighting (``beta``, the configs use 0.5);
 * ``spectrum-wide``: twice the channels;
-* ``image-n2000``: the image CNN (binned hologram) on the same 2000 samples.
+* ``image-n2000``, ``image-n10000``: the image CNN (binned hologram) on the same 2000 samples
+  and on all 10000.
 
 Usage::
 
@@ -44,6 +45,7 @@ RUNS: dict[str, tuple[str, int, dict]] = {
     "spectrum-beta1": (SPECTRUM, 2000, {"training": {"beta": 1.0}}),
     "spectrum-wide": (SPECTRUM, 2000, {"model": {"channels": [32, 64, 128, 128]}}),
     "image-n2000": (IMAGE, 2000, {}),
+    "image-n10000": (IMAGE, 10000, {}),
 }
 
 
