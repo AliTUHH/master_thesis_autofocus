@@ -442,6 +442,7 @@ def cmd_spectra(args) -> None:
             print(
                 f"{name} {set_name}: " + ", ".join(f"{f} {ranks[f]:.0f} %" for f in FEATURE_NAMES)
             )
+        record.update(environment())
         write_json(args.out / f"spectra-{name}.json", record)
 
 
