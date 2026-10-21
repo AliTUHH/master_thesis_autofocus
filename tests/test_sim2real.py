@@ -25,6 +25,7 @@ from holofocus.learned.sim2real import (
     percentile_rank,
     perturbation_changes,
     perturbed_config,
+    realistic_changes,
     spectral_features,
 )
 from holofocus.measured import MEASURED_SAMPLES, MeasuredSample, bin_mean
@@ -68,6 +69,33 @@ def test_combined_is_psf_noise_and_object():
     assert combined["simulation"] == perturbation_changes("psf", "spider_hair")["simulation"]
     assert combined["noise"] == perturbation_changes("noise", "spider_hair")["noise"]
     assert combined["phantoms"] == perturbation_changes("object", "spider_hair")["phantoms"]
+
+
+@pytest.mark.parametrize("sample", list(MEASURED_SAMPLES))
+def test_realistic_ranges_contain_the_combined_perturbation(sample):
+    realistic = realistic_changes(sample)
+    combined = perturbation_changes("combined", sample)
+    assert realistic["phantoms"] == combined["phantoms"]
+    assert realistic["noise"]["flat_field_cutoff"] == combined["noise"]["flat_field_cutoff"]
+    for section, key in (
+        ("simulation", "psf_sigma_range"),
+        ("noise", "photons_range"),
+        ("noise", "flat_field_range"),
+    ):
+        lo, hi = realistic[section][key]
+        assert lo < combined[section][key][0] == combined[section][key][1] < hi, key
+
+
+@pytest.mark.parametrize(
+    "path", sorted((ROOT / "configs" / "dataset").glob("*-realistic.yaml")), ids=lambda p: p.stem
+)
+def test_realistic_datasets_are_the_matched_sets_with_realistic_changes(path):
+    sample = path.stem.removeprefix("matched-").removesuffix("-realistic")
+    matched = DatasetConfig.from_yaml(path.with_name(f"matched-{sample}.yaml"))
+    expected = perturbed_config(matched, realistic_changes(sample), path.stem).to_dict()
+    actual = DatasetConfig.from_yaml(path).to_dict()
+    assert actual.pop("seed") != expected.pop("seed")
+    assert actual == expected
 
 
 def test_perturbed_samples_pair_with_the_original():

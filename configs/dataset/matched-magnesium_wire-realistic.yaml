@@ -1,0 +1,51 @@
+# Training data with the measured properties of the Mg wire (Stage 5, Laborbuch 05).
+#
+# matched-magnesium_wire.yaml changed by holofocus.learned.sim2real.realistic_changes: the
+# "combined" perturbation with ranges around the measured values. Gaussian detector PSF of
+# 1.2-2.0 unbinned pixels (corner fits of the other samples 1.4-1.8 px; the corners of the Mg
+# hologram contain the wire), photons log-uniform within a factor 2 of 3.1e4 per binned pixel,
+# correlated flat-field residual of 1.5-6 % RMS (set to 3 %) with the corner frequency 0.18 per
+# binned pixel, and the object of the measured hologram: fibers with 8-20 rad phase shift,
+# 55-85 % of the field of view wide, delta/beta = 120 (Mg at 11 keV). Own seed.
+name: matched-magnesium_wire-realistic
+seed: 20261054
+geometry:
+  energy_kev: 11.0
+  z02: 19.661
+  z01_guess: 0.4724
+  z01_guess_range: null
+  detector_pixel_size: 6.5e-6
+  detector_shape: [2048, 2048]
+  binning: 4
+sampling:
+  dz01_range: [-5.0e-3, 5.0e-3]
+simulation:
+  padding_margin: 1.0
+  oversample: 2
+  a0_range: [1.0, 1.0]
+  psf_sigma_range: [1.2, 2.0]
+  device: auto
+  precision: single
+phantoms:
+  types: {fiber: 1.0}
+  delta_beta: 120.0
+  phase_shift_range: [8.0, 20.0]
+  size_range: [0.15, 0.6]
+  margin: 0.05
+  supersample: 4
+  fiber_diameter_range: [0.55, 0.85]
+noise:
+  model: poisson_gaussian
+  photons_range: [1.55e4, 6.2e4]
+  read_noise: 2.0
+  flat_field_range: [0.015, 0.06]
+  flat_field_cutoff: 0.18
+storage:
+  store_phase: false
+  store_clean: false
+  compression: gzip
+  compression_level: 4
+splits:
+  train: 6000
+  val: 250
+  test: 250

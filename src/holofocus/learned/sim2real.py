@@ -7,6 +7,8 @@
   assumption changed (:data:`PERTURBATIONS`). The seed stays, so a perturbed test split pairs
   sample by sample with the original: same ``z01``, photon count (except ``noise``) and, except
   for the object perturbations, the same object. Detector effects draw from their own stream;
+* :func:`realistic_changes`: training sets with the measured properties as ranges around
+  :data:`MEASURED_MODELS` (``configs/dataset/matched-<sample>-realistic.yaml``);
 * :func:`paired_shifts`: estimate on the perturbed sample minus the estimate on the original;
 * :func:`spectral_features`: numbers of the radial power spectrum (the input of the spectrum
   CNN) that place a measured hologram in the distribution of a simulated split;
@@ -44,6 +46,14 @@ FLAT_FIELD_CUTOFF = 0.18
 """Corner frequency of the correlated residual in cycles per binned pixel (:func:`fit_lorentzian`
 of the corner spectra on the 4x grid: medians 0.18 for spider hair, 0.19 for cactus needle and
 0.11 for the tooth)."""
+
+PSF_SIGMA_RANGE = (1.2, 2.0)
+"""Detector PSF of the realistic training sets (:func:`realistic_changes`), unbinned pixels: the
+single-corner fits of spider hair, tooth and cactus needle (1.4-1.8 px) with a margin."""
+
+REALISTIC_FACTOR = 2.0
+"""Photons and residual RMS of the realistic training sets range from the value of
+:data:`MEASURED_MODELS` divided by this factor to the value times it."""
 
 
 @dataclass(frozen=True)
@@ -110,6 +120,26 @@ def perturbation_changes(name: str, sample: str) -> dict[str, dict]:
         "phantoms": obj,
     }
     return table[name]
+
+
+def realistic_changes(sample: str) -> dict[str, dict]:
+    """Config changes of a training set with the measured properties of ``sample`` as ranges.
+
+    The ``combined`` perturbation widened: detector PSF in :data:`PSF_SIGMA_RANGE`, photons
+    (log-uniform) and residual RMS (uniform) within :data:`REALISTIC_FACTOR` of
+    :data:`MEASURED_MODELS`, residual cutoff :data:`FLAT_FIELD_CUTOFF`, the object of ``object``.
+    """
+    model = MEASURED_MODELS[sample]
+    k = REALISTIC_FACTOR
+    return {
+        "simulation": {"psf_sigma_range": list(PSF_SIGMA_RANGE)},
+        "noise": {
+            "photons_range": [model.photons / k, model.photons * k],
+            "flat_field_range": [model.flat_field / k, model.flat_field * k],
+            "flat_field_cutoff": FLAT_FIELD_CUTOFF,
+        },
+        "phantoms": perturbation_changes("object", sample)["phantoms"],
+    }
 
 
 def perturbed_config(
