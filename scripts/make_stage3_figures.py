@@ -59,7 +59,7 @@ from holofocus.baseline.results import read_rows, read_traces, summarize  # noqa
 from holofocus.dataset import DatasetConfig, HologramGenerator, read_config, read_labels  # noqa: E402
 from holofocus.forward import object_from_phase  # noqa: E402
 from holofocus.measured import MEASURED_SAMPLES  # noqa: E402
-from holofocus.phantoms import PHANTOM_TYPES  # noqa: E402
+from holofocus.phantoms import COMPACT_TYPES as PHANTOM_TYPES  # noqa: E402  (Stage 2 types)
 
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = REPO / "docs" / "laborbuch" / "figures"

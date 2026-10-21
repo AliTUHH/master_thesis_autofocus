@@ -44,7 +44,8 @@ from holofocus.dataset import (  # noqa: E402
 )
 from holofocus.forward import object_from_phase, simulate_hologram  # noqa: E402
 from holofocus.noise import add_detector_noise  # noqa: E402
-from holofocus.phantoms import PHANTOM_TYPES, random_phantom  # noqa: E402
+from holofocus.phantoms import COMPACT_TYPES as PHANTOM_TYPES  # noqa: E402  (Stage 2 types)
+from holofocus.phantoms import random_phantom  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = REPO / "docs" / "laborbuch" / "figures"

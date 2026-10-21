@@ -115,3 +115,44 @@ def test_oversampling_bins_the_fine_intensity(config):
     # Energy conservation: the mean intensity equals the mean transmission (up to the part
     # of the wave that leaves the field of view).
     assert s.clean.mean() == pytest.approx(transmission.mean(), rel=5e-3)
+
+
+def test_detector_effects_leave_the_sample_unchanged(config, generator):
+    data = config.to_dict()
+    data["simulation"]["psf_sigma_range"] = [4.0, 8.0]
+    data["noise"]["flat_field_range"] = [0.01, 0.03]
+    effects = HologramGenerator(DatasetConfig.from_dict(data), device="cpu")
+    for i in range(3):
+        base, other = generator.sample("val", i), effects.sample("val", i)
+        assert base.meta["psf_sigma"] == base.meta["flat_field_rms"] == 0.0
+        assert 4.0 <= other.meta["psf_sigma"] <= 8.0
+        assert 0.01 <= other.meta["flat_field_rms"] <= 0.03
+        assert other.labels == base.labels
+        np.testing.assert_array_equal(other.phase, base.phase)
+        for key in ("phantom_type", "phase_shift", "photons"):
+            assert other.meta[key] == base.meta[key]
+        # PSF of 4-8 detector pixels = 0.25-0.5 pixels of the 16x binned grid: smoother.
+        assert np.abs(np.diff(other.clean)).mean() < np.abs(np.diff(base.clean)).mean()
+        assert other.clean.mean() == pytest.approx(base.clean.mean(), rel=1e-3)
+
+
+def test_flat_field_residual_multiplies_the_hologram(config):
+    data = config.to_dict()
+    data["noise"].update(model="none", flat_field_range=[0.02, 0.02])
+    s = HologramGenerator(DatasetConfig.from_dict(data), device="cpu").sample("test", 0)
+    residual = s.hologram.astype(np.float64) / s.clean - 1
+    assert residual.std() == pytest.approx(0.02, rel=1e-4)
+    assert residual.mean() == pytest.approx(0.0, abs=1e-5)
+
+
+def test_fiber_samples_cross_the_field_of_view(config):
+    data = config.to_dict()
+    data["phantoms"]["types"] = {"fiber": 1.0}
+    gen = HologramGenerator(DatasetConfig.from_dict(data), device="cpu")
+    for i in range(3):
+        s = gen.sample("train", i)
+        assert PHANTOM_TYPES[s.meta["phantom_type"]] == "fiber"
+        assert -s.phase.min() == pytest.approx(s.meta["phase_shift"], rel=1e-6)
+        edges = np.concatenate([s.phase[0], s.phase[-1], s.phase[:, 0], s.phase[:, -1]])
+        assert edges.min() < 0
+        assert np.isfinite(s.clean).all() and 0.5 < s.clean.mean() < 1.0 + 1e-3
