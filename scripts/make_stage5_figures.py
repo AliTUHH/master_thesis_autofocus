@@ -98,6 +98,11 @@ def _short(name: str) -> str:
     return MEASURED_SAMPLES[name].label
 
 
+def _percent(x: float) -> str:
+    """A percentile as text, with one decimal where rounding would give 0 or 100."""
+    return f"{x:.1f}" if 0 < x < 0.5 or 99.5 <= x < 100 else f"{x:.0f}"
+
+
 def _point(ax, x, y, key: str, filled: bool = True, **kwargs) -> None:
     label, color, marker = METHODS[key]
     face = color if filled else "white"
@@ -229,7 +234,7 @@ def sim2real_figure(learned: Path, measured: Path, sim2real: Path, out: Path, dp
         rank = row["disagreement_paper2_percentile"]
         title = (
             f"{_short(name)}\n|CNN - [2]| = {d2:.0f} um, larger than\n"
-            f"{rank:.0f} % of the matched test errors"
+            f"{_percent(rank)} % of the matched test errors"
         )
         combined = sim2real / name / "combined" / "predictions.csv"
         entry = {"test_median_abs_um": float(np.median(test))}
@@ -239,7 +244,7 @@ def sim2real_figure(learned: Path, measured: Path, sim2real: Path, out: Path, dp
             entry["combined_median_abs_um"] = float(np.median(errors))
             pct = float(100 * np.mean(errors < d2))
             entry["measured_percentile_in_combined"] = pct
-            title += f",\n{pct:.0f} % with all measured properties"
+            title += f",\n{_percent(pct)} % with all measured properties"
         ax.axvline(d2, color="black", label="measured: |CNN - [2]|")
         if "cnn_minus_b1_p4_um" in row:
             ax.axvline(
@@ -508,7 +513,7 @@ def spectra_figure(sim2real: Path, out: Path, dpi: int) -> dict | None:
             bx.text(
                 c,
                 r,
-                f"{v:.0f}",
+                _percent(v),
                 ha="center",
                 va="center",
                 fontsize=7,
