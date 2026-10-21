@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import math
 from pathlib import Path
@@ -93,12 +94,16 @@ def splits(tmp_path_factory):
 
 
 def test_repository_configs_and_validation():
-    for name in ("spectrum-cnn", "image-cnn", "ci"):
+    for name in ("spectrum-cnn", "spectrum-cnn-wide", "image-cnn", "ci"):
         config = LearnedConfig.from_yaml(ROOT / "configs" / "learned" / f"{name}.yaml")
         assert LearnedConfig.from_dict(yaml.safe_load(config.to_yaml())) == config
         assert config.target_scale == 5e-3
     spectrum = LearnedConfig.from_yaml(ROOT / "configs" / "learned" / "spectrum-cnn.yaml")
     assert spectrum.representation.bins == 1024 and spectrum.model.channels == (16, 32, 64, 64)
+    wide = LearnedConfig.from_yaml(ROOT / "configs" / "learned" / "spectrum-cnn-wide.yaml")
+    assert wide.model.channels == (32, 64, 128, 128)
+    assert dataclasses.replace(wide.model, channels=spectrum.model.channels) == spectrum.model
+    assert (wide.representation, wide.training) == (spectrum.representation, spectrum.training)
     bad = [
         {"nme": "typo"},
         {"representation": {"kind": "wavelet"}},

@@ -1,0 +1,27 @@
+# spectrum-cnn.yaml with twice the channels (450k instead of 179k parameters): the best
+# variant of the Stage 4 study at 2000 training samples (results/learned/study/spectrum-wide).
+name: spectrum-cnn-wide
+target_scale: 5.0e-3
+representation:
+  kind: spectrum
+  bins: 1024
+  f2_max: 0.125
+model:
+  channels: [32, 64, 128, 128]
+  kernel_size: 7
+  pool_to: 16
+  hidden: 128
+  dropout: 0.1
+  min_sigma: 1.0e-3       # 5 um
+training:
+  epochs: 100
+  batch_size: 32
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  warmup_epochs: 2
+  beta: 0.5               # beta-NLL
+  augment: false          # the radial average is already rotation and flip invariant
+  limit: null
+  patience: null
+  seed: 0
+device: auto
