@@ -52,10 +52,16 @@ def test_repository_configs():
     assert [s.iterations for s in settings.stages] == [700, 300, 500]
     assert (settings.fade_width, settings.padding_factor) == (20, 2.0)
     assert (paper.search.confidence, paper.search.xatol) == (5e-3, 1e-4)
-    p4 = BaselineConfig.from_yaml(ROOT / "configs" / "baseline" / "paper2-cpu-p4.yaml")
+    p4, warm, warm_p4 = (
+        BaselineConfig.from_yaml(ROOT / "configs" / "baseline" / f"{name}.yaml")
+        for name in ("paper2-cpu-p4", "paper2-cpu-warm", "paper2-cpu-warm-p4")
+    )
     assert p4.reconstruction.padding_factor == 4.0
     assert dataclasses.replace(p4.reconstruction, padding_factor=2.0) == paper.reconstruction
-    assert (p4.search, p4.evaluate_truth) == (paper.search, paper.evaluate_truth)
+    assert warm.reconstruction == paper.reconstruction
+    assert warm_p4.reconstruction == p4.reconstruction
+    assert p4.search == warm.search == warm_p4.search == paper.search
+    assert (p4.evaluate_truth, warm.evaluate_truth, warm_p4.evaluate_truth) == (True, False, False)
     ci = BaselineConfig.from_yaml(ROOT / "configs" / "baseline" / "ci.yaml")
     ci_settings = ci.reconstruction.settings(16)
     assert [s.down_sampling for s in ci_settings.stages] == [1, 1, 1]
