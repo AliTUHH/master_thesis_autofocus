@@ -5,7 +5,9 @@
   in Stage 3. The variant with the smaller validation MAE is the estimate of the sample; the
   record has the calibrated 68/95 % intervals, the distances to [2] Table 1, the example setup
   of [1] and the baselines of Stage 3, the spread over the 16 phases of the binning grid and
-  the time per estimate (``results/measured/cnn/<sample>.json``).
+  the time per estimate (``results/measured/cnn/<sample>.json``). A model trained on the
+  realistic set (``matched-<sample>-realistic``) is evaluated too but never selected: its
+  validation split has other assumptions.
 * ``perturb``: the test split of a matched dataset regenerated with one simulator assumption
   changed (:data:`holofocus.learned.sim2real.PERTURBATIONS`; ``data/sim2real/<sample>/<name>.h5``,
   not tracked) and predicted by the CNN (``results/sim2real/<sample>/<name>/``). The paired
@@ -87,6 +89,7 @@ REPO = Path(__file__).resolve().parents[1]
 RESULTS = REPO / "results"
 BINNING = 4
 VARIANTS = ("", "-hf")
+REALISTIC = "-realistic"
 BASELINES = {"baseline_b1_p4": "b1-p4", "baseline_b1_p2": "b1-p2"}
 WARM = "warm-b1-p4"
 PROFILE_POINTS = 256
@@ -116,10 +119,10 @@ def write_csv(path: Path, rows: list[dict]) -> None:
             writer.writerow({k: f"{v:.6g}" if isinstance(v, float) else v for k, v in row.items()})
 
 
-def runs_of(learned: Path, name: str) -> dict[str, Path]:
+def runs_of(learned: Path, name: str, suffixes: tuple[str, ...] = VARIANTS) -> dict[str, Path]:
     """Trained variants of the matched model of ``name`` (run name -> directory)."""
     runs = {}
-    for suffix in VARIANTS:
+    for suffix in suffixes:
         run = learned / f"matched-{name}{suffix}"
         if (run / "model.pt").exists():
             runs[run.name] = run
@@ -164,7 +167,7 @@ def cmd_measured(args) -> None:
         }
         selected = selected_run(args.learned, name)
         variants = {}
-        for run_name, run in runs_of(args.learned, name).items():
+        for run_name, run in runs_of(args.learned, name, (*VARIANTS, REALISTIC)).items():
             autofocus = LearnedAutofocus.load(run, args.device)
             estimate = measured_estimate(
                 autofocus, hologram, sample, references, args.repeats, phases
@@ -193,7 +196,8 @@ def cmd_measured(args) -> None:
                 "padding_factor": sample.padding_factor,
             },
             "selected": selected.name,
-            "selection": "smallest validation MAE on the simulated validation split",
+            "selection": "smallest validation MAE on the simulated validation split, among "
+            f"the models of the matched dataset ({', '.join(runs_of(args.learned, name))})",
             "z01_est": best["z01_est"],
             "sigma": best["sigma"],
             "load_seconds": load_seconds,
@@ -201,17 +205,19 @@ def cmd_measured(args) -> None:
             **environment(),
         }
         write_json(target, record)
-        ref = best["references"]
-        print(
-            f"{name}: {selected.name} z01 = {best['z01_est'] * 1e3:.3f} mm, sigma "
-            f"{best['sigma'] * 1e6:.0f} um; minus [2] {ref['paper2_nm']['distance_um']:+.0f} um"
-            + (
-                f", minus b1-p4 {ref['baseline_b1_p4']['distance_um']:+.0f} um"
-                if "baseline_b1_p4" in ref
-                else ""
+        for run_name, variant in variants.items():
+            ref = variant["references"]
+            print(
+                f"{name}: {run_name}{' (selected)' if run_name == selected.name else ''} z01 = "
+                f"{variant['z01_est'] * 1e3:.3f} mm, sigma {variant['sigma'] * 1e6:.0f} um; "
+                f"minus [2] {ref['paper2_nm']['distance_um']:+.0f} um"
+                + (
+                    f", minus b1-p4 {ref['baseline_b1_p4']['distance_um']:+.0f} um"
+                    if "baseline_b1_p4" in ref
+                    else ""
+                )
+                + f"; {1e3 * variant['seconds_per_estimate']['median']:.1f} ms"
             )
-            + f"; {1e3 * best['seconds_per_estimate']['median']:.1f} ms"
-        )
 
 
 def regeneration_check(path: Path, index: int = 0) -> dict:
@@ -504,6 +510,30 @@ def cmd_compare(args) -> None:
             )
             if "warm" in cold:
                 row["warm_minus_b1_p4_um"] = (cold["warm"]["result"]["z01"] - z) * 1e6
+        realistic = cnn["variants"].get(f"matched-{name}{REALISTIC}")
+        if realistic is not None:
+            row.update(
+                {
+                    "realistic_mm": realistic["z01_est"] * 1e3,
+                    "realistic_sigma_um": realistic["sigma"] * 1e6,
+                    "realistic_width68_um": realistic["intervals"]["68"]["width_um"],
+                    "realistic_minus_paper2_um": realistic["references"]["paper2_nm"][
+                        "distance_um"
+                    ],
+                    "realistic_z_paper2": realistic["references"]["paper2_nm"]["z_score"],
+                }
+            )
+            if "b1_p4" in cold:
+                row["realistic_minus_b1_p4_um"] = (
+                    realistic["z01_est"] - cold["b1_p4"]["result"]["z01"]
+                ) * 1e6
+            own = args.learned / f"matched-{name}{REALISTIC}"
+            for key, split in (("test", "test"), ("matched_test", "matched-test")):
+                path = own / split / "summary.json"
+                if path.exists():
+                    summary = json.loads(path.read_text())
+                    row[f"realistic_{key}_mae_um"] = summary["error_um"]["mae"]
+                    row[f"realistic_{key}_within_100"] = summary["error_um"]["within"]["100"]
         rows.append(row)
         details[name] = {"row": row, "cnn": str(cnn_path), "test_summary": str(run / "test")}
     if not rows:
