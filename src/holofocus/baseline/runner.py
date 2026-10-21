@@ -78,12 +78,14 @@ def _run_key(info: dict) -> tuple:
 
 @dataclass(frozen=True)
 class WarmStart:
-    """Initial simplexes around point estimates of ``z01``, e.g. from the learned model.
+    """Initial simplexes from point estimates of ``z01``, e.g. from the learned model.
 
-    Sample ``i`` starts from ``(c_i - w_i, c_i + w_i)`` with the estimate ``c_i`` and the half
-    width ``w_i = max(half_width, sigmas * sigma_i)``; the pair is moved inside ``Omega_z``
-    if it sticks out. ``source`` is a CSV with the columns ``index``, ``z01_est`` and (for
-    ``sigmas > 0``) ``sigma``, both in metres.
+    With ``anchor="center"``, sample ``i`` starts from ``(c_i - w_i, c_i + w_i)`` with the
+    estimate ``c_i`` and the half width ``w_i = max(half_width, sigmas * sigma_i)``; the pair
+    is moved inside ``Omega_z`` if it sticks out. With ``anchor="vertex"`` it starts from
+    ``(c_i, c_i + w_i)`` (``c_i - w_i`` at the upper end of ``Omega_z``), so the estimate
+    itself is the first probe. ``source`` is a CSV with the columns ``index``, ``z01_est``
+    and (for ``sigmas > 0``) ``sigma``, both in metres.
     """
 
     source: str
@@ -92,11 +94,20 @@ class WarmStart:
     sigmas: float
     centers: dict[int, float]
     sigma: dict[int, float]
+    anchor: str = "center"
 
     @classmethod
-    def from_csv(cls, path: str | Path, half_width: float = 5e-4, sigmas: float = 0.0):
+    def from_csv(
+        cls,
+        path: str | Path,
+        half_width: float = 5e-4,
+        sigmas: float = 0.0,
+        anchor: str = "center",
+    ):
         if half_width <= 0 or sigmas < 0:
             raise ValueError("half_width must be positive and sigmas non-negative")
+        if anchor not in ("center", "vertex"):
+            raise ValueError(f"anchor must be 'center' or 'vertex', got {anchor!r}")
         centers, sigma = {}, {}
         with open(path, newline="") as fh:
             for row in csv.DictReader(fh):
@@ -104,20 +115,36 @@ class WarmStart:
                 centers[index] = float(row["z01_est"])
                 if sigmas > 0:
                     sigma[index] = float(row["sigma"])
-        return cls(str(path), file_sha256(path), float(half_width), float(sigmas), centers, sigma)
+        return cls(
+            str(path),
+            file_sha256(path),
+            float(half_width),
+            float(sigmas),
+            centers,
+            sigma,
+            anchor,
+        )
 
     def identity(self) -> dict:
-        return {
+        identity = {
             "source": self.source,
             "sha256": self.sha256,
             "half_width": self.half_width,
             "sigmas": self.sigmas,
         }
+        # Runs made before the anchor existed keep their key.
+        if self.anchor != "center":
+            identity["anchor"] = self.anchor
+        return identity
 
     def simplex(self, index: int, lower: float, upper: float) -> tuple[float, float]:
         width = self.half_width
         if self.sigmas > 0:
             width = max(width, self.sigmas * self.sigma[index])
+        if self.anchor == "vertex":
+            width = min(width, upper - lower)
+            vertex = min(max(self.centers[index], lower), upper)
+            return (vertex, vertex + width if vertex + width <= upper else vertex - width)
         width = min(width, 0.5 * (upper - lower))
         center = min(max(self.centers[index], lower + width), upper - width)
         return (center - width, center + width)

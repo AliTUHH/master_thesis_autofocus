@@ -32,7 +32,9 @@ def run(args: argparse.Namespace) -> int:
     try:
         warm_start = None
         if args.warm_start is not None:
-            warm_start = WarmStart.from_csv(args.warm_start, args.half_width, args.sigmas)
+            warm_start = WarmStart.from_csv(
+                args.warm_start, args.half_width, args.sigmas, args.anchor
+            )
         summary = run_baseline(
             config,
             args.data,
@@ -83,6 +85,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     go.add_argument(
         "--sigmas", type=float, default=0.0, help="widen the half width to this many sigma (0)"
+    )
+    go.add_argument(
+        "--anchor",
+        choices=("center", "vertex"),
+        default="center",
+        help="warm-start simplex c +- w (center, default) or (c, c + w) (vertex)",
     )
     go.set_defaults(func=run)
     show = sub.add_parser("summary", help="print the summary of a run directory")

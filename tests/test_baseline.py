@@ -212,6 +212,12 @@ def test_warm_start_simplex(tmp_path):
     assert identity["sigmas"] == 2.0 and len(identity["sha256"]) == 64
     with pytest.raises(ValueError):
         WarmStart.from_csv(path, half_width=0.0)
+    vertex = WarmStart.from_csv(path, half_width=5e-4, anchor="vertex")
+    assert vertex.simplex(0, 0.095, 0.105) == pytest.approx((0.1003, 0.1008))
+    assert vertex.simplex(1, 0.095, 0.105) == pytest.approx((0.1049, 0.1044))
+    assert "anchor" not in warm.identity() and vertex.identity()["anchor"] == "vertex"
+    with pytest.raises(ValueError):
+        WarmStart.from_csv(path, anchor="edge")
 
 
 def _estimates(path, split_file, offset=3e-4):
@@ -261,3 +267,12 @@ def test_cli_warm_start(split_file, tmp_path, capsys):
     info = yaml.safe_load((out / "run.yaml").read_text())["warm_start"]
     assert (info["half_width"], info["sigmas"]) == (4e-4, 1.0)
     assert main([*args, "--warm-start", str(estimates), "--half-width", "-1"]) == 1
+    vertex = tmp_path / "cli-vertex"
+    args = ["run", str(config), "--data", str(split_file), "--out", str(vertex), "--indices", "1"]
+    assert main([*args, "--warm-start", str(estimates), "--anchor", "vertex"]) == 0
+    capsys.readouterr()
+    assert yaml.safe_load((vertex / "run.yaml").read_text())["warm_start"]["anchor"] == "vertex"
+    trace = read_traces(vertex / "traces.jsonl")[0]
+    first, second = trace["initial_simplex"]
+    assert trace["evaluations"][0]["z01"] == pytest.approx(first)
+    assert abs(second - first) == pytest.approx(5e-4)
