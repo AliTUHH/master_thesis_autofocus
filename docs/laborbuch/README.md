@@ -10,6 +10,7 @@ werden von den Skripten in `scripts/` erzeugt.
 | 02 | Synthetischer Datensatz | [02-datensatz.md](02-datensatz.md) |
 | 03 | Klassische Autofokus-Baseline nach [2] | [03-baseline.md](03-baseline.md) |
 | 04 | Erstes gelerntes Modell (CNN mit Unsicherheit) | [04-lernmodell.md](04-lernmodell.md) |
+| 05 | Gelernter Autofokus auf den Messhologrammen | [05-messdaten.md](05-messdaten.md) |
 
 Quellen:
 

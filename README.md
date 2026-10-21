@@ -22,6 +22,7 @@ from `z01` and is available as an alternative label.
 | 2 | Synthetic dataset generator: random single-material phantoms in the spirit of [2] Sec. 3.5, Poisson/Gaussian detector noise, `Δz01` uniform in ±5 mm, labels `Δz01` and `Fr`, YAML configs, per-sample seeds, HDF5 + PyTorch `Dataset`, CLI | [docs/laborbuch/02-datensatz.md](docs/laborbuch/02-datensatz.md) |
 | 3 | Classical autofocus baseline of [2]: ASRM ([1] Alg. 5) ported from the paper code with the [2] Table 3 schedule, model fit error, projected Nelder–Mead, image criteria and focus curves; runs on the synthetic test split and on the Zenodo holograms of [1], cross-checked against holowizard; per-sample results in `results/` | [docs/laborbuch/03-baseline.md](docs/laborbuch/03-baseline.md) |
 | 4 | First learned autofocus: a small CNN estimates `Δz01` with a Gaussian uncertainty from the radial power spectrum (or the binned hologram), trained on 10 000 synthetic samples on CPU; compared per sample with the raw and offset-corrected baseline of [2], and used as a warm start for its Nelder–Mead search | [docs/laborbuch/04-lernmodell.md](docs/laborbuch/04-lernmodell.md) |
+| 5 | The learned autofocus on the four measured Zenodo holograms: one spectrum CNN per measured setup (energy, geometry, detector path, guess ± 5 mm), compared with [2] Table 1 and our padding-4 baseline, and as a warm start; the sim-to-real gap measured with test splits that change one simulator assumption at a time (detector blur, flat-field residual, noise, fibers, the measured object) and with training sets that have the measured properties | [docs/laborbuch/05-messdaten.md](docs/laborbuch/05-messdaten.md) |
 
 **GPU runs.** The heavy runs (the baseline on the whole synthetic test split, larger training
 runs, later NPE) go to the A100 nodes of DESY Maxwell with the SLURM kit in `cluster/maxwell/`;
@@ -76,18 +77,22 @@ src/holofocus/dataset/    dataset generator: YAML config, sampling, HDF5 storage
 src/holofocus/autofocus/  MFE and image criteria, Nelder-Mead, nested autofocus, focus curves
 src/holofocus/baseline/   baseline runs on dataset splits: YAML config, per-sample results, CLI
 src/holofocus/learned/    learned autofocus: representations, CNNs with a Gaussian head,
-                          training, inference, metrics, comparison with the baseline, CLI
+                          training, inference, metrics, comparison with the baseline, CLI;
+                          sim2real.py: measured noise, blur and object models, perturbations
 configs/dataset/          dataset configs (cpu-4x, cpu-4x-extra, cpu-4x-large, cpu-4x-z01-range,
-                          ci)
+                          ci; matched-<sample> for the measured setups with -large, and
+                          -realistic for the cactus needle and the Mg wire)
 configs/baseline/         baseline configs (paper2-cpu, paper2-cpu-warm, both at padding 4 as
                           -p4, ci)
-configs/learned/          learned-model configs (spectrum-cnn, spectrum-cnn-wide, image-cnn, ci)
+configs/learned/          learned-model configs (spectrum-cnn, spectrum-cnn-wide, -wide-hf,
+                          image-cnn, ci)
 results/                  per-sample results quoted in the lab notebook (baseline, learned
-                          models, comparison) and fingerprints of the cpu-4x val and test splits
+                          models, comparison, measured holograms, sim-to-real study) and
+                          fingerprints of the val and test splits
 cluster/maxwell/          SLURM run kit for the A100 nodes of DESY Maxwell: settings template,
                           environment setup, submit script, jobs
 tests/                    pytest suite (CPU; CUDA tests are skipped without a GPU)
-scripts/                  figure scripts, Stage 3 experiments, Stage 4 study, cross-checks
+scripts/                  figure scripts, Stage 3 experiments, Stage 4 and 5 studies, cross-checks
                           with holowizard, checks of cluster runs against the committed results
 docs/usage.md             how to run things (English)
 docs/maxwell-gpu.md       GPU runs on DESY Maxwell, step by step (German)
