@@ -109,6 +109,9 @@ def curve_metrics(curve: dict) -> dict:
             "extremum": kind,
             "extremum_offset_mm": extremum_offset(dz, curve[name], kind) * 1e3,
             "unimodality": unimodality(dz, curve[name], kind),
+            "argmin_mm": extremum_offset(dz, curve[name], "min") * 1e3,
+            "argmax_mm": extremum_offset(dz, curve[name], "max") * 1e3,
+            "unimodality_min": unimodality(dz, curve[name], "min"),
         }
     if "phase_rmse" in curve:
         rmse = np.asarray(curve["phase_rmse"], dtype=float)
@@ -120,8 +123,14 @@ def curve_metrics(curve: dict) -> dict:
     return out
 
 
-def criteria_figure(curves: dict, styles: dict, title: str, path: Path, dpi: int) -> None:
-    """[2] Fig. 7-8 layout: MFE on top, the six image criteria below, all scaled to [0, 1]."""
+def criteria_figure(
+    curves: dict, styles: dict, title: str, path: Path, dpi: int, focus_note: str = "at focus"
+) -> None:
+    """[2] Fig. 7-8 layout: MFE on top, the six image criteria below, all scaled to [0, 1].
+
+    Panel titles name the extremum that marks the focus in [2] Fig. 7, followed by
+    ``focus_note``.
+    """
     with_rmse = any("phase_rmse" in c for c in curves.values())
     fig = plt.figure(figsize=(11.0, 9.4), layout="constrained")
     top, bottom = fig.subfigures(2, 1, height_ratios=[1.0, 1.15])
@@ -149,7 +158,7 @@ def criteria_figure(curves: dict, styles: dict, title: str, path: Path, dpi: int
             style = {k: v for k, v in styles[key].items() if k != "label"}
             ax.plot(np.asarray(curve["dz01"]) * 1e3, normalize_curve(curve[name]), **style)
         ax.axvline(0, color="gray", ls=":", lw=0.8)
-        ax.set_title(f"{name} ({FOCUS_EXTREMUM[name]} at focus)" if name != "VAR" else name)
+        ax.set_title(f"{name} ({FOCUS_EXTREMUM[name]} {focus_note})" if name != "VAR" else name)
     for ax in axes[-1]:
         ax.set_xlabel(r"$\Delta_{01}$ / mm")
     for ax in axes[:, 0]:
@@ -243,7 +252,7 @@ def reconstruction_curves_figure(directory: Path, settings: Settings, out: Path)
             label = f"{kind} (test {record['index']}, N = {record['photons']:.0f})"
             styles[key] = {"color": TYPE_COLORS[kind], "ls": "--", "lw": 1.1, "label": label}
         else:
-            label = f"{record['name']} (measured, binning {record['binning']}x)"
+            label = f"{record['name']} (measured, 4× grid, p = {record['padding_factor']:g})"
             styles[key] = {"color": SAMPLE_COLORS[record["sample"]], "lw": 1.3, "label": label}
         metrics[key] = {
             "name": record["name"],
@@ -263,6 +272,7 @@ def reconstruction_curves_figure(directory: Path, settings: Settings, out: Path)
         "visual focus of [2] Table 1 at 0",
         out / "stage3-reconstruction-curves.png",
         settings.dpi,
+        focus_note="in [2] Fig. 7",
     )
     return metrics
 
@@ -627,7 +637,7 @@ def bias_figure(directory: Path, run_dir: Path, settings: Settings, out: Path) -
             title=f"test {rec['index']} ({kind}, N = {rec['photons']:.0f}): MFE\n"
             "(dotted: parabola vertex)",
         )
-        ax_mfe.legend(fontsize=7)
+        ax_phase.legend(*ax_mfe.get_legend_handles_labels(), fontsize=7, loc="upper left")
         ax_phase.set(
             xlabel=r"$\hat z_{01} - z_{01}$ / µm",
             ylabel="phase RMSE / rad",
