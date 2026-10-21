@@ -422,6 +422,83 @@ eines Jobs nicht (Abschnitt 2), `--sbatch --mem=32G` vor `train` setzen. Ein Tra
 Zeitlimit abbricht, beginnt mit demselben Befehl von vorn, weil das Modell erst am Ende
 gespeichert wird.
 
+### 7.1 Etappe 5: Modelle für die vier Messhologramme (Laborbuch 05)
+
+Etappe 5 trainiert für jedes der vier Zenodo-Hologramme ein eigenes Spektrum-CNN, auf Daten
+mit dessen Energie, Geometrie und Detektorpfad: `configs/dataset/matched-<probe>.yaml`, wobei
+`<probe>` für `spider_hair`, `tooth`, `cactus_needle` oder `magnesium_wire` steht. Auf der VM
+waren es 6000 Trainings-Samples pro Probe. `matched-<probe>-large.yaml` legt 50 000 weitere
+mit eigenem Seed und derselben Physik dazu (das prüft ein Test in
+`tests/test_dataset_config.py`); Val und Test bleiben die 250 Samples der kleinen Config.
+
+| Probe | Simulationsgitter | VM, 3 Threads | 50 000 Samples |
+|---|---|---|---|
+| `spider_hair` | 4480² | 0,66 s/Sample | 34 GB |
+| `tooth` | 3087² | 0,31 s/Sample | 29 GB |
+| `cactus_needle` | 1620² | 0,14 s/Sample | 33 GB |
+| `magnesium_wire` | 1568² | 0,12 s/Sample | 33 GB |
+
+```bash
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    cluster/maxwell/submit.sh --cpu datagen configs/dataset/matched-$p.yaml --splits val test
+    cluster/maxwell/submit.sh datagen configs/dataset/matched-$p.yaml --splits train
+    cluster/maxwell/submit.sh --time 12:00:00 datagen configs/dataset/matched-$p-large.yaml
+done
+```
+
+Es gelten dieselben Regeln wie in Abschnitt 5: Val und Test mit `--cpu`, damit der Job sie mit
+den Fingerabdrücken `results/datasets/matched-<probe>-{val,test}.csv` vergleicht (erwartet
+PASS oder WARN), und die kleine Config auf der GPU nur mit `--splits train`. Die Zeit pro
+Sample wächst ungefähr mit der Pixelzahl des Simulationsgitters. Der gpu-check misst sie für
+`cpu-4x` (3840²); das Spinnenhaar braucht etwa das 1,4-Fache davon, der Zahn das 0,65-Fache,
+Kaktusnadel und Mg-Draht weniger als ein Fünftel. Mit diesen Faktoren prüfst du vor dem
+Abschicken, ob 50 000 Samples ins Zeitlimit passen.
+
+Platz: Mit den kleinen Configs (4–4,4 GB pro Probe) brauchen die vier Proben etwa 150 GB auf
+Scratch, zusätzlich zu den rund 50 GB aus Abschnitt 5. Vorher mit `df -h` prüfen (Abschnitt 2).
+Jeder Datensatz lässt sich aus seiner Config neu erzeugen; was nach dem Training nicht mehr
+gebraucht wird, darf gelöscht werden.
+
+Training, wenn alle Daten da sind (mit `--after` auch direkt hinter den Datenjobs):
+
+```bash
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    cluster/maxwell/submit.sh train learned-large/matched-$p \
+        configs/learned/spectrum-cnn-wide.yaml \
+        --train matched-$p/train.h5 matched-$p-large/train.h5 \
+        --val matched-$p/val.h5 --test matched-$p/test.h5
+done
+# Kaktusnadel und Mg-Draht zusätzlich mit dem Spektrum bis f^2 = 0,25 (Laborbuch 05, Abschnitt 3)
+for p in cactus_needle magnesium_wire; do
+    cluster/maxwell/submit.sh train learned-large/matched-$p-hf \
+        configs/learned/spectrum-cnn-wide-hf.yaml \
+        --train matched-$p/train.h5 matched-$p-large/train.h5 \
+        --val matched-$p/val.h5 --test matched-$p/test.h5
+done
+```
+
+Die Namen `learned-large/matched-<probe>` und `learned-large/matched-<probe>-hf` nicht ändern:
+Daran erkennt `scripts/run_stage5_study.py` die Varianten einer Probe und nimmt die mit dem
+kleineren Val-MAE. Abschnitt 9 nimmt `$R/learned-large` mit den Modellen mit zurück.
+
+Die Schätzung auf den Messhologrammen dauert pro Modell Millisekunden und läuft auf jedem
+Rechner mit dem Repo und den Hologrammen (`Examples/data/holograms` aus dem Zenodo-Archiv
+10.5281/zenodo.8349365, Laborbuch 03), z. B. auf der VM nach dem Zurückgeben:
+
+```bash
+L=results/maxwell/learned-large
+M=results/maxwell/measured-large
+python scripts/run_stage5_study.py --learned $L measured --holograms DIR --out $M/cnn
+python scripts/run_stage5_study.py --learned $L compare --cnn $M/cnn --out $M
+python scripts/make_stage5_figures.py --learned $L --measured $M --sim2real $M --out $M/figures
+```
+
+`compare` nimmt die Baselines aus `results/measured` (Etappe 3 und 5), so dass
+`$M/comparison.csv` dieselben Spalten hat wie `results/measured/comparison.csv` mit den Modellen
+der VM. In `$M/figures` entstehen `stage5-measured.png`, `stage5-sim2real.png` und
+`stage5-training.png` für die neuen Modelle; die übrigen Bilder brauchen Eingaben der VM und
+fehlen.
+
 ## 8 NPE und weitere Läufe mit `run`
 
 ### 8.1 NPE (spätere Etappe)
@@ -477,12 +554,13 @@ R=$HOLOFOCUS_SCRATCH/runs
 M=results/maxwell
 git checkout -b maxwell-ergebnisse-$(date +%Y%m%d)
 mkdir -p $M/logs
-cp -r $R/baseline $R/comparison $R/learned $R/gpu-check $R/mfe-scan $M/   # was es davon gibt
+cp -r $R/baseline $R/comparison $R/learned $R/learned-large $R/gpu-check $R/mfe-scan $M/  # was es davon gibt
 rm -rf $M/baseline/*/chunk-*
 cp $HOLOFOCUS_SCRATCH/logs/holofocus-*.out $M/logs/
 cp $HOLOFOCUS_ENV/holofocus-env.txt $M/
 git add $M                          # HDF5-Dateien und *.pt schließt .gitignore aus
 git add -f $M/learned/*/model.pt    # die trainierten Modelle gehören dazu
+git add -f $M/learned-large/*/model.pt   # die Modelle aus 7.1, falls trainiert
 git commit -m "Maxwell: Baseline auf dem ganzen Test-Split, Training auf 60 000 Samples"
 git push -u origin maxwell-ergebnisse-$(date +%Y%m%d)
 ```
