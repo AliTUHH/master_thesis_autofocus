@@ -18,6 +18,7 @@ from ..geometry import P05_DETECTOR_SHAPE, P05_PIXEL_SIZE, ConeBeamGeometry
 from ..noise import NOISE_MODELS
 from ..phantoms import PHANTOM_TYPES
 from ..propagation import next_fast_len
+from ..yamlconfig import build, plain
 
 
 @dataclass(frozen=True)
@@ -188,7 +189,7 @@ class DatasetConfig:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DatasetConfig:
-        return _build(cls, data, "config")
+        return build(cls, data, "config", _SECTIONS)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> DatasetConfig:
@@ -196,84 +197,10 @@ class DatasetConfig:
             return cls.from_dict(yaml.safe_load(fh) or {})
 
     def to_dict(self) -> dict[str, Any]:
-        return _plain(dataclasses.asdict(self))
+        return plain(dataclasses.asdict(self))
 
     def to_yaml(self) -> str:
         return yaml.safe_dump(self.to_dict(), sort_keys=False)
-
-
-def _build(cls, data: dict[str, Any], where: str):
-    if not isinstance(data, dict):
-        raise ValueError(f"{where}: expected a mapping, got {type(data).__name__}")
-    fields = {f.name: f for f in dataclasses.fields(cls)}
-    unknown = set(data) - set(fields)
-    if unknown:
-        raise ValueError(f"{where}: unknown keys {sorted(unknown)}")
-    kwargs = {}
-    for name, value in data.items():
-        sub = _SECTIONS.get(name) if cls is DatasetConfig else None
-        if sub is not None:
-            kwargs[name] = _build(sub, value or {}, f"{where}.{name}")
-        else:
-            kwargs[name] = _coerce(fields[name].type, value, f"{where}.{name}")
-    return cls(**kwargs)
-
-
-def _coerce(annotation: str, value: Any, where: str) -> Any:
-    """Convert a YAML value to the annotated field type.
-
-    PyYAML follows YAML 1.1, which reads ``1e5`` or ``1.0e3`` as strings; numbers are
-    therefore converted explicitly instead of trusting the YAML types.
-    """
-    optional = annotation.endswith("| None")
-    base = annotation.removesuffix("| None").strip()
-    if value is None:
-        if optional:
-            return None
-        raise ValueError(f"{where}: must not be null")
-    try:
-        if base == "float":
-            if isinstance(value, bool):
-                raise TypeError("bool is not a number")
-            return float(value)
-        if base == "int":
-            return _to_int(value)
-        if base in ("bool", "str"):
-            if not isinstance(value, bool if base == "bool" else str):
-                raise TypeError(f"expected {base}")
-            return value
-        if base.startswith("tuple["):
-            items = [t.strip() for t in base[len("tuple[") : -1].split(",")]
-            if isinstance(value, (str, dict)) or len(value) != len(items):
-                raise ValueError(f"expected {len(items)} values")
-            return tuple(_coerce(t, v, where) for t, v in zip(items, value, strict=True))
-        if base.startswith("dict[str, "):
-            if not isinstance(value, dict):
-                raise TypeError("expected a mapping")
-            item = base[len("dict[str, ") : -1]
-            return {str(k): _coerce(item, v, f"{where}.{k}") for k, v in value.items()}
-    except (TypeError, ValueError) as exc:
-        raise ValueError(f"{where}: cannot read {value!r} as {annotation} ({exc})") from None
-    raise TypeError(f"{where}: unsupported annotation {annotation!r}")
-
-
-def _to_int(value: Any) -> int:
-    if isinstance(value, bool):
-        raise TypeError("bool is not an integer")
-    if isinstance(value, int):
-        return value
-    number = float(value)
-    if not number.is_integer():
-        raise ValueError("not an integer")
-    return int(number)
-
-
-def _plain(value):
-    if isinstance(value, dict):
-        return {k: _plain(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_plain(v) for v in value]
-    return value
 
 
 _SECTIONS = {

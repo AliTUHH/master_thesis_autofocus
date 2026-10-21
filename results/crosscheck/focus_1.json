@@ -1,0 +1,73 @@
+{
+  "index": 1,
+  "z01_true_mm": 101.34578654269244,
+  "z01_guess_mm": 100.0,
+  "fresnel_number_rel_diff": -3.3862647444760086e-05,
+  "settings": "ASRMSettings(stages=(ASRMStage(iterations=70, step=0.9, down_sampling=4, momentum=1.0, momentum_fwhm=8.0, phase_fwhm=2.0, absorption_fwhm=0.0, l2_weight=10.0), ASRMStage(iterations=30, step=1.1, down_sampling=1, momentum=1.0, momentum_fwhm=16.0, phase_fwhm=2.0, absorption_fwhm=8.0, l2_weight=10.0), ASRMStage(iterations=50, step=1.1, down_sampling=1, momentum=1.0, momentum_fwhm=16.0, phase_fwhm=2.0, absorption_fwhm=8.0, l2_weight=1.0)), padding_factor=2.0, fade_width=20, a0=1.0, update='reference', gradient='reference', pin_phase=True)",
+  "holowizard": {
+    "z01_mm": 101.484375,
+    "points_mm": [
+      95.0,
+      105.0,
+      100.0,
+      102.5,
+      101.25,
+      101.875,
+      100.625,
+      101.5625,
+      101.40625,
+      101.71875,
+      101.484375
+    ],
+    "mfe": [
+      0.00011704561620717868,
+      0.00010878645116463304,
+      0.00010240338451694697,
+      0.00010016337182605639,
+      9.819787373999134e-05,
+      9.834217053139582e-05,
+      9.99577678157948e-05,
+      9.797176608117297e-05,
+      9.800901170819998e-05,
+      9.809383482206613e-05,
+      9.796473750611767e-05
+    ],
+    "reconstructions": 11,
+    "seconds": 181.55899871700058
+  },
+  "holofocus": {
+    "z01_mm": 101.484375,
+    "points_mm": [
+      95.0,
+      105.0,
+      100.0,
+      102.5,
+      101.25,
+      101.875,
+      100.625,
+      101.5625,
+      101.40625,
+      101.71875,
+      101.484375
+    ],
+    "mfe": [
+      0.00011705471115419641,
+      0.00010877550084842369,
+      0.00010241655400022864,
+      0.00010015036968979985,
+      9.820327977649868e-05,
+      9.833552758209407e-05,
+      9.996990411309525e-05,
+      9.797032544156536e-05,
+      9.801172564039007e-05,
+      9.80898184934631e-05,
+      9.796559606911615e-05
+    ],
+    "reconstructions": 11,
+    "evaluations": 16,
+    "seconds": 97.98719641499883
+  },
+  "estimate_diff_um": 0.0,
+  "same_points": true,
+  "points_max_abs_diff_um": 0.0
+}

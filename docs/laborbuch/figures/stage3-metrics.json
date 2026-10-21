@@ -1,0 +1,1057 @@
+{
+  "settings": {
+    "config": "configs/dataset/cpu-4x.yaml",
+    "curve_points": 201,
+    "half_range": 0.01,
+    "max_index": 64,
+    "dpi": 120
+  },
+  "quick": false,
+  "simulated_curves": {
+    "dataset": "cpu-4x",
+    "points": 201,
+    "padded_shape": [
+      1024,
+      1024
+    ],
+    "triangle": {
+      "index": 5,
+      "z01": 0.10362479911145461,
+      "phase_shift": 0.8973648678167052,
+      "MFE": {
+        "extremum": "min",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 1.0,
+        "argmin_mm": 0.0,
+        "argmax_mm": -10.0,
+        "unimodality_min": 1.0
+      },
+      "VAR": {
+        "extremum": "max",
+        "extremum_offset_mm": 6.1000000000000005,
+        "unimodality": 0.71,
+        "argmin_mm": -10.0,
+        "argmax_mm": 6.1000000000000005,
+        "unimodality_min": 0.29
+      },
+      "SPEC": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 0.705,
+        "argmin_mm": -4.2,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.295
+      },
+      "GRA": {
+        "extremum": "min",
+        "extremum_offset_mm": -1.1,
+        "unimodality": 0.94,
+        "argmin_mm": -1.1,
+        "argmax_mm": 10.0,
+        "unimodality_min": 0.94
+      },
+      "LAP": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 1.0,
+        "argmin_mm": -10.0,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.0
+      },
+      "ToG": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 1.0,
+        "argmin_mm": -10.0,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.0
+      },
+      "GoG": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 1.0,
+        "argmin_mm": -10.0,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.0
+      }
+    },
+    "cell": {
+      "index": 0,
+      "z01": 0.09717899794176402,
+      "phase_shift": 1.6420699613435092,
+      "MFE": {
+        "extremum": "min",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 1.0,
+        "argmin_mm": 0.0,
+        "argmax_mm": -10.0,
+        "unimodality_min": 1.0
+      },
+      "VAR": {
+        "extremum": "max",
+        "extremum_offset_mm": 9.799999999999999,
+        "unimodality": 0.51,
+        "argmin_mm": -10.0,
+        "argmax_mm": 9.799999999999999,
+        "unimodality_min": 0.49
+      },
+      "SPEC": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 0.63,
+        "argmin_mm": -3.5,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.37
+      },
+      "GRA": {
+        "extremum": "min",
+        "extremum_offset_mm": -9.799999999999999,
+        "unimodality": 0.1,
+        "argmin_mm": -9.799999999999999,
+        "argmax_mm": 1.9,
+        "unimodality_min": 0.1
+      },
+      "LAP": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 1.0,
+        "argmin_mm": -10.0,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.0
+      },
+      "ToG": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.1,
+        "unimodality": 0.995,
+        "argmin_mm": -10.0,
+        "argmax_mm": 0.1,
+        "unimodality_min": 0.005
+      },
+      "GoG": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 1.0,
+        "argmin_mm": -10.0,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.0
+      }
+    },
+    "ball": {
+      "index": 6,
+      "z01": 0.10333301853209494,
+      "phase_shift": 1.9244606485030737,
+      "MFE": {
+        "extremum": "min",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 1.0,
+        "argmin_mm": 0.0,
+        "argmax_mm": 10.0,
+        "unimodality_min": 1.0
+      },
+      "VAR": {
+        "extremum": "max",
+        "extremum_offset_mm": 10.0,
+        "unimodality": 0.5,
+        "argmin_mm": -10.0,
+        "argmax_mm": 10.0,
+        "unimodality_min": 0.5
+      },
+      "SPEC": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 0.855,
+        "argmin_mm": -7.9,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.145
+      },
+      "GRA": {
+        "extremum": "min",
+        "extremum_offset_mm": -3.7,
+        "unimodality": 0.83,
+        "argmin_mm": -3.7,
+        "argmax_mm": 10.0,
+        "unimodality_min": 0.83
+      },
+      "LAP": {
+        "extremum": "max",
+        "extremum_offset_mm": -0.1,
+        "unimodality": 0.995,
+        "argmin_mm": -10.0,
+        "argmax_mm": -0.1,
+        "unimodality_min": 0.005
+      },
+      "ToG": {
+        "extremum": "max",
+        "extremum_offset_mm": -0.1,
+        "unimodality": 0.995,
+        "argmin_mm": -10.0,
+        "argmax_mm": -0.1,
+        "unimodality_min": 0.005
+      },
+      "GoG": {
+        "extremum": "max",
+        "extremum_offset_mm": -0.1,
+        "unimodality": 0.995,
+        "argmin_mm": -10.0,
+        "argmax_mm": -0.1,
+        "unimodality_min": 0.005
+      }
+    },
+    "mixed": {
+      "index": 19,
+      "z01": 0.09541308611843839,
+      "phase_shift": 1.4099571071931156,
+      "MFE": {
+        "extremum": "min",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 1.0,
+        "argmin_mm": 0.0,
+        "argmax_mm": -10.0,
+        "unimodality_min": 1.0
+      },
+      "VAR": {
+        "extremum": "max",
+        "extremum_offset_mm": 10.0,
+        "unimodality": 0.5,
+        "argmin_mm": -10.0,
+        "argmax_mm": 10.0,
+        "unimodality_min": 0.5
+      },
+      "SPEC": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 0.665,
+        "argmin_mm": -4.6,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.335
+      },
+      "GRA": {
+        "extremum": "min",
+        "extremum_offset_mm": -1.7000000000000002,
+        "unimodality": 0.915,
+        "argmin_mm": -1.7000000000000002,
+        "argmax_mm": -10.0,
+        "unimodality_min": 0.915
+      },
+      "LAP": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 0.975,
+        "argmin_mm": -9.5,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.025
+      },
+      "ToG": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.1,
+        "unimodality": 0.995,
+        "argmin_mm": -10.0,
+        "argmax_mm": 0.1,
+        "unimodality_min": 0.005
+      },
+      "GoG": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 1.0,
+        "argmin_mm": -10.0,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.0
+      }
+    }
+  },
+  "reconstruction_curves": {
+    "synthetic-0": {
+      "name": "test sample 0",
+      "reference": "true z01",
+      "z01_reference": 0.09717899794176402,
+      "points": 41,
+      "seconds": 3533.7120622479997,
+      "threads": 1,
+      "MFE": {
+        "extremum": "min",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 0.925,
+        "argmin_mm": 0.0,
+        "argmax_mm": -10.0,
+        "unimodality_min": 0.925
+      },
+      "VAR": {
+        "extremum": "max",
+        "extremum_offset_mm": 9.5,
+        "unimodality": 0.425,
+        "argmin_mm": -7.0,
+        "argmax_mm": 9.5,
+        "unimodality_min": 0.575
+      },
+      "SPEC": {
+        "extremum": "max",
+        "extremum_offset_mm": 9.5,
+        "unimodality": 0.4,
+        "argmin_mm": -2.5,
+        "argmax_mm": 9.5,
+        "unimodality_min": 0.6
+      },
+      "GRA": {
+        "extremum": "min",
+        "extremum_offset_mm": -1.5,
+        "unimodality": 0.8,
+        "argmin_mm": -1.5,
+        "argmax_mm": 10.0,
+        "unimodality_min": 0.8
+      },
+      "LAP": {
+        "extremum": "max",
+        "extremum_offset_mm": 4.500000000000001,
+        "unimodality": 0.45,
+        "argmin_mm": -3.0,
+        "argmax_mm": 4.500000000000001,
+        "unimodality_min": 0.55
+      },
+      "ToG": {
+        "extremum": "max",
+        "extremum_offset_mm": 4.500000000000001,
+        "unimodality": 0.7,
+        "argmin_mm": -10.0,
+        "argmax_mm": 4.500000000000001,
+        "unimodality_min": 0.3
+      },
+      "GoG": {
+        "extremum": "max",
+        "extremum_offset_mm": 2.5,
+        "unimodality": 0.75,
+        "argmin_mm": -10.0,
+        "argmax_mm": 2.5,
+        "unimodality_min": 0.25
+      },
+      "phase_rmse": {
+        "min_offset_mm": -3.0,
+        "min": 0.13500137627124786,
+        "at_reference": 0.1960979402065277
+      }
+    },
+    "synthetic-5": {
+      "name": "test sample 5",
+      "reference": "true z01",
+      "z01_reference": 0.10362479911145461,
+      "points": 41,
+      "seconds": 3528.2967303099977,
+      "threads": 1,
+      "MFE": {
+        "extremum": "min",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 0.925,
+        "argmin_mm": 0.0,
+        "argmax_mm": -8.5,
+        "unimodality_min": 0.925
+      },
+      "VAR": {
+        "extremum": "max",
+        "extremum_offset_mm": 3.5,
+        "unimodality": 0.45,
+        "argmin_mm": -0.5,
+        "argmax_mm": 3.5,
+        "unimodality_min": 0.55
+      },
+      "SPEC": {
+        "extremum": "max",
+        "extremum_offset_mm": -7.5,
+        "unimodality": 0.425,
+        "argmin_mm": 0.5,
+        "argmax_mm": -7.5,
+        "unimodality_min": 0.575
+      },
+      "GRA": {
+        "extremum": "min",
+        "extremum_offset_mm": -1.0,
+        "unimodality": 0.675,
+        "argmin_mm": -1.0,
+        "argmax_mm": 8.5,
+        "unimodality_min": 0.675
+      },
+      "LAP": {
+        "extremum": "max",
+        "extremum_offset_mm": 3.5,
+        "unimodality": 0.425,
+        "argmin_mm": 0.0,
+        "argmax_mm": 3.5,
+        "unimodality_min": 0.575
+      },
+      "ToG": {
+        "extremum": "max",
+        "extremum_offset_mm": 3.0,
+        "unimodality": 0.6,
+        "argmin_mm": -10.0,
+        "argmax_mm": 3.0,
+        "unimodality_min": 0.4
+      },
+      "GoG": {
+        "extremum": "max",
+        "extremum_offset_mm": 3.5,
+        "unimodality": 0.6,
+        "argmin_mm": -10.0,
+        "argmax_mm": 3.5,
+        "unimodality_min": 0.4
+      },
+      "phase_rmse": {
+        "min_offset_mm": -0.5,
+        "min": 0.1381840854883194,
+        "at_reference": 0.16881568729877472
+      }
+    },
+    "measured-spider_hair": {
+      "name": "spider hair",
+      "reference": "visually determined z01 of [2] Table 1",
+      "z01_reference": 0.0794,
+      "points": 21,
+      "seconds": 1783.5221132110019,
+      "threads": 1,
+      "MFE": {
+        "extremum": "min",
+        "extremum_offset_mm": 1.0,
+        "unimodality": 0.75,
+        "argmin_mm": 1.0,
+        "argmax_mm": -10.0,
+        "unimodality_min": 0.75
+      },
+      "VAR": {
+        "extremum": "max",
+        "extremum_offset_mm": 3.0,
+        "unimodality": 0.65,
+        "argmin_mm": -4.0,
+        "argmax_mm": 3.0,
+        "unimodality_min": 0.35
+      },
+      "SPEC": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 0.55,
+        "argmin_mm": 8.0,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.45
+      },
+      "GRA": {
+        "extremum": "min",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 0.5,
+        "argmin_mm": 0.0,
+        "argmax_mm": 3.0,
+        "unimodality_min": 0.5
+      },
+      "LAP": {
+        "extremum": "max",
+        "extremum_offset_mm": -1.0,
+        "unimodality": 0.6,
+        "argmin_mm": 7.0,
+        "argmax_mm": -1.0,
+        "unimodality_min": 0.4
+      },
+      "ToG": {
+        "extremum": "max",
+        "extremum_offset_mm": -1.0,
+        "unimodality": 0.55,
+        "argmin_mm": 8.0,
+        "argmax_mm": -1.0,
+        "unimodality_min": 0.45
+      },
+      "GoG": {
+        "extremum": "max",
+        "extremum_offset_mm": 0.0,
+        "unimodality": 0.5,
+        "argmin_mm": -3.0,
+        "argmax_mm": 0.0,
+        "unimodality_min": 0.5
+      }
+    }
+  },
+  "baseline": {
+    "run": "results/baseline/cpu-4x-test",
+    "git_commit": "c43bd30",
+    "threads": 3,
+    "summary": {
+      "n_samples": 48,
+      "error_um": {
+        "mean": 119.95074946321317,
+        "std": 190.46825802264408,
+        "mae": 165.6034391837487,
+        "rmse": 223.40667999619353,
+        "median_abs": 124.33584386714602,
+        "p90_abs": 288.53570614558595,
+        "max_abs": 799.4088477877581
+      },
+      "fraction_within_um": {
+        "50": 0.14583333333333334,
+        "100": 0.3125,
+        "250": 0.8333333333333334,
+        "1000": 1.0
+      },
+      "guess_error_um": {
+        "mae": 2272.6046866559427,
+        "rmse": 2671.4009800314393
+      },
+      "reconstructions": {
+        "mean": 11.145833333333334,
+        "min": 9,
+        "max": 13
+      },
+      "seconds_per_autofocus": {
+        "mean": 327.84806861414626,
+        "median": 330.8728951265002,
+        "total": 15736.70729347902
+      },
+      "seconds_per_reconstruction": 29.406821222367114,
+      "converged": 1.0,
+      "mfe_est_le_mfe_true": 0.8958333333333334,
+      "phase_rmse_est": {
+        "mean": 0.25121765995087725,
+        "median": 0.19967402517795563
+      },
+      "phase_rmse_true": {
+        "mean": 0.24092327166969577,
+        "median": 0.19426260888576508
+      }
+    },
+    "by_type": {
+      "triangle": {
+        "n": 9,
+        "mae": 139.6017420758745,
+        "mean": 139.6017420758745
+      },
+      "cell": {
+        "n": 17,
+        "mae": 136.25223618109845,
+        "mean": 115.4058488405034
+      },
+      "ball": {
+        "n": 13,
+        "mae": 220.44894510101264,
+        "mean": 79.14582803981354
+      },
+      "mixed": {
+        "n": 9,
+        "mae": 167.82501119391418,
+        "mean": 167.82501119391418
+      }
+    },
+    "by_photons": {
+      "N 1109-4204": {
+        "n": 16,
+        "mae": 137.93801196479177,
+        "mean": 103.91583461472152
+      },
+      "N 4204-21518": {
+        "n": 16,
+        "mae": 161.30474953191845,
+        "mean": 58.36885772038219
+      },
+      "N 21518-94877": {
+        "n": 16,
+        "mae": 197.5675560545358,
+        "mean": 197.5675560545358
+      }
+    },
+    "error_vs_dz01_fit": {
+      "slope_um_per_mm": -22.300384422174215,
+      "intercept_um": 109.32693414422349
+    },
+    "mfe_est_below_truth": 0.8958333333333334
+  },
+  "search": {
+    "examples": {
+      "smallest": 9,
+      "median": 5,
+      "largest": 40
+    }
+  },
+  "measured": {
+    "spider_hair": {
+      "paper2": {
+        "z01_nm_mm": 79.39999999999999,
+        "z01_visual_mm": 79.39999999999999,
+        "samples": 13
+      },
+      "paper1_example_z01_mm": 79.94999999999999,
+      "b1-p2": {
+        "binning": 1,
+        "z01_mm": 80.19062500000001,
+        "minus_paper2_nm_um": 790.625000000017,
+        "minus_visual_um": 790.625000000017,
+        "minus_paper1_example_um": 240.62500000002208,
+        "mfe_range_percent": 50.37915173164156,
+        "reconstructions": 11,
+        "seconds": 934.5644754169989,
+        "seconds_per_reconstruction": 84.95889801563614,
+        "threads": 1,
+        "padding_factor": 2.0,
+        "stage_arrays": [
+          [
+            256,
+            256
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ]
+        ]
+      },
+      "p2": {
+        "binning": 4,
+        "z01_mm": 80.26875000000001,
+        "minus_paper2_nm_um": 868.7500000000153,
+        "minus_visual_um": 868.7500000000153,
+        "minus_paper1_example_um": 318.7500000000204,
+        "mfe_range_percent": 39.94579297315604,
+        "reconstructions": 11,
+        "seconds": 958.6354798259999,
+        "seconds_per_reconstruction": 87.14609660263605,
+        "threads": 1,
+        "padding_factor": 2.0,
+        "stage_arrays": [
+          [
+            256,
+            256
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ]
+        ]
+      },
+      "b1-p4": {
+        "binning": 1,
+        "z01_mm": 79.48750000000001,
+        "minus_paper2_nm_um": 87.50000000001812,
+        "minus_visual_um": 87.50000000001812,
+        "minus_paper1_example_um": -462.4999999999768,
+        "mfe_range_percent": 55.48994586323124,
+        "reconstructions": 13,
+        "seconds": 2717.1692843220007,
+        "seconds_per_reconstruction": 209.01097222792305,
+        "threads": 3,
+        "padding_factor": 4.0,
+        "stage_arrays": [
+          [
+            512,
+            512
+          ],
+          [
+            2048,
+            2048
+          ],
+          [
+            2048,
+            2048
+          ]
+        ]
+      }
+    },
+    "tooth": {
+      "paper2": {
+        "z01_nm_mm": 80.9,
+        "z01_visual_mm": 81.0,
+        "samples": 11
+      },
+      "paper1_example_z01_mm": 81.7085,
+      "b1-p2": {
+        "binning": 1,
+        "z01_mm": 80.634375,
+        "minus_paper2_nm_um": -265.6249999999916,
+        "minus_visual_um": -365.62499999999443,
+        "minus_paper1_example_um": -1074.1249999999952,
+        "mfe_range_percent": 17.44070120018426,
+        "reconstructions": 11,
+        "seconds": 886.1092074370026,
+        "seconds_per_reconstruction": 80.55417417990876,
+        "threads": 1,
+        "padding_factor": 2.0,
+        "stage_arrays": [
+          [
+            256,
+            256
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ]
+        ]
+      },
+      "p2": {
+        "binning": 4,
+        "z01_mm": 80.634375,
+        "minus_paper2_nm_um": -265.6249999999916,
+        "minus_visual_um": -365.62499999999443,
+        "minus_paper1_example_um": -1074.1249999999952,
+        "mfe_range_percent": 13.703709494666484,
+        "reconstructions": 11,
+        "seconds": 959.1519919799994,
+        "seconds_per_reconstruction": 87.19380882427289,
+        "threads": 1,
+        "padding_factor": 2.0,
+        "stage_arrays": [
+          [
+            256,
+            256
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ]
+        ]
+      },
+      "b1-p4": {
+        "binning": 1,
+        "z01_mm": 80.634375,
+        "minus_paper2_nm_um": -265.6249999999916,
+        "minus_visual_um": -365.62499999999443,
+        "minus_paper1_example_um": -1074.1249999999952,
+        "mfe_range_percent": 25.695468488164753,
+        "reconstructions": 11,
+        "seconds": 2170.128857969001,
+        "seconds_per_reconstruction": 197.2812258064534,
+        "threads": 3,
+        "padding_factor": 4.0,
+        "stage_arrays": [
+          [
+            512,
+            512
+          ],
+          [
+            2048,
+            2048
+          ],
+          [
+            2048,
+            2048
+          ]
+        ]
+      }
+    },
+    "cactus_needle": {
+      "paper2": {
+        "z01_nm_mm": 284.2,
+        "z01_visual_mm": 284.2,
+        "samples": 12
+      },
+      "paper1_example_z01_mm": 285.41562500000003,
+      "b1-p2": {
+        "binning": 1,
+        "z01_mm": 284.5375,
+        "minus_paper2_nm_um": 337.49999999999056,
+        "minus_visual_um": 337.49999999999056,
+        "minus_paper1_example_um": -878.1250000000074,
+        "mfe_range_percent": 1.204278784726398,
+        "reconstructions": 10,
+        "seconds": 812.7424075689996,
+        "seconds_per_reconstruction": 81.2730848266001,
+        "threads": 1,
+        "padding_factor": 2.0,
+        "stage_arrays": [
+          [
+            256,
+            256
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ]
+        ]
+      },
+      "p2": {
+        "binning": 4,
+        "z01_mm": 284.303125,
+        "minus_paper2_nm_um": 103.12500000003722,
+        "minus_visual_um": 103.12500000003722,
+        "minus_paper1_example_um": -1112.4999999999607,
+        "mfe_range_percent": 1.0410769791443952,
+        "reconstructions": 10,
+        "seconds": 854.2310111690003,
+        "seconds_per_reconstruction": 85.4221654791996,
+        "threads": 1,
+        "padding_factor": 2.0,
+        "stage_arrays": [
+          [
+            256,
+            256
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ]
+        ]
+      }
+    },
+    "magnesium_wire": {
+      "paper2": {
+        "z01_nm_mm": 470.8,
+        "z01_visual_mm": 470.7,
+        "samples": 9
+      },
+      "paper1_example_z01_mm": 470.515625,
+      "b1-p2": {
+        "binning": 1,
+        "z01_mm": 470.446875,
+        "minus_paper2_nm_um": -353.12500000000966,
+        "minus_visual_um": -253.1250000000207,
+        "minus_paper1_example_um": -68.75000000000631,
+        "mfe_range_percent": 0.9143163277730348,
+        "reconstructions": 11,
+        "seconds": 938.0999169399984,
+        "seconds_per_reconstruction": 85.2809053593638,
+        "threads": 1,
+        "padding_factor": 2.0,
+        "stage_arrays": [
+          [
+            256,
+            256
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ]
+        ]
+      },
+      "p2": {
+        "binning": 4,
+        "z01_mm": 470.05625,
+        "minus_paper2_nm_um": -743.750000000043,
+        "minus_visual_um": -643.750000000054,
+        "minus_paper1_example_um": -459.3750000000396,
+        "mfe_range_percent": 1.0562637444994527,
+        "reconstructions": 12,
+        "seconds": 1045.7579688409987,
+        "seconds_per_reconstruction": 87.14491159616621,
+        "threads": 1,
+        "padding_factor": 2.0,
+        "stage_arrays": [
+          [
+            256,
+            256
+          ],
+          [
+            1024,
+            1024
+          ],
+          [
+            1024,
+            1024
+          ]
+        ]
+      }
+    }
+  },
+  "bias": {
+    "2": {
+      "phantom_type": "cell",
+      "photons": 94876.83063848753,
+      "minimum_um": {
+        "noisy": {
+          "argmin": 199.99999999999997,
+          "parabola": 166.44069214016037
+        },
+        "clean": {
+          "argmin": 199.99999999999997,
+          "parabola": 267.52696189528626
+        },
+        "grid": {
+          "argmin": 199.99999999999997,
+          "parabola": 269.91746914998373
+        },
+        "grid-nofilter": {
+          "argmin": -199.99999999999997,
+          "parabola": 11.605428499278375
+        }
+      },
+      "mfe_range": {
+        "noisy": [
+          1.825351318984758e-05,
+          2.197765752498526e-05
+        ],
+        "clean": [
+          1.5983805496944115e-05,
+          1.970862467715051e-05
+        ],
+        "grid": [
+          1.606258229003288e-05,
+          1.9768513084272854e-05
+        ],
+        "grid-nofilter": [
+          2.322391082998365e-06,
+          4.3802865548059344e-06
+        ]
+      },
+      "nelder_mead_error_um": 180.00993600560122
+    }
+  },
+  "padding": {
+    "spider_hair": {
+      "p2": {
+        "vertex_mm": 80.24058523203931,
+        "at_edge": false,
+        "points": 23
+      },
+      "p2-l2": {
+        "vertex_mm": 80.4,
+        "at_edge": true,
+        "points": 5
+      },
+      "p2-1022": {
+        "vertex_mm": 79.83737135295873,
+        "at_edge": false,
+        "points": 5
+      },
+      "p3": {
+        "vertex_mm": 79.84861831994687,
+        "at_edge": false,
+        "points": 5
+      },
+      "p7": {
+        "vertex_mm": 79.55568977300726,
+        "at_edge": false,
+        "points": 5
+      },
+      "p2_search": {
+        "estimate_mm": 80.19062500000001
+      },
+      "p4_search": {
+        "estimate_mm": 79.48750000000001
+      }
+    },
+    "bias-2": {
+      "phantom_type": "cell",
+      "photons": 94876.83063848753,
+      "p2": {
+        "parabola_um": 166.44069214016037,
+        "padding_factor": 2.0
+      },
+      "p2-1022": {
+        "parabola_um": 141.8970406402952,
+        "padding_factor": 1.99609375
+      },
+      "p2-l2": {
+        "parabola_um": -30.146687734733895,
+        "padding_factor": 2.0
+      },
+      "p4": {
+        "parabola_um": 120.95259714497894,
+        "padding_factor": 4.0
+      }
+    }
+  },
+  "crosscheck": {
+    "reconstruct": {
+      "index": 0,
+      "z01_mm": 97.17899794176402,
+      "fresnel_number": 0.0014642510118155075,
+      "holowizard_seconds": 41.040286968000146,
+      "holofocus_seconds": 21.870923198999662,
+      "final_loss": {
+        "holowizard": 0.00020350732665974647,
+        "holofocus": 0.00020350735576357692
+      },
+      "final_loss_rel_diff": 1.43011217090816e-07,
+      "loss_rel_diff_max": 2.178132435215474e-05,
+      "loss_rel_diff_median": 1.0516327917931e-06,
+      "stage_end_loss": {
+        "holowizard": [
+          0.0006754460046067834,
+          0.00024885113816708326,
+          0.00020350732665974647
+        ],
+        "holofocus": [
+          0.0006754502537660301,
+          0.0002488508471287787,
+          0.00020350735576357692
+        ]
+      },
+      "phase_max_abs_diff": 3.3229589462280273e-06,
+      "phase_rms_diff": 1.430462020834966e-06,
+      "phase_rms": 0.30274340510368347,
+      "absorption_max_abs_diff": 4.984904080629349e-07,
+      "stage_ends": [
+        700,
+        1000,
+        1500
+      ]
+    },
+    "focus": {
+      "0": {
+        "same_points": true,
+        "estimate_diff_um": 0.0,
+        "reconstructions": [
+          12,
+          12
+        ],
+        "z01_mm": [
+          97.1875,
+          97.1875
+        ],
+        "z01_true_mm": 97.17899794176402,
+        "seconds": [
+          187.47585838600025,
+          100.2825372389998
+        ]
+      },
+      "1": {
+        "same_points": true,
+        "estimate_diff_um": 0.0,
+        "reconstructions": [
+          11,
+          11
+        ],
+        "z01_mm": [
+          101.484375,
+          101.484375
+        ],
+        "z01_true_mm": 101.34578654269244,
+        "seconds": [
+          181.55899871700058,
+          97.98719641499883
+        ]
+      },
+      "2": {
+        "same_points": true,
+        "estimate_diff_um": 0.0,
+        "reconstructions": [
+          12,
+          12
+        ],
+        "z01_mm": [
+          99.0625,
+          99.0625
+        ],
+        "z01_true_mm": 99.0387400639944,
+        "seconds": [
+          199.6039737430001,
+          131.5282778669989
+        ]
+      }
+    }
+  }
+}
