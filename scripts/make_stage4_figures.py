@@ -224,6 +224,7 @@ def training_figure(finals: list[Path], study: Path, out: Path, dpi: int) -> dic
         ("image-n10000", "tab:green"),
         ("image-n2000", "yellowgreen"),
     ]
+    last_epoch = 1
     for name, color in curves:
         if name not in runs:
             continue
@@ -233,8 +234,11 @@ def training_figure(finals: list[Path], study: Path, out: Path, dpi: int) -> dic
         axes[0].semilogy([h["epoch"] for h in history], mae, color=color, lw=1, label=label)
         best = rows[name]["best_epoch"]
         axes[0].plot(best, mae[best - 1], "o", color=color)
+        last_epoch = max(last_epoch, history[-1]["epoch"])
     axes[0].axhline(2500, color="0.6", ls=":", lw=1)
-    axes[0].text(1, 2600, "guess dz01 = 0 (MAE 2.5 mm)", fontsize=8, color="0.4")
+    axes[0].text(
+        last_epoch, 2600, "guess dz01 = 0 (MAE 2.5 mm)", ha="right", fontsize=8, color="0.4"
+    )
     axes[0].set_xlabel("epoch")
     axes[0].set_ylabel("validation MAE (um)")
     axes[0].legend(fontsize=8)
@@ -253,7 +257,7 @@ def training_figure(finals: list[Path], study: Path, out: Path, dpi: int) -> dic
         family: "tab:green" if family.startswith("image") else next(spectrum_colors, "0.4")
         for family in sorted(families, key=lambda f: (f.startswith("image"), f))
     }
-    for family, color in colors.items():
+    for k, (family, color) in enumerate(colors.items()):
         points = sorted(families[family].items())
         n = np.array([p[0] for p in points], dtype=float)
         mae = np.array([p[1][0] for p in points])
@@ -268,8 +272,11 @@ def training_figure(finals: list[Path], study: Path, out: Path, dpi: int) -> dic
             label += f" (MAE ~ n^{entry['slope']:.2f})"
         metrics["learning_curves"][family] = entry
         axes[1].loglog(n, mae, "o-", color=color, label=label)
+        offset, align = ((-5, -11), "right") if k % 2 else ((5, 3), "left")
         for x, y in zip(n, mae, strict=True):
-            axes[1].annotate(f"{y:.0f}", (x, y), textcoords="offset points", xytext=(5, 3))
+            axes[1].annotate(
+                f"{y:.0f}", (x, y), textcoords="offset points", xytext=offset, ha=align
+            )
     seeds = [
         name
         for name in runs
