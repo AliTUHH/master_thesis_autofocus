@@ -146,6 +146,15 @@ def test_select_indices():
     assert select_indices(4, [3, 1], None) == [3, 1]
     with pytest.raises(ValueError):
         select_indices(4, [4], None)
+    parts = [select_indices(48, None, None, (k, 10)) for k in range(10)]
+    assert [i for part in parts for i in part] == list(range(48))
+    assert {len(part) for part in parts} == {4, 5}
+    assert select_indices(250, None, None, (3, 10)) == list(range(75, 100))
+    assert select_indices(6, [5, 3, 1, 0], 3, (1, 2)) == [3, 1]
+    assert select_indices(2, None, None, (0, 3)) == []
+    for chunk in ((3, 3), (-1, 3), (0, 0)):
+        with pytest.raises(ValueError):
+            select_indices(4, None, None, chunk)
 
 
 def test_run_baseline_writes_resumable_results(split_file, tmp_path):
@@ -195,6 +204,57 @@ def test_cli(split_file, tmp_path, capsys):
     assert main(["summary", str(tmp_path)]) == 1
     ci = ROOT / "configs" / "baseline" / "ci.yaml"
     assert main(["run", str(ci), "--data", str(split_file), "--out", str(out)]) == 1
+
+
+def test_chunked_runs_and_merge(split_file, tmp_path, capsys):
+    config = tmp_path / "tiny.yaml"
+    config.write_text(yaml.safe_dump(TINY))
+    out = tmp_path / "chunked"
+    chunks = [out / f"chunk-{k}-of-2" for k in range(2)]
+    args = ["run", str(config), "--data", str(split_file), "--limit", "2", "--device", "cpu"]
+    for k, chunk in enumerate(chunks):
+        assert main([*args, "--out", str(chunk), "--chunk", str(k), "--chunks", "2"]) == 0
+    assert [[r["index"] for r in read_rows(c / "results.csv")] for c in chunks] == [[0], [1]]
+    assert main([*args, "--out", str(tmp_path / "x"), "--chunk", "1"]) == 1
+    assert main([*args, "--out", str(tmp_path / "x"), "--chunk", "2", "--chunks", "2"]) == 1
+    assert not (tmp_path / "x").exists()
+    capsys.readouterr()
+
+    assert main(["merge", "--out", str(out), str(chunks[1]), str(chunks[0])]) == 0
+    printed = capsys.readouterr().out
+    assert "chunk-1-of-2: 1 samples" in printed and "2 samples (indices 0 .. 1)" in printed
+    lines = [(c / "results.csv").read_text().splitlines() for c in chunks]
+    assert (out / "results.csv").read_text().splitlines() == [*lines[0], lines[1][1]]
+    traces = [read_traces(c / "traces.jsonl") for c in chunks]
+    assert read_traces(out / "traces.jsonl") == traces[0] + traces[1]
+    rows = read_rows(out / "results.csv")
+    assert json.loads((out / "summary.json").read_text()) == summarize(rows)
+    info = yaml.safe_load((out / "run.yaml").read_text())
+    first = yaml.safe_load((chunks[1] / "run.yaml").read_text())
+    assert {k: v for k, v in info.items() if not k.startswith("merged_")} == first
+    assert [(m["run"], m["n_samples"]) for m in info["merged_from"]] == [
+        ("chunk-1-of-2", 1),
+        ("chunk-0-of-2", 1),
+    ]
+    assert info["merged_from"][0]["host"] == first["host"]
+
+    assert main(["merge", "--out", str(out), *map(str, chunks)]) == 0
+    assert read_rows(out / "results.csv") == rows
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / "run.yaml").write_text(
+        yaml.safe_dump({**first, "config": {**first["config"], "name": "other"}})
+    )
+    for bad in (
+        [str(tmp_path / "y"), str(chunks[0]), str(chunks[0])],
+        [str(chunks[0]), str(chunks[1])],
+        [str(tmp_path / "y"), str(chunks[0]), str(other)],
+        [str(tmp_path / "y"), str(tmp_path)],
+    ):
+        assert main(["merge", "--out", *bad]) == 1
+    errors = capsys.readouterr().err
+    assert "is in" in errors and "of its own" in errors and "another config" in errors
+    assert "no run.yaml" in errors
 
 
 def test_warm_start_simplex(tmp_path):

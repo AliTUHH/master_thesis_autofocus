@@ -8,6 +8,10 @@
         --out runs/baseline/cpu-4x-test-warm --limit 48 \\
         --warm-start results/learned/spectrum-cnn/test/predictions.csv --half-width 5e-4
     holofocus-baseline summary runs/baseline/cpu-4x-test
+    holofocus-baseline run configs/baseline/paper2-cpu.yaml --data data/cpu-4x/test.h5 \\
+        --out runs/baseline/cpu-4x-test-full/chunk-3-of-10 --chunk 3 --chunks 10
+    holofocus-baseline merge --out runs/baseline/cpu-4x-test-full \\
+        runs/baseline/cpu-4x-test-full/chunk-*-of-10
 """
 
 from __future__ import annotations
@@ -22,7 +26,11 @@ import torch
 
 from .config import BaselineConfig
 from .results import read_rows, summarize
-from .runner import WarmStart, run_baseline
+from .runner import WarmStart, merge_runs, run_baseline
+
+
+def _log(msg: str) -> None:
+    print(msg, flush=True)
 
 
 def run(args: argparse.Namespace) -> int:
@@ -30,6 +38,8 @@ def run(args: argparse.Namespace) -> int:
         torch.set_num_threads(args.threads)
     config = BaselineConfig.from_yaml(args.config)
     try:
+        if (args.chunk is None) != (args.chunks is None):
+            raise ValueError("--chunk and --chunks go together")
         warm_start = None
         if args.warm_start is not None:
             warm_start = WarmStart.from_csv(
@@ -43,8 +53,19 @@ def run(args: argparse.Namespace) -> int:
             limit=args.limit,
             device=args.device,
             warm_start=warm_start,
-            log=lambda msg: print(msg, flush=True),
+            log=_log,
+            chunk=None if args.chunk is None else (args.chunk, args.chunks),
         )
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(summary, indent=2))
+    return 0
+
+
+def merge(args: argparse.Namespace) -> int:
+    try:
+        summary = merge_runs(args.runs, args.out, log=_log)
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
@@ -92,7 +113,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="center",
         help="warm-start simplex c +- w (center, default) or (c, c + w) (vertex)",
     )
+    go.add_argument(
+        "--chunk",
+        type=int,
+        help="only the K-th (from 0) of --chunks contiguous parts of the selected samples",
+    )
+    go.add_argument("--chunks", type=int, help="number of parts for --chunk")
     go.set_defaults(func=run)
+    join = sub.add_parser("merge", help="join runs of other samples, e.g. the chunks of an array")
+    join.add_argument("runs", type=Path, nargs="+", help="run directories")
+    join.add_argument(
+        "--out", type=Path, required=True, help="merged run directory (may contain the runs)"
+    )
+    join.set_defaults(func=merge)
     show = sub.add_parser("summary", help="print the summary of a run directory")
     show.add_argument("run", type=Path)
     show.set_defaults(func=summary)
