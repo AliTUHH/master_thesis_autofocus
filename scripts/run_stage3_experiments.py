@@ -2,7 +2,10 @@
 
 * ``measured``: the classical autofocus of [2] (ASRM + MFE + Nelder-Mead) on the measured
   holograms of the Zenodo record of [1], binned 4x, compared with [2] Table 1. Writes
-  ``<sample>.json`` and the phase at the estimate (``<sample>-phase.npy``, not tracked).
+  ``<sample>.json`` and the phase at the estimate (``<sample>-phase.npy``, not tracked). With
+  ``--warm-start DIR`` the search starts from ``z01_est +- half width`` of ``DIR/<sample>.json``
+  (e.g. the learned estimates of ``scripts/run_stage5_study.py measured``) instead of the ends
+  of ``Omega_z``.
 * ``curves``: focus curves with one ASRM reconstruction per sampling point ([2] Fig. 8), for
   samples of a synthetic split (``synthetic-<index>.json``, with the phase error against the
   ground truth) or for measured holograms centred on the visually determined focus of [2]
@@ -16,6 +19,8 @@ All commands skip outputs that exist already. Usage::
     python scripts/run_stage3_experiments.py measured --holograms DIR --out results/measured/p2
     python scripts/run_stage3_experiments.py measured --holograms DIR --paper-padding \\
         --samples spider_hair tooth --out results/measured/paper-padding
+    python scripts/run_stage3_experiments.py --threads 3 measured --holograms DIR --binning 1 \\
+        --padding 4 --warm-start results/measured/cnn --out results/measured/warm-b1-p4
     python scripts/run_stage3_experiments.py curves --data data/cpu-4x/test.h5 --indices 1 5 \\
         --out results/focus-curves
     python scripts/run_stage3_experiments.py curves --holograms DIR --samples spider_hair \\
@@ -45,6 +50,7 @@ import torch
 from holofocus.asrm import ASRMSettings, stage_grid
 from holofocus.autofocus import find_focus, reconstruction_focus_curve, symmetric_offsets
 from holofocus.baseline import BaselineConfig
+from holofocus.baseline.runner import WarmStart, file_sha256
 from holofocus.dataset import HologramGenerator, read_config, read_labels
 from holofocus.dataset.config import DatasetConfig
 from holofocus.dataset.storage import _git_commit
@@ -147,11 +153,24 @@ def cmd_measured(args) -> None:
         print(
             f"{name}: {tuple(hologram.shape)} px, arrays {grids}, Fr {geometry.fresnel_number:.4e}"
         )
+        warm, initial = None, None
+        if args.warm_start is not None:
+            source = args.warm_start / f"{name}.json"
+            estimate = float(json.loads(source.read_text())["z01_est"])
+            warm = WarmStart(
+                str(source), file_sha256(source), args.half_width, 0.0, {0: estimate}, {}
+            )
+            initial = warm.simplex(0, *sample.simplex)
+            print(
+                f"  warm start from {estimate * 1e3:.3f} mm: "
+                f"simplex {initial[0] * 1e3:.3f} / {initial[1] * 1e3:.3f} mm"
+            )
         result = find_focus(
             hologram,
             geometry,
             settings,
             confidence=sample.confidence,
+            initial_simplex=initial,
             log=lambda msg: print(f"  {msg}", flush=True),
         )
         np.save(args.out / f"{name}-phase.npy", result.reconstruction.obj.real.numpy())
@@ -181,6 +200,12 @@ def cmd_measured(args) -> None:
             ),
             **environment(),
         }
+        if warm is not None:
+            record["warm_start"] = {
+                **warm.identity(),
+                "z01_est": warm.centers[0],
+                "initial_simplex": list(initial),
+            }
         write_json(target, record)
         print(
             f"{name}: z01 = {result.z01 * 1e3:.3f} mm ([2]: {sample.z01_nm * 1e3:.1f} mm), "
@@ -386,6 +411,12 @@ def main() -> None:
     measured.add_argument("--padding", type=float, default=2.0)
     measured.add_argument(
         "--paper-padding", action="store_true", help="array sizes of [2] Table 1 (p = 7 or 4)"
+    )
+    measured.add_argument(
+        "--warm-start", type=Path, help="directory with <sample>.json holding z01_est (metres)"
+    )
+    measured.add_argument(
+        "--half-width", type=float, default=5e-4, help="half width of the warm start (metres)"
     )
     measured.add_argument("--out", type=Path, required=True)
     measured.set_defaults(func=cmd_measured)
