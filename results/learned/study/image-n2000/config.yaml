@@ -1,0 +1,30 @@
+name: image-n2000
+target_scale: 0.005
+representation:
+  kind: image
+  binning: 2
+  bins: 1024
+  f2_max: 0.125
+model:
+  channels:
+  - 16
+  - 32
+  - 64
+  - 128
+  kernel_size: 7
+  pool_to: 16
+  hidden: 128
+  dropout: 0.1
+  min_sigma: 0.001
+training:
+  epochs: 40
+  batch_size: 32
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  warmup_epochs: 2
+  beta: 0.5
+  augment: true
+  limit: 2000
+  patience: null
+  seed: 0
+device: auto

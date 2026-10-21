@@ -57,6 +57,24 @@ jobs:
           python scripts/make_stage3_figures.py --quick --baseline ${{ runner.temp }}/baseline-ci \
             --out ${{ runner.temp }}/figures
 
+      - name: Learned autofocus smoke run (configs/learned/ci.yaml) and Stage 4 figures (quick mode)
+        run: |
+          demo=${{ runner.temp }}/demo-dataset
+          learned=${{ runner.temp }}/learned-ci
+          holofocus-learn train configs/learned/ci.yaml --train $demo/train.h5 --val $demo/val.h5 \
+            --out $learned
+          holofocus-learn predict $learned --data $demo/val.h5 --out $learned/val
+          holofocus-learn predict $learned --data $demo/test.h5 --out $learned/test
+          holofocus-baseline run configs/baseline/ci.yaml --data $demo/test.h5 \
+            --out ${{ runner.temp }}/warm-ci --limit 3 --warm-start $learned/test/predictions.csv
+          holofocus-learn compare --learned $learned/test/predictions.csv \
+            --baseline ${{ runner.temp }}/baseline-ci --baseline-val ${{ runner.temp }}/baseline-ci \
+            --warm ${{ runner.temp }}/warm-ci --out ${{ runner.temp }}/comparison-ci
+          python scripts/make_stage4_figures.py --quick --main $learned --finals $learned --study $learned/none \
+            --comparison ${{ runner.temp }}/comparison-ci --baseline ${{ runner.temp }}/baseline-ci \
+            --baseline-val ${{ runner.temp }}/baseline-ci --warm ${{ runner.temp }}/warm-ci \
+            --data $demo --out ${{ runner.temp }}/figures
+
       - name: Upload demo dataset
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4

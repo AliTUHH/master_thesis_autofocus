@@ -9,6 +9,7 @@ werden von den Skripten in `scripts/` erzeugt.
 | 01 | Physik-Kern und Projektgerüst | [01-physik-kern.md](01-physik-kern.md) |
 | 02 | Synthetischer Datensatz | [02-datensatz.md](02-datensatz.md) |
 | 03 | Klassische Autofokus-Baseline nach [2] | [03-baseline.md](03-baseline.md) |
+| 04 | Erstes gelerntes Modell (CNN mit Unsicherheit) | [04-lernmodell.md](04-lernmodell.md) |
 
 Quellen:
 

@@ -21,6 +21,7 @@ from `z01` and is available as an alternative label.
 | 1 | Physics core: cone-beam geometry, Fresnel propagator, forward model, preprocessing of [1] Sec. 4.1, simple back-propagation/PGD, defocus figures | [docs/laborbuch/01-physik-kern.md](docs/laborbuch/01-physik-kern.md) |
 | 2 | Synthetic dataset generator: random single-material phantoms in the spirit of [2] Sec. 3.5, Poisson/Gaussian detector noise, `Δz01` uniform in ±5 mm, labels `Δz01` and `Fr`, YAML configs, per-sample seeds, HDF5 + PyTorch `Dataset`, CLI | [docs/laborbuch/02-datensatz.md](docs/laborbuch/02-datensatz.md) |
 | 3 | Classical autofocus baseline of [2]: ASRM ([1] Alg. 5) ported from the paper code with the [2] Table 3 schedule, model fit error, projected Nelder–Mead, image criteria and focus curves; runs on the synthetic test split and on the Zenodo holograms of [1], cross-checked against holowizard; per-sample results in `results/` | [docs/laborbuch/03-baseline.md](docs/laborbuch/03-baseline.md) |
+| 4 | First learned autofocus: a small CNN estimates `Δz01` with a Gaussian uncertainty from the radial power spectrum (or the binned hologram), trained on 10 000 synthetic samples on CPU; compared per sample with the raw and offset-corrected baseline of [2], and used as a warm start for its Nelder–Mead search | [docs/laborbuch/04-lernmodell.md](docs/laborbuch/04-lernmodell.md) |
 
 ## Quick start
 
@@ -35,6 +36,10 @@ holofocus-dataset generate configs/dataset/cpu-4x.yaml --out data/cpu-4x   # ~16
 holofocus-baseline run configs/baseline/ci.yaml --data /tmp/demo/test.h5 --out /tmp/baseline
 holofocus-baseline run configs/baseline/paper2-cpu.yaml --data data/cpu-4x/test.h5 \
     --out results/baseline/cpu-4x-test --limit 48   # [2] baseline, ~5 min per sample on CPU
+holofocus-learn train configs/learned/ci.yaml --train /tmp/demo/train.h5 --val /tmp/demo/val.h5 \
+    --out /tmp/learned                          # tiny CNN on the demo dataset, seconds
+holofocus-learn predict results/learned/spectrum-cnn-wide --data data/cpu-4x/test.h5 \
+    --out /tmp/predictions                      # trained model, a few ms per hologram on CPU
 ```
 
 ```python
@@ -49,8 +54,8 @@ hologram = simulate_hologram(obj, geometry.fresnel_number, padded_shape=(2048, 2
 
 All tensors live on the device you create them on; the same code runs on CPU and CUDA
 (`holofocus.get_device()` picks CUDA if available). See [docs/usage.md](docs/usage.md) for
-installation details, tests, figures, the dataset generator, the baseline and the comparison
-with the paper code.
+installation details, tests, figures, the dataset generator, the baseline, the learned
+autofocus and the comparison with the paper code.
 
 The main dataset uses the P05 detector binned 4x (512² pixels of 26 µm, sample pixel 130 nm
 at `z01 = 100 mm`, `z02 = 20 m`, 11 keV), so `Fr = 1.5e-3` instead of `9.4e-5` with the same
@@ -65,11 +70,16 @@ src/holofocus/            package (geometry, propagation, forward model, preproc
 src/holofocus/dataset/    dataset generator: YAML config, sampling, HDF5 storage, CLI
 src/holofocus/autofocus/  MFE and image criteria, Nelder-Mead, nested autofocus, focus curves
 src/holofocus/baseline/   baseline runs on dataset splits: YAML config, per-sample results, CLI
-configs/dataset/          dataset configs (cpu-4x, cpu-4x-z01-range, ci)
-configs/baseline/         baseline configs (paper2-cpu, ci)
-results/                  baseline results quoted in the lab notebook (per sample, for Stage 4)
+src/holofocus/learned/    learned autofocus: representations, CNNs with a Gaussian head,
+                          training, inference, metrics, comparison with the baseline, CLI
+configs/dataset/          dataset configs (cpu-4x, cpu-4x-extra, cpu-4x-z01-range, ci)
+configs/baseline/         baseline configs (paper2-cpu, paper2-cpu-warm, ci)
+configs/learned/          learned-model configs (spectrum-cnn, spectrum-cnn-wide, image-cnn, ci)
+results/                  per-sample results quoted in the lab notebook (baseline, learned
+                          models, comparison)
 tests/                    pytest suite (CPU; CUDA tests are skipped without a GPU)
-scripts/                  figure scripts, Stage 3 experiments, cross-checks with holowizard
+scripts/                  figure scripts, Stage 3 experiments, Stage 4 study, cross-checks
+                          with holowizard
 docs/usage.md             how to run things (English)
 docs/laborbuch/           lab notebook, one entry per stage (German), figures in figures/
 ```

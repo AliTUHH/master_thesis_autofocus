@@ -17,8 +17,9 @@ from holofocus.baseline.results import (
     read_traces,
     summarize,
 )
-from holofocus.baseline.runner import phase_rmse, select_indices
+from holofocus.baseline.runner import WarmStart, phase_rmse, select_indices
 from holofocus.dataset import DatasetConfig, write_split
+from holofocus.dataset.storage import read_labels
 
 ROOT = Path(__file__).resolve().parents[1]
 CI_DATASET = ROOT / "configs" / "dataset" / "ci.yaml"
@@ -194,3 +195,84 @@ def test_cli(split_file, tmp_path, capsys):
     assert main(["summary", str(tmp_path)]) == 1
     ci = ROOT / "configs" / "baseline" / "ci.yaml"
     assert main(["run", str(ci), "--data", str(split_file), "--out", str(out)]) == 1
+
+
+def test_warm_start_simplex(tmp_path):
+    path = tmp_path / "estimates.csv"
+    path.write_text("index,z01_est,sigma\n0,0.1003,0.0002\n1,0.1049,0.002\n")
+    warm = WarmStart.from_csv(path, half_width=5e-4)
+    assert warm.simplex(0, 0.095, 0.105) == pytest.approx((0.0998, 0.1008))
+    assert warm.simplex(1, 0.095, 0.105) == pytest.approx((0.104, 0.105))
+    wide = WarmStart.from_csv(path, half_width=5e-4, sigmas=2.0)
+    assert wide.simplex(0, 0.095, 0.105) == pytest.approx((0.0998, 0.1008))
+    assert wide.simplex(1, 0.095, 0.105) == pytest.approx((0.097, 0.105))
+    full = WarmStart.from_csv(path, half_width=0.02).simplex(0, 0.095, 0.105)
+    assert full == pytest.approx((0.095, 0.105), abs=1e-15)
+    identity = wide.identity()
+    assert identity["sigmas"] == 2.0 and len(identity["sha256"]) == 64
+    with pytest.raises(ValueError):
+        WarmStart.from_csv(path, half_width=0.0)
+    vertex = WarmStart.from_csv(path, half_width=5e-4, anchor="vertex")
+    assert vertex.simplex(0, 0.095, 0.105) == pytest.approx((0.1003, 0.1008))
+    assert vertex.simplex(1, 0.095, 0.105) == pytest.approx((0.1049, 0.1044))
+    assert "anchor" not in warm.identity() and vertex.identity()["anchor"] == "vertex"
+    with pytest.raises(ValueError):
+        WarmStart.from_csv(path, anchor="edge")
+
+
+def _estimates(path, split_file, offset=3e-4):
+    labels = read_labels(split_file)
+    rows = [f"{i},{float(labels['z01'][i] + offset)!r},2e-4" for i in range(len(labels["z01"]))]
+    path.write_text("\n".join(["index,z01_est,sigma", *rows]) + "\n")
+    return labels
+
+
+def test_run_baseline_from_a_warm_start(split_file, tmp_path):
+    estimates = tmp_path / "estimates.csv"
+    labels = _estimates(estimates, split_file)
+    config = BaselineConfig.from_dict(TINY)
+    warm = WarmStart.from_csv(estimates, half_width=5e-4)
+    out = tmp_path / "warm"
+    assert (
+        run_baseline(config, split_file, out, limit=2, warm_start=warm, log=None)["n_samples"] == 2
+    )
+    for trace in read_traces(out / "traces.jsonl"):
+        guess = labels["z01_guess"][trace["index"]]
+        start = warm.simplex(trace["index"], guess - 5e-3, guess + 5e-3)
+        assert trace["initial_simplex"] == pytest.approx(list(start))
+        assert [e["z01"] for e in trace["evaluations"][:2]] == pytest.approx(list(start))
+    assert yaml.safe_load((out / "run.yaml").read_text())["warm_start"]["half_width"] == 5e-4
+    with pytest.raises(ValueError):
+        run_baseline(config, split_file, out, limit=2, log=None)
+    with pytest.raises(ValueError):
+        other = WarmStart.from_csv(estimates, half_width=1e-3)
+        run_baseline(config, split_file, out, limit=2, warm_start=other, log=None)
+    partial = tmp_path / "partial.csv"
+    partial.write_text("index,z01_est\n0,0.1\n")
+    with pytest.raises(ValueError):
+        run_baseline(config, split_file, tmp_path / "p", warm_start=WarmStart.from_csv(partial))
+
+
+def test_cli_warm_start(split_file, tmp_path, capsys):
+    config = tmp_path / "tiny.yaml"
+    config.write_text(yaml.safe_dump(TINY))
+    estimates = tmp_path / "estimates.csv"
+    _estimates(estimates, split_file)
+    out = tmp_path / "cli-warm"
+    args = ["run", str(config), "--data", str(split_file), "--out", str(out), "--indices", "1"]
+    assert (
+        main([*args, "--warm-start", str(estimates), "--half-width", "4e-4", "--sigmas", "1"]) == 0
+    )
+    capsys.readouterr()
+    info = yaml.safe_load((out / "run.yaml").read_text())["warm_start"]
+    assert (info["half_width"], info["sigmas"]) == (4e-4, 1.0)
+    assert main([*args, "--warm-start", str(estimates), "--half-width", "-1"]) == 1
+    vertex = tmp_path / "cli-vertex"
+    args = ["run", str(config), "--data", str(split_file), "--out", str(vertex), "--indices", "1"]
+    assert main([*args, "--warm-start", str(estimates), "--anchor", "vertex"]) == 0
+    capsys.readouterr()
+    assert yaml.safe_load((vertex / "run.yaml").read_text())["warm_start"]["anchor"] == "vertex"
+    trace = read_traces(vertex / "traces.jsonl")[0]
+    first, second = trace["initial_simplex"]
+    assert trace["evaluations"][0]["z01"] == pytest.approx(first)
+    assert abs(second - first) == pytest.approx(5e-4)

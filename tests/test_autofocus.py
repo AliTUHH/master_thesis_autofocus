@@ -284,3 +284,28 @@ def test_find_focus_probes_the_points_of_the_reference_search(monkeypatch, z_tru
 def test_find_focus_rejects_an_unphysical_search_interval():
     with pytest.raises(ValueError):
         find_focus(torch.zeros((8, 8)), GEOMETRY.with_z01(0.004), confidence=5e-3)
+
+
+def test_find_focus_from_a_warm_start(monkeypatch):
+    z_true = 0.10237
+
+    def fake_asrm(hologram, fresnel_number, settings):
+        z01 = z01_from_fresnel_number(
+            fresnel_number, GEOMETRY.energy_kev, GEOMETRY.z02, GEOMETRY.pixel_size
+        )
+        return SimpleNamespace(final_loss=abs(z01 - z_true))
+
+    monkeypatch.setattr(search_module, "asrm_reconstruct", fake_asrm)
+    cold = find_focus(torch.zeros((8, 8)), GEOMETRY)
+    assert cold.initial_simplex == pytest.approx((0.095, 0.105))
+    warm = find_focus(torch.zeros((8, 8)), GEOMETRY, initial_simplex=(0.1019, 0.1029))
+    assert [e.z01 for e in warm.evaluations[:2]] == pytest.approx([0.1019, 0.1029])
+    assert warm.to_dict()["initial_simplex"] == pytest.approx([0.1019, 0.1029])
+    assert warm.converged and abs(warm.z01 - z_true) < 1e-4
+    assert warm.n_reconstructions < cold.n_reconstructions
+    outside = find_focus(torch.zeros((8, 8)), GEOMETRY, initial_simplex=(0.0950, 0.0960))
+    assert abs(outside.z01 - z_true) < 1e-4
+    assert all(0.095 - 1e-12 <= e.z01 <= 0.105 + 1e-12 for e in outside.evaluations)
+    for bad in [(0.101, 0.100), (0.094, 0.096), (0.1, 0.101, 0.102)]:
+        with pytest.raises(ValueError):
+            find_focus(torch.zeros((8, 8)), GEOMETRY, initial_simplex=bad)
