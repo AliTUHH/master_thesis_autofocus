@@ -474,15 +474,13 @@ def search_figure(run_dir: Path, settings: Settings, out: Path) -> dict | None:
 
 
 MEASURED_ORDER = ("b1-p2", "p2", "b1-p4", "paper-padding")
+"""Runs below ``results/measured`` shown in ``stage3-measured.png``, in this order; the other
+directories there (CNN estimates and warm starts of Stage 5) are not part of it."""
 
 
 def measured_runs(directory: Path) -> dict[str, Path]:
-    """Run directories below ``results/measured`` in the order of :data:`MEASURED_ORDER`."""
-    if not directory.is_dir():
-        return {}
-    found = {d.name: d for d in directory.iterdir() if d.is_dir()}
-    order = [n for n in MEASURED_ORDER if n in found] + sorted(set(found) - set(MEASURED_ORDER))
-    return {n: found[n] for n in order}
+    """The run directories of :data:`MEASURED_ORDER` that exist below ``directory``."""
+    return {n: directory / n for n in MEASURED_ORDER if (directory / n).is_dir()}
 
 
 def run_label(record: dict) -> str:
