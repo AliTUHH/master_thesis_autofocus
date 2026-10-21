@@ -1,0 +1,23 @@
+# paper2-cpu.yaml with padding 4 instead of 2 (arrays of 2048^2 instead of 1024^2 at the
+# 512^2 field of view of cpu-4x), as for the measured holograms. On the CPU a reconstruction
+# takes about 190 s with 3 threads (lab notebook 03, 5.9), so this is for the GPU
+# (docs/maxwell-gpu.md, section 6). Lab notebook 04, section 7: at padding 4 the MFE minimum
+# of test samples 0 and 1 (cells with few photons) moves by -150 and -287 um, that of sample 2
+# by -45 um. Lengths in metres.
+name: paper2-cpu-p4
+reconstruction:
+  schedule: paper2
+  padding_factor: 4.0
+  fade_width: null
+  a0: 1.0
+  update: reference
+  gradient: reference
+  pin_phase: true
+  precision: single
+  device: auto
+search:
+  confidence: 5.0e-3
+  xatol: 1.0e-4
+  fatol: 1.0e6
+  max_evaluations: null
+evaluate_truth: true

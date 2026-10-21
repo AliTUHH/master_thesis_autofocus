@@ -1,0 +1,20 @@
+# paper2-cpu-warm.yaml with padding 4 instead of 2: the warm start of Stage 4 with the
+# padding of paper2-cpu-p4.yaml, for the GPU (docs/maxwell-gpu.md, section 6.2). Lengths in
+# metres.
+name: paper2-cpu-warm-p4
+reconstruction:
+  schedule: paper2
+  padding_factor: 4.0
+  fade_width: null
+  a0: 1.0
+  update: reference
+  gradient: reference
+  pin_phase: true
+  precision: single
+  device: auto
+search:
+  confidence: 5.0e-3
+  xatol: 1.0e-4
+  fatol: 1.0e6
+  max_evaluations: null
+evaluate_truth: false

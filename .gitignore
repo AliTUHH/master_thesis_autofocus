@@ -29,6 +29,9 @@ tmp/
 *.pth
 *.log
 
+# Settings of the Maxwell run kit (copied from cluster/maxwell/config.example.sh)
+cluster/maxwell/config.sh
+
 # IDE / OS
 .vscode/
 .idea/

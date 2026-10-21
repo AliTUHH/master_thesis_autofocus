@@ -2,7 +2,7 @@
 
 from .config import BaselineConfig, ReconstructionConfig, SearchConfig
 from .results import RESULT_FIELDS, read_rows, read_traces, summarize
-from .runner import WarmStart, run_baseline, select_indices
+from .runner import WarmStart, merge_runs, run_baseline, select_indices
 
 __all__ = [
     "RESULT_FIELDS",
@@ -10,6 +10,7 @@ __all__ = [
     "ReconstructionConfig",
     "SearchConfig",
     "WarmStart",
+    "merge_runs",
     "read_rows",
     "read_traces",
     "run_baseline",

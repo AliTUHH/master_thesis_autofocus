@@ -1,0 +1,11 @@
+# Versions of the environment the committed results were computed with (Python 3.12.3,
+# torch 2.14.1+cpu on the 4-core VM of the lab notebook). setup_env.sh installs the package
+# with these constraints; PyTorch itself comes from HOLOFOCUS_TORCH_SPEC. The labels of a
+# split depend on the numpy version (random streams), so keep numpy pinned.
+numpy==2.5.4
+h5py==3.16.0
+PyYAML==6.0.3
+matplotlib==3.11.2
+scipy==1.18.1
+pytest==9.1.1
+ruff==0.17.1

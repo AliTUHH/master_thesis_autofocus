@@ -10,7 +10,9 @@ Outputs in the run directory:
 * ``summary.json``: aggregate accuracy and cost, rewritten after every sample.
 
 Runs are resumable: samples already in ``results.csv`` are skipped, and a run directory
-created with another config, dataset or warm start is refused.
+created with another config, dataset or warm start is refused. A split can be run in
+contiguous chunks (one per task of a job array); :func:`merge_runs` joins them into one run
+directory.
 """
 
 from __future__ import annotations
@@ -38,7 +40,19 @@ from ..dataset.storage import _git_commit, read_config, read_labels
 from ..device import get_device, real_dtype
 from ..yamlconfig import plain
 from .config import BaselineConfig
-from .results import append_row, append_trace, read_rows, summarize
+from .results import append_row, append_trace, read_rows, read_traces, summarize
+
+# Keys of run.yaml that describe where and with what software a run was computed.
+_RUN_META = (
+    "holofocus_version",
+    "git_commit",
+    "torch_version",
+    "device",
+    "threads",
+    "host",
+    "cpu_count",
+    "created_utc",
+)
 
 
 def file_sha256(path: str | Path, chunk: int = 1 << 22) -> str:
@@ -157,13 +171,27 @@ def phase_rmse(result: ASRMResult | None, phase: torch.Tensor | None) -> float |
     return float((result.obj.real - phase.to(result.obj.real.dtype)).square().mean().sqrt())
 
 
-def select_indices(n_samples: int, indices: Sequence[int] | None, limit: int | None) -> list[int]:
-    """``indices`` (validated) or ``range(n_samples)``, cut to the first ``limit``."""
+def select_indices(
+    n_samples: int,
+    indices: Sequence[int] | None,
+    limit: int | None,
+    chunk: tuple[int, int] | None = None,
+) -> list[int]:
+    """``indices`` (validated) or ``range(n_samples)``, cut to the first ``limit``; with
+    ``chunk = (k, n)`` only the k-th (from 0) of n contiguous parts of that selection, whose
+    sizes differ by at most one."""
     chosen = list(range(n_samples)) if indices is None else [int(i) for i in indices]
     bad = [i for i in chosen if not 0 <= i < n_samples]
     if bad:
         raise ValueError(f"indices {bad} outside the split (0 .. {n_samples - 1})")
-    return chosen if limit is None else chosen[:limit]
+    if limit is not None:
+        chosen = chosen[:limit]
+    if chunk is None:
+        return chosen
+    k, n = chunk
+    if not 0 <= k < n:
+        raise ValueError(f"chunk {k} of {n}: the chunk must lie in 0 .. chunks - 1")
+    return chosen[k * len(chosen) // n : (k + 1) * len(chosen) // n]
 
 
 def run_baseline(
@@ -175,16 +203,18 @@ def run_baseline(
     device: str | None = None,
     warm_start: WarmStart | None = None,
     log: Callable[[str], None] | None = print,
+    chunk: tuple[int, int] | None = None,
 ) -> dict:
     """Autofocus every selected sample of the split file ``data``; returns the summary.
 
-    Without ``warm_start`` the search starts from the ends of ``Omega_z`` as in [2].
+    Without ``warm_start`` the search starts from the ends of ``Omega_z`` as in [2]. The
+    selection is that of :func:`select_indices`.
     """
     data, out = Path(data), Path(out)
     dataset_config = read_config(data)
     labels = read_labels(data)
     n_split = len(labels["dz01"])
-    chosen = select_indices(n_split, indices, limit)
+    chosen = select_indices(n_split, indices, limit, chunk)
     if warm_start is not None:
         missing = [i for i in chosen if i not in warm_start.centers]
         if missing:
@@ -228,10 +258,11 @@ def run_baseline(
     done = {row["index"] for row in read_rows(results_file)}
     todo = [i for i in chosen if i not in done]
     if log is not None:
+        part = "" if chunk is None else f" (chunk {chunk[0]} of {chunk[1]})"
         log(
-            f"{identity['split']} split of {dataset_config.name}: {len(chosen)} samples selected, "
-            f"{len(chosen) - len(todo)} done, {len(todo)} to go ({torch_device}, "
-            f"{torch.get_num_threads()} threads)"
+            f"{identity['split']} split of {dataset_config.name}: {len(chosen)} samples "
+            f"selected{part}, {len(chosen) - len(todo)} done, {len(todo)} to go "
+            f"({torch_device}, {torch.get_num_threads()} threads)"
         )
     search = config.search
     with h5py.File(data, "r") as fh:
@@ -299,4 +330,90 @@ def run_baseline(
                 )
     summary = summarize(read_rows(results_file))
     (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    return summary
+
+
+def _relative(path: Path, base: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(base.resolve()))
+    except ValueError:
+        return str(path)
+
+
+def merge_runs(
+    runs: Sequence[str | Path], out: str | Path, log: Callable[[str], None] | None = print
+) -> dict:
+    """Join runs with the same config, dataset and warm start but other samples, e.g. the
+    chunks of a job array, into the run directory ``out``; returns the summary.
+
+    Rows and traces are sorted by sample index; a sample in two runs is refused. ``run.yaml``
+    is that of the first run plus ``merged_from``: the path (relative to ``out`` if inside
+    it), number of samples, software, device and host of every run. ``out`` may contain the
+    runs; an earlier merge there is replaced, a run of its own is refused.
+    """
+    runs, out = [Path(run) for run in runs], Path(out)
+    if not runs:
+        raise ValueError("no runs to merge")
+    infos = []
+    for run in runs:
+        if not (run / "run.yaml").exists():
+            raise ValueError(f"{run} holds no run (no run.yaml)")
+        infos.append(yaml.safe_load((run / "run.yaml").read_text()) or {})
+    key = _run_key(infos[0])
+    other = [str(run) for run, info in zip(runs, infos, strict=True) if _run_key(info) != key]
+    if other:
+        raise ValueError(
+            f"{other} hold runs with another config, dataset or warm start than {runs[0]}"
+        )
+    if (out / "run.yaml").exists():
+        if "merged_from" not in (yaml.safe_load((out / "run.yaml").read_text()) or {}):
+            raise ValueError(f"{out} holds a run of its own; merge into another directory")
+    elif (out / "results.csv").exists():
+        raise ValueError(f"{out} holds results without run.yaml")
+
+    rows, traces, origin, merged_from = [], {}, {}, []
+    for run, info in zip(runs, infos, strict=True):
+        run_rows = read_rows(run / "results.csv")
+        for row in run_rows:
+            if row["index"] in origin:
+                raise ValueError(f"sample {row['index']} is in {origin[row['index']]} and {run}")
+            origin[row["index"]] = run
+        own = {row["index"] for row in run_rows}
+        for trace in read_traces(run / "traces.jsonl"):
+            if trace["index"] in own:
+                traces[trace["index"]] = trace
+        rows.extend(run_rows)
+        merged_from.append(
+            {
+                "run": _relative(run, out),
+                "n_samples": len(run_rows),
+                **{key: info.get(key) for key in _RUN_META},
+            }
+        )
+
+    out.mkdir(parents=True, exist_ok=True)
+    merged = {
+        **infos[0],
+        "merged_from": merged_from,
+        "merged_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+    }
+    (out / "run.yaml").write_text(yaml.safe_dump(merged, sort_keys=False))
+    results_file, traces_file = out / "results.csv", out / "traces.jsonl"
+    results_file.unlink(missing_ok=True)
+    traces_file.unlink(missing_ok=True)
+    for row in sorted(rows, key=lambda r: r["index"]):
+        append_row(results_file, row)
+        if row["index"] in traces:
+            append_trace(traces_file, traces[row["index"]])
+    summary = summarize(read_rows(results_file))
+    (out / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+    if log is not None:
+        for e in merged_from:
+            log(f"{e['run']}: {e['n_samples']} samples ({e['device']}, {e['host']})")
+        indices = sorted(origin)
+        span = f" (indices {indices[0]} .. {indices[-1]})" if indices else ""
+        log(f"{out}: {len(indices)} samples{span} from {len(runs)} runs")
+        untraced = [i for i in indices if i not in traces]
+        if untraced:
+            log(f"warning: no probing trace for samples {untraced}")
     return summary

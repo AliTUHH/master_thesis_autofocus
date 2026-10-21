@@ -23,12 +23,19 @@ def test_yaml_round_trip():
     assert DatasetConfig.from_dict(yaml.safe_load(config.to_yaml())) == config
 
 
-def test_extra_training_data_has_the_physics_of_cpu_4x():
+@pytest.mark.parametrize("name", ["cpu-4x-extra", "cpu-4x-large"])
+def test_extra_training_data_has_the_physics_of_cpu_4x(name):
     main = DatasetConfig.from_yaml(CONFIG_DIR / "cpu-4x.yaml")
-    extra = DatasetConfig.from_yaml(CONFIG_DIR / "cpu-4x-extra.yaml")
+    extra = DatasetConfig.from_yaml(CONFIG_DIR / f"{name}.yaml")
     for section in ("geometry", "sampling", "simulation", "phantoms", "noise"):
         assert getattr(extra, section) == getattr(main, section), section
-    assert extra.seed != main.seed and list(extra.splits) == ["train"]
+    assert list(extra.splits) == ["train"] and not extra.storage.store_phase
+
+
+def test_cpu_4x_datasets_have_their_own_seeds():
+    names = ("cpu-4x", "cpu-4x-extra", "cpu-4x-large")
+    seeds = {DatasetConfig.from_yaml(CONFIG_DIR / f"{name}.yaml").seed for name in names}
+    assert len(seeds) == len(names)
 
 
 def test_exponent_without_dot_is_a_number():
