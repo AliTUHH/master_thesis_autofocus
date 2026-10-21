@@ -1,0 +1,30 @@
+# spectrum-cnn-wide.yaml with the spectrum up to f^2 = 0.25 instead of 0.125 at the same bin
+# width (2048 bins). For the measured cactus needle and Mg wire (Fr 7.0e-3 / 7.5e-3 on the 4x
+# grid) the CTF stays visible up to f^2 = 0.25, and up to 0.125 the spectrum holds only 17-18
+# CTF periods (Laborbuch 05). Stage 5 trains both variants per geometry and keeps the one with
+# the smaller validation MAE.
+name: spectrum-cnn-wide-hf
+target_scale: 5.0e-3
+representation:
+  kind: spectrum
+  bins: 2048
+  f2_max: 0.25
+model:
+  channels: [32, 64, 128, 128]
+  kernel_size: 7
+  pool_to: 16
+  hidden: 128
+  dropout: 0.1
+  min_sigma: 1.0e-3       # 5 um
+training:
+  epochs: 100
+  batch_size: 32
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  warmup_epochs: 2
+  beta: 0.5               # beta-NLL
+  augment: false          # the radial average is already rotation and flip invariant
+  limit: null
+  patience: null
+  seed: 0
+device: auto
