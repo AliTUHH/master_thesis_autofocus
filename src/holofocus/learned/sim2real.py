@@ -15,7 +15,8 @@
   time per estimate;
 * :func:`corner_spectra`, :func:`fit_blurred_white` and :func:`fit_lorentzian`: the noise
   power spectrum of the background corners of a measured hologram and the fits behind
-  :data:`PSF_SIGMA`, :data:`FLAT_FIELD_CUTOFF` and the residuals of :data:`MEASURED_MODELS`.
+  :data:`PSF_SIGMA`, :data:`FLAT_FIELD_CUTOFF` and the residuals of :data:`MEASURED_MODELS`;
+  :func:`blurred_white_spectrum` and :func:`lorentzian_spectrum` evaluate the fits.
 
 Lengths in metres unless a key ends in ``_um`` or ``_mm``.
 """
@@ -438,16 +439,38 @@ def fit_lorentzian(f: Sequence[float], nps: Sequence[float], grid: int = 512) ->
     residual of :func:`holofocus.noise.flat_field_residual` (RMS ``rho``) plus white noise of
     ``N`` photons per pixel, fitted by a grid over ``cutoff``. ``mean(L)`` is taken over a
     ``grid^2`` frequency grid as in the simulator; ``photons`` is ``None`` without white part.
+    The white part trades off against ``cutoff`` and ``rho``: on one 64 x 64 corner the cutoff
+    is good to about +-40 %, on the mean spectrum of four 128 x 128 corners to about +-13 %.
     """
     f, nps = np.asarray(f, dtype=float), np.asarray(nps, dtype=float)
-    freq = np.fft.fftfreq(grid)
-    f_grid = np.sqrt(freq[:, None] ** 2 + freq[None, :] ** 2)
+    f_grid = _radial_frequencies(grid)
     best = None
     for cutoff in np.exp(np.linspace(np.log(0.02), np.log(2.0), 233)):
-        mean = float((1 / (1 + (f_grid / cutoff) ** 2)).mean())
-        a, b, rms = _two_component_fit(nps, 1 / (1 + (f / cutoff) ** 2) / mean)
+        a, b, rms = _two_component_fit(nps, _lorentzian(f, cutoff, f_grid))
         if best is None or rms < best["log_rms"]:
             best = {"cutoff": float(cutoff), "rho": float(np.sqrt(a)), "white": b, "log_rms": rms}
     white = best.pop("white")
     best["photons"] = float(1 / white) if white > 0 else None
     return best
+
+
+def _radial_frequencies(grid: int) -> np.ndarray:
+    freq = np.fft.fftfreq(grid)
+    return np.sqrt(freq[:, None] ** 2 + freq[None, :] ** 2)
+
+
+def _lorentzian(f: np.ndarray, cutoff: float, f_grid: np.ndarray) -> np.ndarray:
+    return 1 / (1 + (f / cutoff) ** 2) / float((1 / (1 + (f_grid / cutoff) ** 2)).mean())
+
+
+def blurred_white_spectrum(f: Sequence[float], fit: Mapping) -> np.ndarray:
+    """The noise power spectrum of a :func:`fit_blurred_white` result at ``f``."""
+    f = np.asarray(f, dtype=float)
+    return fit["A"] * np.exp(-4 * np.pi**2 * fit["sigma"] ** 2 * f**2) + fit["B"]
+
+
+def lorentzian_spectrum(f: Sequence[float], fit: Mapping, grid: int = 512) -> np.ndarray:
+    """The noise power spectrum of a :func:`fit_lorentzian` result at ``f``."""
+    f = np.asarray(f, dtype=float)
+    white = 1 / fit["photons"] if fit["photons"] else 0.0
+    return fit["rho"] ** 2 * _lorentzian(f, fit["cutoff"], _radial_frequencies(grid)) + white

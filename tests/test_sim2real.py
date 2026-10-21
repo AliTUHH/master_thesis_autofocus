@@ -14,10 +14,12 @@ from holofocus.learned.sim2real import (
     PERTURBATIONS,
     RadialPower,
     binning_phases,
+    blurred_white_spectrum,
     corner_spectra,
     feature_distribution,
     fit_blurred_white,
     fit_lorentzian,
+    lorentzian_spectrum,
     measured_estimate,
     paired_shifts,
     percentile_rank,
@@ -192,19 +194,22 @@ def test_measured_estimate():
 
 def test_noise_fits_recover_exact_spectra():
     f = np.linspace(0.02, 0.5, 48)
-    fit = fit_blurred_white(f, 0.03 * np.exp(-4 * np.pi**2 * 1.6**2 * f**2) + 2.5e-4)
+    nps = 0.03 * np.exp(-4 * np.pi**2 * 1.6**2 * f**2) + 2.5e-4
+    fit = fit_blurred_white(f, nps)
     assert fit["sigma"] == pytest.approx(1.6, abs=0.006)
     assert fit["A"] == pytest.approx(0.03, rel=1e-3) and fit["B"] == pytest.approx(2.5e-4, rel=1e-3)
     assert fit["white_rms"] == pytest.approx(math.sqrt(2.5e-4), rel=1e-3)
+    np.testing.assert_allclose(blurred_white_spectrum(f, fit), nps, rtol=1e-3)
 
     freq = np.fft.fftfreq(512)
     lorentz = 1 / (1 + (np.hypot(freq[:, None], freq[None, :]) / 0.18) ** 2)
     f = np.linspace(0.03, 0.5, 16)
-    shape = 1 / (1 + (f / 0.18) ** 2) / lorentz.mean()
-    fit = fit_lorentzian(f, 0.025**2 * shape + 1e-4)
+    nps = 0.025**2 / (1 + (f / 0.18) ** 2) / lorentz.mean() + 1e-4
+    fit = fit_lorentzian(f, nps)
     assert fit["cutoff"] == pytest.approx(0.18, rel=0.02)
     assert fit["rho"] == pytest.approx(0.025, rel=0.03)
     assert fit["photons"] == pytest.approx(1e4, rel=0.1)
+    np.testing.assert_allclose(lorentzian_spectrum(f, fit), nps, rtol=0.02)
 
 
 def test_corner_spectra_measure_blur_white_noise_and_residual():
