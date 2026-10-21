@@ -59,6 +59,16 @@ def test_matched_datasets_follow_the_measured_setup(name):
         assert getattr(config, section) == getattr(main, section), section
 
 
+@pytest.mark.parametrize("name", list(MEASURED_SAMPLES))
+def test_large_matched_datasets_have_the_physics_of_the_cpu_sets(name):
+    cpu = DatasetConfig.from_yaml(CONFIG_DIR / f"matched-{name}.yaml")
+    large = DatasetConfig.from_yaml(CONFIG_DIR / f"matched-{name}-large.yaml")
+    assert large.name == f"matched-{name}-large"
+    for section in ("geometry", "sampling", "simulation", "phantoms", "noise"):
+        assert getattr(large, section) == getattr(cpu, section), section
+    assert large.splits == {"train": 50000} and not large.storage.store_phase
+
+
 def test_exponent_without_dot_is_a_number():
     # YAML 1.1 (PyYAML) reads 1e5 as a string; the loader converts it.
     config = DatasetConfig.from_dict(yaml.safe_load("noise: {photons_range: [1e3, 1e5]}"))

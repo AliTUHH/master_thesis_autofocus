@@ -1,0 +1,41 @@
+# 50000 training samples matched to the measured cactus needle for GPU runs
+# (docs/maxwell-gpu.md, section 7.1): the physics of matched-cactus_needle.yaml
+# (tests/test_dataset_config.py checks that it matches) with another seed, so the samples are
+# independent of the 6000 of the CPU set. Validation and test stay the splits of
+# matched-cactus_needle.yaml. No phase maps, about 33 GB.
+name: matched-cactus_needle-large
+seed: 20261043
+geometry:
+  energy_kev: 17.0
+  z02: 19.652
+  z01_guess: 0.2861
+  z01_guess_range: null
+  detector_pixel_size: 6.5e-6
+  detector_shape: [2048, 2048]
+  binning: 4
+sampling:
+  dz01_range: [-5.0e-3, 5.0e-3]
+simulation:
+  padding_margin: 1.0
+  oversample: 2
+  a0_range: [1.0, 1.0]
+  device: auto
+  precision: single
+phantoms:
+  types: {triangle: 1.0, cell: 1.0, ball: 1.0, mixed: 1.0}
+  delta_beta: 200.0
+  phase_shift_range: [0.5, 2.0]
+  size_range: [0.15, 0.6]
+  margin: 0.05
+  supersample: 4
+noise:
+  model: poisson_gaussian
+  photons_range: [1.0e3, 1.0e5]
+  read_noise: 2.0
+storage:
+  store_phase: false
+  store_clean: false
+  compression: gzip
+  compression_level: 4
+splits:
+  train: 50000
