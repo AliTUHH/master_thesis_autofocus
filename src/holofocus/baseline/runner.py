@@ -10,11 +10,12 @@ Outputs in the run directory:
 * ``summary.json``: aggregate accuracy and cost, rewritten after every sample.
 
 Runs are resumable: samples already in ``results.csv`` are skipped, and a run directory
-created with another config or dataset is refused.
+created with another config, dataset or warm start is refused.
 """
 
 from __future__ import annotations
 
+import csv
 import dataclasses
 import datetime as dt
 import hashlib
@@ -22,6 +23,7 @@ import json
 import os
 import platform
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import h5py
@@ -47,7 +49,8 @@ def file_sha256(path: str | Path, chunk: int = 1 << 22) -> str:
     return digest.hexdigest()
 
 
-def _dataset_identity(path: Path) -> dict:
+def dataset_identity(path: str | Path) -> dict:
+    """Path, SHA-256, split, size, seed and generator commit of a split file."""
     with h5py.File(path, "r") as fh:
         attrs = fh.attrs
         identity = {
@@ -63,9 +66,61 @@ def _dataset_identity(path: Path) -> dict:
 
 
 def _run_key(info: dict) -> tuple:
-    """What must match to continue a run: method, settings and dataset content."""
+    """What must match to continue a run: method, settings, dataset content and warm start."""
     dataset = info.get("dataset") or {}
-    return (info.get("config"), info.get("asrm_settings"), dataset.get("sha256"))
+    return (
+        info.get("config"),
+        info.get("asrm_settings"),
+        dataset.get("sha256"),
+        info.get("warm_start"),
+    )
+
+
+@dataclass(frozen=True)
+class WarmStart:
+    """Initial simplexes around point estimates of ``z01``, e.g. from the learned model.
+
+    Sample ``i`` starts from ``(c_i - w_i, c_i + w_i)`` with the estimate ``c_i`` and the half
+    width ``w_i = max(half_width, sigmas * sigma_i)``; the pair is moved inside ``Omega_z``
+    if it sticks out. ``source`` is a CSV with the columns ``index``, ``z01_est`` and (for
+    ``sigmas > 0``) ``sigma``, both in metres.
+    """
+
+    source: str
+    sha256: str
+    half_width: float
+    sigmas: float
+    centers: dict[int, float]
+    sigma: dict[int, float]
+
+    @classmethod
+    def from_csv(cls, path: str | Path, half_width: float = 5e-4, sigmas: float = 0.0):
+        if half_width <= 0 or sigmas < 0:
+            raise ValueError("half_width must be positive and sigmas non-negative")
+        centers, sigma = {}, {}
+        with open(path, newline="") as fh:
+            for row in csv.DictReader(fh):
+                index = int(row["index"])
+                centers[index] = float(row["z01_est"])
+                if sigmas > 0:
+                    sigma[index] = float(row["sigma"])
+        return cls(str(path), file_sha256(path), float(half_width), float(sigmas), centers, sigma)
+
+    def identity(self) -> dict:
+        return {
+            "source": self.source,
+            "sha256": self.sha256,
+            "half_width": self.half_width,
+            "sigmas": self.sigmas,
+        }
+
+    def simplex(self, index: int, lower: float, upper: float) -> tuple[float, float]:
+        width = self.half_width
+        if self.sigmas > 0:
+            width = max(width, self.sigmas * self.sigma[index])
+        width = min(width, 0.5 * (upper - lower))
+        center = min(max(self.centers[index], lower + width), upper - width)
+        return (center - width, center + width)
 
 
 def phase_rmse(result: ASRMResult | None, phase: torch.Tensor | None) -> float | None:
@@ -91,20 +146,28 @@ def run_baseline(
     indices: Sequence[int] | None = None,
     limit: int | None = None,
     device: str | None = None,
+    warm_start: WarmStart | None = None,
     log: Callable[[str], None] | None = print,
 ) -> dict:
-    """Autofocus every selected sample of the split file ``data``; returns the summary."""
+    """Autofocus every selected sample of the split file ``data``; returns the summary.
+
+    Without ``warm_start`` the search starts from the ends of ``Omega_z`` as in [2].
+    """
     data, out = Path(data), Path(out)
     dataset_config = read_config(data)
     labels = read_labels(data)
     n_split = len(labels["dz01"])
     chosen = select_indices(n_split, indices, limit)
+    if warm_start is not None:
+        missing = [i for i in chosen if i not in warm_start.centers]
+        if missing:
+            raise ValueError(f"warm start {warm_start.source} has no estimate for {missing}")
     binning = dataset_config.geometry.binning
     settings = config.reconstruction.settings(binning)
     torch_device = get_device(device or config.reconstruction.device)
     dtype = real_dtype(config.reconstruction.precision)
 
-    identity = _dataset_identity(data)
+    identity = dataset_identity(data)
     run_info = {
         "config": config.to_dict(),
         "asrm_settings": plain(dataclasses.asdict(settings)),
@@ -112,6 +175,8 @@ def run_baseline(
         "dataset_name": dataset_config.name,
         "binning": binning,
     }
+    if warm_start is not None:
+        run_info["warm_start"] = warm_start.identity()
     out.mkdir(parents=True, exist_ok=True)
     run_file = out / "run.yaml"
     if run_file.exists():
@@ -151,6 +216,10 @@ def run_baseline(
             z01_true = float(labels["z01"][index])
             z01_guess = float(labels["z01_guess"][index])
             geometry = dataset_config.geometry.at(z01_guess)
+            simplex = None
+            if warm_start is not None:
+                bounds = (z01_guess - search.confidence, z01_guess + search.confidence)
+                simplex = warm_start.simplex(index, *bounds)
             result = find_focus(
                 hologram,
                 geometry,
@@ -159,6 +228,7 @@ def run_baseline(
                 xatol=search.xatol,
                 fatol=search.fatol,
                 max_evaluations=search.max_evaluations,
+                initial_simplex=simplex,
             )
             mfe_true, truth = None, None
             if config.evaluate_truth:

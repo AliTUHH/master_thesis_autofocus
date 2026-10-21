@@ -4,6 +4,9 @@
 
     holofocus-baseline run configs/baseline/paper2-cpu.yaml --data data/cpu-4x/test.h5 \\
         --out runs/baseline/cpu-4x-test --limit 48
+    holofocus-baseline run configs/baseline/paper2-cpu-warm.yaml --data data/cpu-4x/test.h5 \\
+        --out runs/baseline/cpu-4x-test-warm --limit 48 \\
+        --warm-start results/learned/spectrum-cnn/test/predictions.csv --half-width 5e-4
     holofocus-baseline summary runs/baseline/cpu-4x-test
 """
 
@@ -19,7 +22,7 @@ import torch
 
 from .config import BaselineConfig
 from .results import read_rows, summarize
-from .runner import run_baseline
+from .runner import WarmStart, run_baseline
 
 
 def run(args: argparse.Namespace) -> int:
@@ -27,6 +30,9 @@ def run(args: argparse.Namespace) -> int:
         torch.set_num_threads(args.threads)
     config = BaselineConfig.from_yaml(args.config)
     try:
+        warm_start = None
+        if args.warm_start is not None:
+            warm_start = WarmStart.from_csv(args.warm_start, args.half_width, args.sigmas)
         summary = run_baseline(
             config,
             args.data,
@@ -34,6 +40,7 @@ def run(args: argparse.Namespace) -> int:
             indices=args.indices,
             limit=args.limit,
             device=args.device,
+            warm_start=warm_start,
             log=lambda msg: print(msg, flush=True),
         )
     except ValueError as exc:
@@ -66,6 +73,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     go.add_argument("--indices", type=int, nargs="+", help="sample indices (default: all)")
     go.add_argument("--device", help="cpu, cuda, cuda:1 or auto (default: from the config)")
     go.add_argument("--threads", type=int, help="torch CPU threads")
+    go.add_argument(
+        "--warm-start",
+        type=Path,
+        help="CSV with index, z01_est (and sigma) per sample: start the simplex around it",
+    )
+    go.add_argument(
+        "--half-width", type=float, default=5e-4, help="warm-start half width in m (5e-4)"
+    )
+    go.add_argument(
+        "--sigmas", type=float, default=0.0, help="widen the half width to this many sigma (0)"
+    )
     go.set_defaults(func=run)
     show = sub.add_parser("summary", help="print the summary of a run directory")
     show.add_argument("run", type=Path)

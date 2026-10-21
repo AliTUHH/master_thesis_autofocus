@@ -1,0 +1,21 @@
+# Warm-started classical autofocus (Stage 4): the method of paper2-cpu.yaml, unchanged, with
+# the initial simplex taken from a learned estimate (holofocus-baseline run --warm-start).
+# Omega_z = z01_guess +- 5 mm still bounds the search. The extra reconstruction at the true
+# z01 is skipped: it does not depend on the start and is already in the raw run.
+name: paper2-cpu-warm
+reconstruction:
+  schedule: paper2
+  padding_factor: 2.0
+  fade_width: null
+  a0: 1.0
+  update: reference
+  gradient: reference
+  pin_phase: true
+  precision: single
+  device: auto
+search:
+  confidence: 5.0e-3
+  xatol: 1.0e-4
+  fatol: 1.0e6
+  max_evaluations: null
+evaluate_truth: false
