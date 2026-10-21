@@ -1,0 +1,19 @@
+# CI smoke test of the learned autofocus on configs/dataset/ci.yaml (128^2 pixels, 32
+# training samples): the spectrum CNN of spectrum-cnn.yaml, smaller and for 3 epochs.
+name: ci
+target_scale: 5.0e-3
+representation:
+  kind: spectrum
+  bins: 128
+  f2_max: 0.25
+model:
+  channels: [8, 16]
+  kernel_size: 5
+  pool_to: 4
+  hidden: 16
+training:
+  epochs: 3
+  batch_size: 8
+  warmup_epochs: 1
+  seed: 0
+device: cpu

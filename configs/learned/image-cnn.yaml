@@ -1,0 +1,28 @@
+# Learned autofocus (Stage 4): 2-D CNN on the hologram itself.
+#
+# Input: the 512^2 hologram (configs/dataset/cpu-4x.yaml) binned 2x2 to 256^2 and
+# standardized; the CTF minima up to f^2 = 0.0625 cycles^2/px^2 of the 512^2 grid (about 40
+# rings) stay below the new Nyquist frequency. Random rotations by 90 degrees and flips.
+# Output: mean and variance of dz01 / 5 mm (Omega_z of [2]). Lengths in metres.
+name: image-cnn
+target_scale: 5.0e-3
+representation:
+  kind: image
+  binning: 2
+model:
+  channels: [16, 32, 64, 128]
+  hidden: 128
+  dropout: 0.1
+  min_sigma: 1.0e-3       # 5 um
+training:
+  epochs: 40
+  batch_size: 32
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  warmup_epochs: 2
+  beta: 0.5               # beta-NLL
+  augment: true
+  limit: null
+  patience: null
+  seed: 0
+device: auto
