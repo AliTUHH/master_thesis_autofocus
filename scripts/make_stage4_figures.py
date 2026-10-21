@@ -610,7 +610,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--quick", action="store_true", help="low resolution (CI)")
-    parser.add_argument("--main", type=Path, default=RESULTS / "learned" / "spectrum-cnn")
+    parser.add_argument("--main", type=Path, default=RESULTS / "learned" / "spectrum-cnn-wide")
     parser.add_argument(
         "--finals",
         type=Path,

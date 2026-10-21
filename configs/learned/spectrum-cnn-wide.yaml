@@ -1,5 +1,7 @@
 # spectrum-cnn.yaml with twice the channels (450k instead of 179k parameters): the best
-# variant of the Stage 4 study at 2000 training samples (results/learned/study/spectrum-wide).
+# variant of the Stage 4 study at 2000 training samples (results/learned/study/spectrum-wide)
+# and, by validation MAE on 10000 samples, the main model of Stage 4
+# (results/learned/spectrum-cnn-wide).
 name: spectrum-cnn-wide
 target_scale: 5.0e-3
 representation:
