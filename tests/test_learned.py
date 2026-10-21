@@ -352,11 +352,13 @@ def test_cli(splits, tmp_path, capsys):
     args = ["train", str(CI_LEARNED), "--train", str(splits["train"]), "--val", str(splits["val"])]
     threads = torch.get_num_threads()
     try:
-        assert main([*args, "--out", str(run), "--limit", "8", "--threads", "1"]) == 0
+        options = ["--limit", "8", "--threads", "1", "--seed", "3"]
+        assert main([*args, "--out", str(run), *options]) == 0
         assert torch.get_num_threads() == 1
     finally:
         torch.set_num_threads(threads)
     assert yaml.safe_load((run / "run.yaml").read_text())["n_train"] == 8
+    assert yaml.safe_load((run / "config.yaml").read_text())["training"]["seed"] == 3
     two = [str(splits["train"]), str(splits["test"])]
     both = tmp_path / "two-files"
     assert (

@@ -36,9 +36,10 @@ def _log(msg: str) -> None:
 
 def train(args: argparse.Namespace) -> int:
     config = LearnedConfig.from_yaml(args.config)
-    if args.limit is not None:
+    overrides = {k: v for k, v in (("limit", args.limit), ("seed", args.seed)) if v is not None}
+    if overrides:
         config = dataclasses.replace(
-            config, training=dataclasses.replace(config.training, limit=args.limit)
+            config, training=dataclasses.replace(config.training, **overrides)
         )
     try:
         summary = train_model(
@@ -113,6 +114,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     tr.add_argument("--val", type=Path, required=True, help="validation split file")
     tr.add_argument("--out", type=Path, required=True, help="run directory")
     tr.add_argument("--limit", type=int, help="only the first N training samples")
+    tr.add_argument("--seed", type=int, help="training seed (default: from the config)")
     tr.add_argument("--device", help="cpu, cuda, cuda:1 or auto (default: from the config)")
     tr.add_argument("--overwrite", action="store_true", help="replace a trained model in --out")
     tr.add_argument("--threads", type=int, help="torch CPU threads")
