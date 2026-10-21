@@ -233,18 +233,25 @@ python scripts/run_stage3_experiments.py bias --data data/cpu-4x/test.h5 --indic
 python scripts/run_stage3_experiments.py --iteration-scale 4 bias --data data/cpu-4x/test.h5 \
     --indices 2 --variants grid-nofilter --out results/bias/iterations-4x
 # padding: five-point MFE curves of the spider hair (p = 2, p = 2 with the L2 weight x 2/3,
-# p = 7) and the synthetic scan with p = 4 and with the L2 compensation
+# 1022 px arrays, p = 3, p = 7) and the synthetic scan with p = 4, with the L2 compensation
+# and on 1022 px arrays
 python scripts/run_stage3_experiments.py curves --holograms DIR --samples spider_hair \
     --binning 1 --padding 2 --points 5 --half-range 1e-3 --out results/padding/p2
 python scripts/run_stage3_experiments.py --l2-scale 0.6667 curves --holograms DIR \
     --samples spider_hair --binning 1 --padding 2 --points 5 --half-range 1e-3 \
     --out results/padding/p2-l2
 python scripts/run_stage3_experiments.py curves --holograms DIR --samples spider_hair \
+    --binning 1 --padding 1.99609375 --points 5 --half-range 1e-3 --out results/padding/p2-1022
+python scripts/run_stage3_experiments.py curves --holograms DIR --samples spider_hair \
+    --binning 1 --padding 3 --points 5 --half-range 1e-3 --out results/padding/p3
+python scripts/run_stage3_experiments.py curves --holograms DIR --samples spider_hair \
     --binning 1 --padding 7 --points 5 --half-range 1e-3 --out results/padding/p7
 python scripts/run_stage3_experiments.py bias --data data/cpu-4x/test.h5 --indices 2 \
     --variants noisy --padding 4 --out results/padding/bias-p4
 python scripts/run_stage3_experiments.py --l2-scale 0.6667 bias --data data/cpu-4x/test.h5 \
     --indices 2 --variants noisy --out results/padding/bias-p2-l2
+python scripts/run_stage3_experiments.py bias --data data/cpu-4x/test.h5 --indices 2 \
+    --variants noisy --padding 1.99609375 --out results/padding/bias-p2-1022
 # figures and stage3-metrics.json from results/
 python scripts/make_stage3_figures.py --data data/cpu-4x/test.h5
 python scripts/make_stage3_figures.py --quick --out /tmp/figures   # smoke test (CI)
@@ -261,7 +268,10 @@ Table 3 (`grid-nofilter`). `--l2-scale` multiplies the L2 weight on the absorpti
 stage. The L2 step is normalized by the norm of the absorption over the whole padded array,
 which holds 2×2 mirrored copies of the field of view at padding 2 and the 3×3 block at
 padding 4 or more; at padding 2 the per-pixel step is therefore 3/2 times larger, and
-`--l2-scale 0.6667` compensates that. The phase at
+`--l2-scale 0.6667` compensates that. `--padding` also takes non-integer factors:
+`1.99609375` gives arrays of 1022 px for the 512 px field of view of stages 2 and 3, the
+period 2n − 2 of the mirror padding (which does not repeat the edge pixel), so the periodic
+FFT continues the mirrored copies without a seam (lab notebook 03, section 5.8). The phase at
 the estimate (`<sample>-phase.npy`) is not tracked in git; without it the phase panels of
 `stage3-measured.png` stay empty.
 
@@ -275,7 +285,8 @@ results/measured/b1-p4/         the same with padding 4 (spider hair, tooth)
 results/focus-curves/           synthetic-<index>.json, measured-<sample>.json
 results/bias/                   bias-<index>.json (MFE scans for four data models)
 results/bias/iterations-4x/     the filter-free variant with four times the iterations
-results/padding/                spider-hair curves p2, p2-l2, p7; synthetic scans bias-p4, bias-p2-l2
+results/padding/                spider-hair curves (p2, p2-l2, p2-1022, p3, p7) and MFE scans
+                                of sample 2 (bias-p4, bias-p2-l2, bias-p2-1022)
 results/crosscheck/             reports of scripts/crosscheck_asrm_holowizard.py
 ```
 
