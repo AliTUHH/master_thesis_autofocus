@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import math
 from pathlib import Path
@@ -51,6 +52,10 @@ def test_repository_configs():
     assert [s.iterations for s in settings.stages] == [700, 300, 500]
     assert (settings.fade_width, settings.padding_factor) == (20, 2.0)
     assert (paper.search.confidence, paper.search.xatol) == (5e-3, 1e-4)
+    p4 = BaselineConfig.from_yaml(ROOT / "configs" / "baseline" / "paper2-cpu-p4.yaml")
+    assert p4.reconstruction.padding_factor == 4.0
+    assert dataclasses.replace(p4.reconstruction, padding_factor=2.0) == paper.reconstruction
+    assert (p4.search, p4.evaluate_truth) == (paper.search, paper.evaluate_truth)
     ci = BaselineConfig.from_yaml(ROOT / "configs" / "baseline" / "ci.yaml")
     ci_settings = ci.reconstruction.settings(16)
     assert [s.down_sampling for s in ci_settings.stages] == [1, 1, 1]

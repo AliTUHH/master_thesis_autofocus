@@ -1,7 +1,7 @@
 # Extra training samples for Stage 4: the physics of cpu-4x.yaml (geometry, sampling,
 # simulation, phantoms, noise; tests/test_dataset_config.py checks that they match) with
 # another seed, so the samples are independent of the cpu-4x splits. Only a train split;
-# the phase is not stored (not needed for training, halves the file).
+# the phase is not stored (not needed for training; 0.68 instead of 0.73 MB per sample).
 name: cpu-4x-extra
 seed: 20261022
 geometry:
