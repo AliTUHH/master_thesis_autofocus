@@ -100,7 +100,8 @@ def _short(name: str) -> str:
 
 def _percent(x: float) -> str:
     """A percentile as text, with one decimal where rounding would give 0 or 100."""
-    return f"{x:.1f}" if 0 < x < 0.5 or 99.5 <= x < 100 else f"{x:.0f}"
+    text = f"{x:.0f}"
+    return f"{x:.1f}" if (text == "0" and x > 0) or (text == "100" and x < 100) else text
 
 
 def _point(ax, x, y, key: str, filled: bool = True, **kwargs) -> None:
