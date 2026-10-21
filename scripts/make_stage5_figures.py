@@ -128,7 +128,7 @@ def measured_figure(measured: Path, out: Path, dpi: int) -> dict | None:
         1,
         2,
         figsize=(12, 1.4 + 1.45 * len(names)),
-        width_ratios=[2.3, 1],
+        width_ratios=[2.2, 1.1],
         sharey=True,
         layout="constrained",
     )
@@ -187,7 +187,16 @@ def measured_figure(measured: Path, out: Path, dpi: int) -> dict | None:
     ax.set_xlabel("z01 - z01 of [2] (mm); grey: guess +- 5 mm")
     ax.grid(axis="x", alpha=0.3)
     at.set_xscale("log")
-    at.set_xlabel("time per autofocus (s); ours: CPU, 3 threads")
+    threads = []
+    groups = ((("cnn",), "CNN"), (("b1_p4", "warm"), "padding 4"), (("b1_p2",), "padding 2"))
+    for keys, label in groups:
+        counts = sorted({rows[n].get(f"{k}_threads") for n in names for k in keys} - {None})
+        if counts:
+            threads.append(f"{label}: {'/'.join(str(c) for c in counts)}")
+    at.set_xlabel(
+        "time per autofocus (s)" + (f"\nCPU threads, {', '.join(threads)}" if threads else ""),
+        fontsize=9,
+    )
     at.grid(axis="x", alpha=0.3, which="both")
     _legend(fig, [ax, at], 4)
     _save(fig, out / "stage5-measured.png", dpi)

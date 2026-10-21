@@ -488,6 +488,7 @@ def cmd_compare(args) -> None:
             "cnn_minus_paper2_um": best["references"]["paper2_nm"]["distance_um"],
             "cnn_z_paper2": best["references"]["paper2_nm"]["z_score"],
             "cnn_ms": 1e3 * best["seconds_per_estimate"]["median"],
+            "cnn_threads": cnn.get("threads"),
             "cnn_phase_std_um": _get(best, "binning_phases", "std_um", default=float("nan")),
             "test_mae_um": test["error_um"]["mae"],
             "test_median_abs_um": test["error_um"]["median_abs"],
@@ -508,6 +509,7 @@ def cmd_compare(args) -> None:
             row[f"{key}_minus_paper2_um"] = (z - sample.z01_nm) * 1e6
             row[f"{key}_reconstructions"] = result["n_reconstructions"]
             row[f"{key}_seconds"] = result["seconds"]
+            row[f"{key}_threads"] = cold[key].get("threads")
         if "b1_p4" in cold:
             z = cold["b1_p4"]["result"]["z01"]
             row["cnn_minus_b1_p4_um"] = (cnn["z01_est"] - z) * 1e6
