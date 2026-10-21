@@ -28,9 +28,14 @@ Usage::
     python scripts/run_stage5_study.py spectra --holograms DIR
     python scripts/run_stage5_study.py compare
     python scripts/run_stage5_study.py noise --holograms DIR
+    # models trained elsewhere (docs/maxwell-gpu.md, 7.1), against the baselines of results/
+    python scripts/run_stage5_study.py --learned L measured --holograms DIR --out M/cnn
+    python scripts/run_stage5_study.py --learned L compare --cnn M/cnn --out M
 
 ``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365.
-``measured`` and ``perturb`` skip outputs that exist; the others rewrite theirs.
+``perturb`` reuses perturbed splits and predictions that still match the config and the model;
+the other commands rewrite their outputs. The warm start (``run_stage3_experiments.py measured
+--warm-start``) records the SHA-256 of the ``measured`` output it starts from.
 """
 
 from __future__ import annotations
@@ -145,9 +150,6 @@ def baseline_estimates(measured: Path, name: str) -> dict[str, float]:
 def cmd_measured(args) -> None:
     for name in args.samples:
         target = args.out / f"{name}.json"
-        if target.exists():
-            print(f"{name}: {target} exists, skipped")
-            continue
         sample = MEASURED_SAMPLES[name]
         start = time.perf_counter()
         hologram = load_measured(args.holograms, sample, BINNING)
@@ -436,9 +438,11 @@ def _get(record: dict, *keys, default=None):
 
 def cmd_compare(args) -> None:
     rows, details = [], {}
+    cnn_dir = args.cnn or args.measured / "cnn"
+    out = args.out or args.measured
     for name in args.samples:
         sample = MEASURED_SAMPLES[name]
-        cnn_path = args.measured / "cnn" / f"{name}.json"
+        cnn_path = cnn_dir / f"{name}.json"
         if not cnn_path.exists():
             print(f"{name}: no CNN estimate, skipped")
             continue
@@ -501,13 +505,13 @@ def cmd_compare(args) -> None:
             if "warm" in cold:
                 row["warm_minus_b1_p4_um"] = (cold["warm"]["result"]["z01"] - z) * 1e6
         rows.append(row)
-        details[name] = {"row": row, "cnn": cnn_path.name, "test_summary": str(run / "test")}
+        details[name] = {"row": row, "cnn": str(cnn_path), "test_summary": str(run / "test")}
     if not rows:
         raise SystemExit("no sample with a CNN estimate")
     fields = list(dict.fromkeys(k for r in rows for k in r))
     full = [{k: r.get(k, "") for k in fields} for r in rows]
-    write_csv(args.measured / "comparison.csv", full)
-    write_json(args.measured / "comparison.json", {"samples": details, **environment()})
+    write_csv(out / "comparison.csv", full)
+    write_json(out / "comparison.json", {"samples": details, **environment()})
     for r in rows:
         print(
             f"{r['sample']}: CNN {r['cnn_mm']:.3f} mm ({r['cnn_minus_paper2_um']:+.0f} um from [2]"
@@ -602,6 +606,8 @@ def main() -> None:
 
     co = sub.add_parser("compare", help="all estimates on the measured holograms")
     co.add_argument("--samples", **samples)
+    co.add_argument("--cnn", type=Path, help="CNN estimates (default: <measured>/cnn)")
+    co.add_argument("--out", type=Path, help="comparison.{csv,json} (default: <measured>)")
     co.set_defaults(func=cmd_compare)
 
     no = sub.add_parser("noise", help="noise spectra of the background corners")
