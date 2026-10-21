@@ -23,7 +23,7 @@ All commands skip outputs that exist already. Usage::
     python scripts/run_stage3_experiments.py bias --data data/cpu-4x/test.h5 --indices 2 \\
         --out results/bias
     python scripts/run_stage3_experiments.py --l2-scale 0.6667 bias --data data/cpu-4x/test.h5 \\
-        --indices 2 --variants noisy --out results/padding/p2-l2
+        --indices 2 --variants noisy --out results/padding/bias-p2-l2
 
 ``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365.
 """
