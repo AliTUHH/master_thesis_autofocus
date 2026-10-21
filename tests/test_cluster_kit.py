@@ -96,7 +96,7 @@ def test_submit_dry_run_builds_the_sbatch_command(tmp_path):
     assert result.returncode == 0, result.stderr
     command = result.stdout
     for part in (
-        "sbatch",
+        "sbatch --parsable",
         "--partition=gpu-part",
         "--constraint=gpu-feature",
         "--gres=gpu:1",
@@ -117,6 +117,34 @@ def test_submit_dry_run_builds_the_sbatch_command(tmp_path):
 def test_submit_rejects_unknown_jobs(tmp_path):
     result = kit("--dry-run", "nope", config=kit_config(tmp_path))
     assert result.returncode != 0 and "unknown job" in result.stderr
+    assert "gpu-check" in result.stderr
+
+
+def test_submit_prints_the_job_id(tmp_path):
+    fake = tmp_path / "bin" / "sbatch"
+    fake.parent.mkdir()
+    fake.write_text('#!/bin/bash\nprintf "%s\\n" "$@" > "$FAKE_SBATCH_ARGS"\necho "4711;maxwell"\n')
+    fake.chmod(0o755)
+    env = {
+        "PATH": f"{fake.parent}{os.pathsep}{Path(sys.executable).parent}{os.pathsep}"
+        f"{os.environ['PATH']}",
+        "FAKE_SBATCH_ARGS": str(tmp_path / "args"),
+    }
+    config = kit_config(tmp_path)
+    result = kit("--cpu", "merge", "baseline/x", config=config, env=env)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "4711\n"
+    assert str(tmp_path / "scratch" / "logs" / "holofocus-merge-4711.out") in result.stderr
+    args = (tmp_path / "args").read_text().splitlines()
+    assert args[0] == "--parsable" and args[-2:] == [str(KIT / "jobs" / "merge.sh"), "baseline/x"]
+    assert (tmp_path / "scratch" / "logs").is_dir()
+    array = kit("--array", "0-1", "baseline", "b", "c.yaml", "d.h5", config=config, env=env)
+    assert array.stdout == "4711\n" and "holofocus-baseline-4711_<task>.out" in array.stderr
+
+
+@pytest.mark.parametrize("script", sorted((KIT / "jobs").glob("*.sh")), ids=lambda p: p.stem)
+def test_job_names_give_the_log_names(script):
+    assert f"#SBATCH --job-name=holofocus-{script.stem}\n" in script.read_text()
 
 
 def test_local_pipeline_datagen_train_baseline_merge(tmp_path):

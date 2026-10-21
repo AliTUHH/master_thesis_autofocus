@@ -7,7 +7,8 @@
 # train, run); its head lists the arguments. Config files are relative to the repository,
 # data files relative to $HOLOFOCUS_SCRATCH/data and run directories relative to
 # $HOLOFOCUS_SCRATCH/runs. Jobs run with --device cuda on the A100 nodes, or with
-# --device cpu on the CPU partition (--cpu). Logs go to $HOLOFOCUS_SCRATCH/logs.
+# --device cpu on the CPU partition (--cpu). Logs go to $HOLOFOCUS_SCRATCH/logs. The job
+# id is printed alone on stdout, e.g. for id=$(submit.sh ...) and --after "$id".
 #
 # Options:
 #   --cpu          CPU partition, no GPU request, --device cpu
@@ -88,7 +89,7 @@ if ((array)); then
 else
     log=$HOLOFOCUS_LOGS/%x-%j.out
 fi
-command=(sbatch --output="$log" --chdir="$HOLOFOCUS_REPO")
+command=(sbatch --parsable --output="$log" --chdir="$HOLOFOCUS_REPO")
 if ((cpu)); then
     device=cpu
     command+=(--partition="$HOLOFOCUS_CPU_PARTITION")
@@ -111,4 +112,12 @@ if ((dry_run)); then
     exit 0
 fi
 mkdir -p "$HOLOFOCUS_LOGS"
-"${command[@]}"
+id=$("${command[@]}")
+# --parsable prints "id" or "id;cluster".
+id=${id%%;*}
+if ((array)); then
+    echo "submitted $job as job array $id, logs $HOLOFOCUS_LOGS/holofocus-$job-${id}_<task>.out" >&2
+else
+    echo "submitted $job as job $id, log $HOLOFOCUS_LOGS/holofocus-$job-$id.out" >&2
+fi
+echo "$id"
