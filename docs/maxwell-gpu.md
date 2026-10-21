@@ -429,7 +429,10 @@ mit dessen Energie, Geometrie und Detektorpfad: `configs/dataset/matched-<probe>
 `<probe>` für `spider_hair`, `tooth`, `cactus_needle` oder `magnesium_wire` steht. Auf der VM
 waren es 6000 Trainings-Samples pro Probe. `matched-<probe>-large.yaml` legt 50 000 weitere
 mit eigenem Seed und derselben Physik dazu (das prüft ein Test in
-`tests/test_dataset_config.py`); Val und Test bleiben die 250 Samples der kleinen Config.
+`tests/test_dataset_config.py`); Val und Test bleiben die 250 Samples der kleinen Config. Die
+realistischen Configs (`matched-cactus_needle-realistic.yaml`,
+`matched-magnesium_wire-realistic.yaml`) gehören nicht dazu; sie warten auf ein besseres
+Objektmodell (Laborbuch 05, 5.7).
 
 | Probe | Simulationsgitter | VM, 3 Threads | 50 000 Samples |
 |---|---|---|---|
@@ -454,7 +457,7 @@ Sample wächst ungefähr mit der Pixelzahl des Simulationsgitters. Der gpu-check
 Kaktusnadel und Mg-Draht weniger als ein Fünftel. Mit diesen Faktoren prüfst du vor dem
 Abschicken, ob 50 000 Samples ins Zeitlimit passen.
 
-Platz: Mit den kleinen Configs (4–4,4 GB pro Probe) brauchen die vier Proben etwa 150 GB auf
+Platz: Mit den kleinen Configs (3,8–4,4 GB pro Probe) brauchen die vier Proben etwa 150 GB auf
 Scratch, zusätzlich zu den rund 50 GB aus Abschnitt 5. Vorher mit `df -h` prüfen (Abschnitt 2).
 Jeder Datensatz lässt sich aus seiner Config neu erzeugen; was nach dem Training nicht mehr
 gebraucht wird, darf gelöscht werden.
