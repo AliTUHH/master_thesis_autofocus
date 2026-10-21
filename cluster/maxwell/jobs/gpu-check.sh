@@ -10,8 +10,9 @@
 #    reconstruction against the CPU, and the time per reconstruction at padding 2 and 4.
 # 2. The first 4 samples of the cpu-4x test split, generated on the device: labels and
 #    holograms against results/datasets/cpu-4x-test.csv, the committed main model on them
-#    against its committed predictions, and the classical autofocus of sample 0 against
-#    Stage 3 (results/baseline/cpu-4x-test).
+#    against its committed predictions, 3 training epochs of configs/learned/ci.yaml on them
+#    (does the training run on the device at all), and the classical autofocus of sample 0
+#    against Stage 3 (results/baseline/cpu-4x-test).
 # Every check prints PASS, WARN or FAIL; the job fails if a check fails.
 set -euo pipefail
 # shellcheck source=SCRIPTDIR/../lib.sh
@@ -31,6 +32,14 @@ kit_do holofocus-learn predict results/learned/spectrum-cnn-wide --data "$out/da
     --out "$out/predict" --device "$HOLOFOCUS_DEVICE"
 kit_do "${check[@]}" predictions "$out/predict/predictions.csv" \
     --reference results/learned/spectrum-cnn-wide/test/predictions.csv || status=1
+if kit_do holofocus-learn train configs/learned/ci.yaml --train "$out/data/test.h5" \
+    --val "$out/data/test.h5" --out "$out/train" --device "$HOLOFOCUS_DEVICE"; then
+    echo "PASS training: 3 epochs of configs/learned/ci.yaml on $HOLOFOCUS_DEVICE (only that" \
+        "it runs, not how well)"
+else
+    echo "FAIL training: configs/learned/ci.yaml does not train on $HOLOFOCUS_DEVICE"
+    status=1
+fi
 kit_do holofocus-baseline run configs/baseline/paper2-cpu.yaml --data "$out/data/test.h5" \
     --out "$out/baseline" --indices 0 --device "$HOLOFOCUS_DEVICE"
 kit_do "${check[@]}" baseline "$out/baseline" --reference results/baseline/cpu-4x-test ||
