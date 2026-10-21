@@ -691,7 +691,7 @@ Ergebnisdateien:
 | Suche mit Padding 4, kalt (3.5) | 3 | 45 min (Kaktusnadel), 42 min (Mg-Draht) |
 | Warmstart mit Padding 4 (3.5) | 3 | 28 min (Spinnenhaar), 37 min (Zahn), 53 min (Kaktusnadel), 42 min (Mg-Draht) |
 | Spektren aller Splits (3.8) | 1 | 81 s |
-| Testsuite (278 Tests) | 1, die Cluster-Tests 4 | 5,5 min |
+| Testsuite (278 Tests) | 1, die Cluster-Tests 4 | 35 s (neben dem Warmstart der Kaktusnadel 5,5 min, 5.3) |
 | Abbildungen | 1 | 6 s |
 
 Zusammen sind das etwa 27 Kernstunden (Threads mal Wandzeit): je knapp die Hälfte für die
