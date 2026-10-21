@@ -6857,5 +6857,10 @@
         ]
       }
     }
-  }
+  },
+  "git_commit": "902756e",
+  "torch_version": "2.14.1+cpu",
+  "threads": 1,
+  "host": "cursor",
+  "cpu_count": 4
 }
