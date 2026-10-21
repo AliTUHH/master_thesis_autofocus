@@ -2,14 +2,18 @@
 
 * ``stage5-measured.png``: the estimates on the four measured holograms relative to the
   Nelder-Mead result of [2] (Table 1): the CNN with its 68 and 95 % intervals (the variant not
-  selected open), our cold baselines at padding 4 and 2, the warm start from the CNN, the
-  visual value of [2] and the distance of the example in [1], inside the box Omega_z around the
-  guess; right, the time per autofocus.
+  selected open, the model of the realistic set green), our cold baselines at padding 4 and 2,
+  the warm start from the CNN, the visual value of [2] and the distance of the example in [1],
+  inside the box Omega_z around the guess; right, the time per autofocus.
 * ``stage5-sim2real.png``: per sample the CDF of the CNN error on its matched simulated test
   split and on the test split with all measured properties (``combined``), against the
   disagreement of the CNN on the measured hologram with [2] and with our padding-4 baseline.
 * ``stage5-perturbations.png``: per sample and simulator assumption the paired shift of the
   estimates (mean with 95 % CI, median) and the MAE, with the measured disagreement.
+* ``stage5-realistic.png``: where a model of the realistic set exists (``perturb --out
+  <sim2real>/realistic``), its errors against those of the matched model on the matched test
+  split, with all measured properties and on its own test split, the measured disagreements of
+  both, and the MAE of both under every perturbation.
 * ``stage5-spectra.png``: the CNN input of each measured hologram against the 5-95 % band of
   its matched test split and the median with all measured properties; below, the percentile of
   the measured hologram in every set for the spectral features.
@@ -17,7 +21,8 @@
   PSF width (full resolution) and the flat-field residual (4x grid).
 * ``stage5-holograms.png``: the measured holograms on the 4x grid next to a simulated test
   sample without and with all measured properties, on the colour scale of the measured one.
-* ``stage5-training.png``: validation MAE per epoch of the matched models.
+* ``stage5-training.png``: validation MAE per epoch of the matched models (and of the model of
+  the realistic set, on its own validation split).
 * ``stage5-metrics.json``: the numbers quoted in the lab notebook.
 
 Usage::
@@ -57,10 +62,12 @@ DEFAULT_OUT = REPO / "docs" / "laborbuch" / "figures"
 RESULTS = REPO / "results"
 SAMPLES = list(MEASURED_SAMPLES)
 VARIANTS = ("", "-hf")
+REALISTIC = "-realistic"
 GUESS_MAE_UM = 2500.0
 """MAE of the guess itself (``dz01_est = 0``) for ``dz01`` uniform in +-5 mm."""
 METHODS = {
     "cnn": ("CNN", "tab:blue", "o"),
+    "realistic": ("CNN, realistic training set", "tab:green", "o"),
     "b1_p4": ("NM (ours), padding 4", "tab:red", "D"),
     "b1_p2": ("NM (ours), padding 2", "tab:orange", "s"),
     "warm": ("NM from the CNN, padding 4", "tab:purple", "^"),
@@ -120,7 +127,7 @@ def measured_figure(measured: Path, out: Path, dpi: int) -> dict | None:
     fig, (ax, at) = plt.subplots(
         1,
         2,
-        figsize=(12, 1.4 + 1.25 * len(names)),
+        figsize=(12, 1.4 + 1.45 * len(names)),
         width_ratios=[2.3, 1],
         sharey=True,
         layout="constrained",
@@ -134,32 +141,35 @@ def measured_figure(measured: Path, out: Path, dpi: int) -> dict | None:
             return (z - ref) * 1e3
 
         box = (mm(sample.z01_guess - sample.confidence), mm(sample.z01_guess + sample.confidence))
-        ax.fill_betweenx([y - 0.42, y + 0.42], *box, color="0.93", lw=0)
+        ax.fill_betweenx([y - 0.44, y + 0.44], *box, color="0.93", lw=0)
         cnn = _json(measured / "cnn" / f"{name}.json") or {"variants": {}, "selected": None}
-        offsets = {cnn["selected"]: -0.27}
+        matched = [r for r in cnn["variants"] if not r.endswith(REALISTIC)]
+        offsets = {cnn["selected"]: -0.34}
         for run in cnn["variants"]:
-            offsets.setdefault(run, -0.12)
+            offsets.setdefault(run, -0.1 if run.endswith(REALISTIC) else -0.22)
         for run, variant in cnn["variants"].items():
             dy = offsets[run]
-            selected = run == cnn["selected"]
-            for level, lw in (("95", 1.2), ("68", 3.5 if selected else 2.0)):
+            key = "realistic" if run.endswith(REALISTIC) else "cnn"
+            color = METHODS[key][1]
+            filled = run == cnn["selected"] or key == "realistic"
+            for level, lw in (("95", 1.2), ("68", 3.5 if filled else 2.0)):
                 i = variant["intervals"][level]
-                ax.plot([mm(i["lower"]), mm(i["upper"])], [y + dy] * 2, color="tab:blue", lw=lw)
-            _point(ax, mm(variant["z01_est"]), y + dy, "cnn", filled=selected, zorder=3)
-            if len(cnn["variants"]) > 1:
+                ax.plot([mm(i["lower"]), mm(i["upper"])], [y + dy] * 2, color=color, lw=lw)
+            _point(ax, mm(variant["z01_est"]), y + dy, key, filled=filled, zorder=3)
+            if key == "cnn" and len(matched) > 1:
                 ax.annotate(
                     "hf" if run.endswith("-hf") else "std",
                     (mm(variant["z01_est"]), y + dy),
                     xytext=(6, 3),
                     textcoords="offset points",
                     fontsize=7,
-                    color="tab:blue",
+                    color=color,
                 )
-        for key, dy in (("b1_p4", 0.06), ("b1_p2", 0.18), ("warm", 0.3)):
+        for key, dy in (("b1_p4", 0.13), ("b1_p2", 0.24), ("warm", 0.35)):
             if f"{key}_mm" in row:
                 _point(ax, mm(row[f"{key}_mm"] * 1e-3), y + dy, key)
-        _point(ax, mm(sample.z01_visual), y, "paper2_visual")
-        _point(ax, mm(sample.z01_example), y, "paper1_example")
+        _point(ax, mm(sample.z01_visual), y + 0.02, "paper2_visual")
+        _point(ax, mm(sample.z01_example), y + 0.02, "paper1_example")
         fr = sample.geometry(4).fresnel_number
         ticks.append(f"{sample.label}\n{sample.energy_kev:.0f} keV, Fr {fr:.2e}")
 
@@ -167,10 +177,10 @@ def measured_figure(measured: Path, out: Path, dpi: int) -> dict | None:
         times.update(
             {k: row[f"{k}_seconds"] for k in ("b1_p4", "b1_p2", "warm") if f"{k}_seconds" in row}
         )
-        for key, dy in (("cnn", -0.27), ("b1_p4", 0.06), ("b1_p2", 0.18), ("warm", 0.3)):
+        for key, dy in (("cnn", -0.34), ("b1_p4", 0.13), ("b1_p2", 0.24), ("warm", 0.35)):
             if key in times:
                 _point(at, times[key], y + dy, key)
-        _point(at, times["paper2_gpu"], y - 0.06, "paper2_gpu")
+        _point(at, times["paper2_gpu"], y + 0.02, "paper2_gpu")
     ax.axvline(0, color="black", lw=1, ls="--", label="[2] Nelder-Mead (Table 1)")
     ax.set_yticks(range(len(names)), ticks)
     ax.set_ylim(len(names) - 0.5, -0.5)
@@ -326,6 +336,101 @@ def perturbation_figure(sim2real: Path, measured: Path, out: Path, dpi: int) -> 
     axes[0, 0].set_ylim(len(perts) - 0.5, -0.5)
     _legend(fig, axes, 2 * len(names))
     _save(fig, out / "stage5-perturbations.png", dpi)
+    return metrics
+
+
+def _abs_errors(path: Path) -> np.ndarray | None:
+    if not path.exists():
+        return None
+    return np.array([abs(r["error_um"]) for r in read_predictions(path)])
+
+
+def realistic_figure(learned: Path, measured: Path, sim2real: Path, out: Path, dpi: int):
+    """The model of the realistic set against the model of the matched set, per sample."""
+    models = {}
+    for name in SAMPLES:
+        pair = (_json(sim2real / f"{name}.json"), _json(sim2real / "realistic" / f"{name}.json"))
+        if None not in pair:
+            models[name] = pair
+    if not models:
+        return None
+    fig, axes = plt.subplots(
+        2,
+        len(models),
+        figsize=(3.6 * len(models) + 1.4, 6.6),
+        layout="constrained",
+        squeeze=False,
+    )
+    rows = ["none", *PERTURBATIONS]
+    metrics = {}
+    for j, (name, records) in enumerate(models.items()):
+        cnn = _json(measured / "cnn" / f"{name}.json") or {"variants": {}}
+        ax, bx = axes[0, j], axes[1, j]
+        entry = {}
+        for k, (rec, base, color) in enumerate(
+            zip(records, (sim2real, sim2real / "realistic"), ("tab:blue", "tab:green"), strict=True)
+        ):
+            run = Path(rec["model"]).name
+            label = run.removeprefix(f"matched-{name}").removeprefix("-") or "std"
+            reference = rec["reference"].get("path")
+            curves = {
+                "matched test split": (
+                    Path(reference) if reference else learned / run / "test" / "predictions.csv",
+                    "-",
+                ),
+                "all measured properties": (base / name / "combined" / "predictions.csv", "--"),
+            }
+            if run.endswith(REALISTIC):
+                curves["own test split"] = (learned / run / "test" / "predictions.csv", ":")
+            summary = {}
+            for data, (path, style) in curves.items():
+                errors = _abs_errors(path)
+                if errors is None:
+                    continue
+                _cdf(ax, errors, color=color, ls=style, label=f"{label}: {data}")
+                summary[data] = {
+                    "median_abs_um": float(np.median(errors)),
+                    "mae_um": float(errors.mean()),
+                    "within_100": float(np.mean(errors <= 100)),
+                }
+            variant = cnn["variants"].get(run)
+            if variant is not None:
+                d2 = abs(variant["references"]["paper2_nm"]["distance_um"])
+                ax.axvline(d2, color=color, lw=1.5, label=f"{label}: measured |CNN - [2]|")
+                summary["measured_minus_paper2_um"] = variant["references"]["paper2_nm"][
+                    "distance_um"
+                ]
+                combined = _abs_errors(base / name / "combined" / "predictions.csv")
+                if combined is not None:
+                    summary["measured_percentile_in_combined"] = float(100 * np.mean(combined < d2))
+            mae = [rec["reference"]["error_um"]["mae"]] + [
+                _get(rec, "perturbations", p, "error_um", "mae") or np.nan for p in PERTURBATIONS
+            ]
+            bx.barh(
+                np.arange(len(rows)) + (k - 0.5) * 0.38,
+                mae,
+                height=0.36,
+                color=color,
+                alpha=0.7,
+                label=f"{label}: MAE",
+            )
+            summary["mae_um"] = dict(zip(rows, (float(m) for m in mae), strict=True))
+            entry[label] = {"run": run, **summary}
+        ax.axvline(100, color="0.6", lw=0.8, ls=":")
+        ax.set_xscale("log")
+        ax.set_xlim(10, 2e4)
+        ax.set_title(_short(name), fontsize=9)
+        ax.set_xlabel("|error| (um)")
+        ax.grid(alpha=0.3, which="both")
+        bx.axvline(GUESS_MAE_UM, color="0.5", ls=":", label="MAE of the guess")
+        bx.set_yticks(range(len(rows)), rows)
+        bx.set_ylim(len(rows) - 0.5, -0.5)
+        bx.set_xlabel("MAE on the perturbed test split (um)")
+        bx.grid(axis="x", alpha=0.3)
+        metrics[name] = entry
+    axes[0, 0].set_ylabel("fraction of samples")
+    _legend(fig, axes, 2 * len(models))
+    _save(fig, out / "stage5-realistic.png", dpi)
     return metrics
 
 
@@ -503,7 +608,7 @@ def training_figure(learned: Path, out: Path, dpi: int) -> dict | None:
     runs = {
         n: [
             learned / f"matched-{n}{s}"
-            for s in VARIANTS
+            for s in (*VARIANTS, REALISTIC)
             if (learned / f"matched-{n}{s}" / "history.csv").exists()
         ]
         for n in SAMPLES
@@ -517,22 +622,22 @@ def training_figure(learned: Path, out: Path, dpi: int) -> dict | None:
     axes = np.atleast_1d(axes)
     metrics = {}
     for ax, (name, paths) in zip(axes, runs.items(), strict=True):
-        for path, style in zip(paths, ("-", "--"), strict=False):
+        for path in paths:
+            realistic = path.name.endswith(REALISTIC)
+            style, color = (":", "tab:green") if realistic else ("-", "tab:blue")
+            if path.name.endswith("-hf"):
+                style = "--"
             history = read_history(path / "history.csv")
             epochs = [h["epoch"] for h in history]
             mae = [h["val_mae_um"] for h in history]
             summary = _json(path / "summary.json") or {}
             best = summary.get("best_epoch")
-            ax.plot(
-                epochs,
-                mae,
-                style,
-                color="tab:blue",
-                lw=1,
-                label=path.name.removeprefix(f"matched-{name}") or "std",
-            )
+            label = path.name.removeprefix(f"matched-{name}").removeprefix("-") or "std"
+            if realistic:
+                label += " (own validation split)"
+            ax.plot(epochs, mae, style, color=color, lw=1, label=label)
             if best is not None:
-                ax.plot(best, mae[epochs.index(best)], "o", color="tab:blue", mfc="white")
+                ax.plot(best, mae[epochs.index(best)], "o", color=color, mfc="white")
             metrics[path.name] = {
                 "best_epoch": best,
                 "epochs_run": summary.get("epochs_run"),
@@ -580,6 +685,10 @@ def main() -> None:
             lambda: sim2real_figure(args.learned, args.measured, args.sim2real, args.out, dpi),
         ),
         ("perturbations", lambda: perturbation_figure(args.sim2real, args.measured, args.out, dpi)),
+        (
+            "realistic",
+            lambda: realistic_figure(args.learned, args.measured, args.sim2real, args.out, dpi),
+        ),
         ("spectra", lambda: spectra_figure(args.sim2real, args.out, dpi)),
         ("noise", lambda: noise_figure(args.sim2real, args.out, dpi)),
         (

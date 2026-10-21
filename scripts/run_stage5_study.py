@@ -308,6 +308,7 @@ def cmd_perturb(args) -> None:
         record["measured_model"] = dataclasses.asdict(MEASURED_MODELS[name])
         reference_summary = summarize_predictions(reference)
         record["reference"] = {
+            "path": str(reference_path),
             "n": len(reference),
             "error_um": reference_summary["error_um"],
             "interval": reference_summary["interval"],
