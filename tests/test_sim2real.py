@@ -14,7 +14,10 @@ from holofocus.learned.sim2real import (
     PERTURBATIONS,
     RadialPower,
     binning_phases,
+    corner_spectra,
     feature_distribution,
+    fit_blurred_white,
+    fit_lorentzian,
     measured_estimate,
     paired_shifts,
     percentile_rank,
@@ -23,6 +26,7 @@ from holofocus.learned.sim2real import (
     spectral_features,
 )
 from holofocus.measured import MEASURED_SAMPLES, MeasuredSample, bin_mean
+from holofocus.noise import flat_field_residual
 
 ROOT = Path(__file__).resolve().parents[1]
 CI_DATASET = ROOT / "configs" / "dataset" / "ci.yaml"
@@ -184,3 +188,48 @@ def test_measured_estimate():
     assert out["binning_phases"]["n"] == 4 and out["seconds_per_estimate"]["repeats"] == 3
     with pytest.raises(ValueError):
         measured_estimate(autofocus, torch.ones((64, 64)), sample, {})
+
+
+def test_noise_fits_recover_exact_spectra():
+    f = np.linspace(0.02, 0.5, 48)
+    fit = fit_blurred_white(f, 0.03 * np.exp(-4 * np.pi**2 * 1.6**2 * f**2) + 2.5e-4)
+    assert fit["sigma"] == pytest.approx(1.6, abs=0.006)
+    assert fit["A"] == pytest.approx(0.03, rel=1e-3) and fit["B"] == pytest.approx(2.5e-4, rel=1e-3)
+    assert fit["white_rms"] == pytest.approx(math.sqrt(2.5e-4), rel=1e-3)
+
+    freq = np.fft.fftfreq(512)
+    lorentz = 1 / (1 + (np.hypot(freq[:, None], freq[None, :]) / 0.18) ** 2)
+    f = np.linspace(0.03, 0.5, 16)
+    shape = 1 / (1 + (f / 0.18) ** 2) / lorentz.mean()
+    fit = fit_lorentzian(f, 0.025**2 * shape + 1e-4)
+    assert fit["cutoff"] == pytest.approx(0.18, rel=0.02)
+    assert fit["rho"] == pytest.approx(0.025, rel=0.03)
+    assert fit["photons"] == pytest.approx(1e4, rel=0.1)
+
+
+def test_corner_spectra_measure_blur_white_noise_and_residual():
+    rng = np.random.default_rng(0)
+    n = 512
+    freq = np.fft.fftfreq(n)
+    psf = np.exp(-2 * np.pi**2 * 1.6**2 * (freq[:, None] ** 2 + freq[None, :] ** 2))
+    blurred = np.fft.ifft2(np.fft.fft2(rng.normal(0, 0.1, (n, n))) * psf).real
+    image = 1 + blurred + rng.normal(0, 0.015, (n, n))
+    corners = corner_spectra(image, 256, bins=48, f_min=0.02)
+    assert [c["corner"] for c in corners] == [[0, 0], [0, 256], [256, 0], [256, 256]]
+    for corner in corners:
+        fit = fit_blurred_white(corner["f"], corner["nps"])
+        assert fit["sigma"] == pytest.approx(1.6, abs=0.1)
+        assert fit["blurred_rms"] == pytest.approx(blurred.std(), rel=0.1)
+        assert fit["white_rms"] == pytest.approx(0.015, rel=0.1)
+
+    rng = np.random.default_rng(1)
+    n = 1024
+    residual = np.kron(flat_field_residual((n // 4, n // 4), rng, 0.025, 0.18), np.ones((4, 4)))
+    image = 2 * (1 + rng.normal(0, 0.04, (n, n))) * (1 + residual)
+    corners = corner_spectra(image, 512, 4, bins=16, f_min=0.03)
+    assert [c["mean"] for c in corners] == pytest.approx([2] * 4, rel=0.01)
+    # Cutoff and rho trade off against the white part: one 64^2 binned corner leaves the cutoff
+    # to about +-40 %, the mean spectrum of four 128^2 corners to about +-13 % (12 seeds).
+    fit = fit_lorentzian(corners[0]["f"], np.mean([c["nps"] for c in corners], axis=0))
+    assert fit["cutoff"] == pytest.approx(0.18, rel=0.2)
+    assert fit["rho"] == pytest.approx(0.025, rel=0.1)

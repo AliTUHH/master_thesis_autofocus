@@ -16,6 +16,10 @@
   (``results/sim2real/spectra-<sample>.json``).
 * ``compare``: every estimate on the measured holograms in one table, with the error of the
   CNN on the matched test split (``results/measured/comparison.{json,csv}``).
+* ``noise``: noise power spectra of the background corners of the measured holograms, at full
+  resolution with the fit of a Gaussian-blurred plus a white part (the detector PSF) and on
+  the 4x grid with the fit of the correlated residual of the simulator
+  (``results/sim2real/noise.json``).
 
 Usage::
 
@@ -23,9 +27,10 @@ Usage::
     python scripts/run_stage5_study.py --threads 3 perturb --samples cactus_needle tooth
     python scripts/run_stage5_study.py spectra --holograms DIR
     python scripts/run_stage5_study.py compare
+    python scripts/run_stage5_study.py noise --holograms DIR
 
 ``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365.
-``measured`` and ``perturb`` skip outputs that exist; ``spectra`` and ``compare`` rewrite theirs.
+``measured`` and ``perturb`` skip outputs that exist; the others rewrite theirs.
 """
 
 from __future__ import annotations
@@ -59,7 +64,10 @@ from holofocus.learned.sim2real import (
     PERTURBATIONS,
     RadialPower,
     binning_phases,
+    corner_spectra,
     feature_distribution,
+    fit_blurred_white,
+    fit_lorentzian,
     measured_estimate,
     paired_shifts,
     percentile_rank,
@@ -481,6 +489,48 @@ def cmd_compare(args) -> None:
         )
 
 
+CORNER = 256
+"""Corner size in detector pixels (64 binned pixels)."""
+
+
+def cmd_noise(args) -> None:
+    record = {"corner_pixels": CORNER, "binning": BINNING, "samples": {}}
+    for name in args.samples:
+        sample = MEASURED_SAMPLES[name]
+        native = load_measured(args.holograms, sample, 1).numpy()
+        full = corner_spectra(native, CORNER, 1, bins=48, f_min=0.02)
+        binned = corner_spectra(native, CORNER, BINNING, bins=16, f_min=0.03)
+        for corner in full:
+            corner["fit"] = fit_blurred_white(corner["f"], corner["nps"])
+        for corner in binned:
+            corner["fit"] = fit_lorentzian(corner["f"], corner["nps"])
+        sigma = [c["fit"]["sigma"] for c in full]
+        rho = [c["fit"]["rho"] for c in binned]
+        cutoff = [c["fit"]["cutoff"] for c in binned]
+        means = [c["mean"] for c in full]
+        mean_full = fit_blurred_white(full[0]["f"], np.mean([c["nps"] for c in full], axis=0))
+        mean_binned = fit_lorentzian(binned[0]["f"], np.mean([c["nps"] for c in binned], axis=0))
+        record["samples"][name] = {
+            "full_resolution": full,
+            "binned": binned,
+            "psf_sigma_median": float(np.median(sigma)),
+            "flat_field_rho_median": float(np.median(rho)),
+            "flat_field_cutoff_median": float(np.median(cutoff)),
+            "mean_spectrum_fit": {"full_resolution": mean_full, "binned": mean_binned},
+            "corner_means": means,
+        }
+        print(
+            f"{name}: PSF sigma {', '.join(f'{s:.2f}' for s in sigma)} px; residual "
+            f"{', '.join(f'{100 * r:.1f}' for r in rho)} % with cutoff "
+            f"{', '.join(f'{c:.2f}' for c in cutoff)}; corner means "
+            f"{', '.join(f'{m:.2f}' for m in means)}; mean spectrum: PSF sigma "
+            f"{mean_full['sigma']:.2f} px, residual {100 * mean_binned['rho']:.1f} % with "
+            f"cutoff {mean_binned['cutoff']:.2f}"
+        )
+    record.update(environment())
+    write_json(args.out / "noise.json", record)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--threads", type=int, help="torch CPU threads")
@@ -522,6 +572,12 @@ def main() -> None:
     co = sub.add_parser("compare", help="all estimates on the measured holograms")
     co.add_argument("--samples", **samples)
     co.set_defaults(func=cmd_compare)
+
+    no = sub.add_parser("noise", help="noise spectra of the background corners")
+    no.add_argument("--holograms", type=Path, required=True)
+    no.add_argument("--samples", **samples)
+    no.add_argument("--out", type=Path, default=RESULTS / "sim2real")
+    no.set_defaults(func=cmd_noise)
 
     args = parser.parse_args()
     if args.threads:

@@ -12,7 +12,10 @@
   CNN) that place a measured hologram in the distribution of a simulated split;
 * :func:`measured_estimate`: the learned estimate of a measured hologram with its intervals,
   the distances to reference values, the spread over the phases of the binning grid and the
-  time per estimate.
+  time per estimate;
+* :func:`corner_spectra`, :func:`fit_blurred_white` and :func:`fit_lorentzian`: the noise
+  power spectrum of the background corners of a measured hologram and the fits behind
+  :data:`PSF_SIGMA`, :data:`FLAT_FIELD_CUTOFF` and the residuals of :data:`MEASURED_MODELS`.
 
 Lengths in metres unless a key ends in ``_um`` or ``_mm``.
 """
@@ -33,11 +36,13 @@ from .metrics import LEVELS, bootstrap_ci, interval_quantile, point_metrics
 
 PSF_SIGMA = 1.6
 """Detector PSF in unbinned pixels: Gaussian fit of the noise power spectrum of the background
-corners at full resolution, ``A exp(-4 pi^2 sigma^2 f^2) + B`` (1.3-1.8 px for all samples)."""
+corners at full resolution, ``A exp(-4 pi^2 sigma^2 f^2) + B`` (:func:`fit_blurred_white`;
+medians of the four corners 1.5-1.7 px for spider hair, tooth and cactus needle)."""
 
 FLAT_FIELD_CUTOFF = 0.18
-"""Corner frequency of the correlated residual in cycles per binned pixel (fit of the corner
-spectra on the 4x grid: 0.14-0.26 for spider hair and cactus needle)."""
+"""Corner frequency of the correlated residual in cycles per binned pixel (:func:`fit_lorentzian`
+of the corner spectra on the 4x grid: medians 0.18 for spider hair, 0.19 for cactus needle and
+0.11 for the tooth)."""
 
 
 @dataclass(frozen=True)
@@ -59,14 +64,15 @@ class MeasuredModel:
 
 
 MEASURED_MODELS: dict[str, MeasuredModel] = {
-    "spider_hair": MeasuredModel(6.8e4, 0.026, (1.0, 3.0), (0.1, 0.25), 600.0),
-    "tooth": MeasuredModel(3.5e4, 0.043, (5.0, 12.0), (0.4, 0.7), 65.0),
-    "cactus_needle": MeasuredModel(3.9e4, 0.027, (2.0, 6.0), (0.08, 0.25), 1300.0),
+    "spider_hair": MeasuredModel(6.8e4, 0.025, (1.0, 3.0), (0.1, 0.25), 600.0),
+    "tooth": MeasuredModel(3.5e4, 0.039, (5.0, 12.0), (0.4, 0.7), 65.0),
+    "cactus_needle": MeasuredModel(3.9e4, 0.026, (2.0, 6.0), (0.08, 0.25), 1300.0),
     "magnesium_wire": MeasuredModel(3.1e4, 0.03, (8.0, 20.0), (0.55, 0.85), 120.0),
 }
-"""Spider hair, cactus needle, tooth: corner fits; Mg wire: object in the corners, residual set
-to 3 %. Objects: phase and width of the Stage 3 reconstructions; ``delta / beta`` estimated from
-the composition (protein, hydroxyapatite, cellulose, Mg) at the energy of the sample."""
+"""Spider hair, cactus needle, tooth: residual = median of the four corner fits (``noise`` of
+``scripts/run_stage5_study.py``); Mg wire: object in the corners, residual set to 3 %. Objects:
+phase and width of the Stage 3 reconstructions; ``delta / beta`` estimated from the composition
+(protein, hydroxyapatite, cellulose, Mg) at the energy of the sample."""
 
 PERTURBATIONS: dict[str, str] = {
     "psf": f"Gaussian detector PSF, sigma {PSF_SIGMA} detector pixels",
@@ -346,3 +352,102 @@ def measured_estimate(
             "range_um": float((z.max() - z.min()) * 1e6),
         }
     return record
+
+
+def corner_spectra(
+    image: np.ndarray, size: int, binning: int = 1, bins: int = 24, f_min: float = 0.02
+) -> list[dict]:
+    """Noise power spectra of the four ``size x size`` corners of ``image``.
+
+    Every corner is binned by ``binning`` (block mean), divided by its mean, Hann-windowed and
+    radially averaged in ``bins`` linear bins of ``|f|`` from ``f_min`` to 0.5 cycles per
+    (binned) pixel; power as in :class:`RadialPower`. Returns the position, mean, ``f`` and
+    ``nps`` of each corner.
+    """
+    h, w = image.shape
+    n = size // binning
+    window = np.outer(np.hanning(n), np.hanning(n))
+    f = np.fft.fftfreq(n)
+    fr = np.sqrt(f[:, None] ** 2 + f[None, :] ** 2)
+    edges = np.linspace(f_min, 0.5, bins + 1)
+    out = []
+    for y, x in ((0, 0), (0, w - size), (h - size, 0), (h - size, w - size)):
+        corner = bin_mean(np.asarray(image[y : y + size, x : x + size], dtype=float), binning)
+        mean = float(corner.mean())
+        c = corner / mean
+        c = (c - (c * window).sum() / window.sum()) * window
+        power = np.abs(np.fft.fft2(c)) ** 2 / (window**2).sum()
+        nps = [
+            power[(fr >= a) & (fr < b)].mean() for a, b in zip(edges[:-1], edges[1:], strict=True)
+        ]
+        out.append(
+            {
+                "corner": [int(y), int(x)],
+                "mean": mean,
+                "f": (0.5 * (edges[1:] + edges[:-1])).tolist(),
+                "nps": [float(v) for v in nps],
+            }
+        )
+    return out
+
+
+def _two_component_fit(nps: np.ndarray, shape: np.ndarray) -> tuple[float, float, float]:
+    """Non-negative ``a * shape + b`` closest to ``nps`` in relative terms; returns ``a``,
+    ``b`` and the RMS of ``log(nps / model)``."""
+    weight = 1.0 / nps
+    design = np.column_stack([shape, np.ones_like(shape)]) * weight[:, None]
+    candidates = []
+    coef, *_ = np.linalg.lstsq(design, np.ones_like(nps), rcond=None)
+    if (coef >= 0).all():
+        candidates.append(coef)
+    for column in (0, 1):
+        single = np.zeros(2)
+        d = design[:, column]
+        single[column] = max(float(d @ np.ones_like(nps)) / float(d @ d), 0.0)
+        candidates.append(single)
+    best = None
+    for a, b in candidates:
+        model = a * shape + b
+        if (model <= 0).any():
+            continue
+        rms = float(np.sqrt(np.mean(np.log(nps / model) ** 2)))
+        if best is None or rms < best[2]:
+            best = (float(a), float(b), rms)
+    return best
+
+
+def fit_blurred_white(f: Sequence[float], nps: Sequence[float]) -> dict:
+    """``A exp(-4 pi^2 sigma^2 f^2) + B``: quantum noise blurred by a Gaussian PSF of width
+    ``sigma`` (pixels) plus white noise, fitted by a grid over ``sigma``.
+
+    ``blurred_rms`` and ``white_rms`` are the standard deviations of the two parts per pixel.
+    """
+    f, nps = np.asarray(f, dtype=float), np.asarray(nps, dtype=float)
+    best = None
+    for sigma in np.arange(0.2, 6.0, 0.01):
+        a, b, rms = _two_component_fit(nps, np.exp(-4 * np.pi**2 * sigma**2 * f**2))
+        if best is None or rms < best["log_rms"]:
+            best = {"sigma": float(sigma), "A": a, "B": b, "log_rms": rms}
+    best["blurred_rms"] = float(np.sqrt(best["A"] / (4 * np.pi * best["sigma"] ** 2)))
+    best["white_rms"] = float(np.sqrt(best["B"]))
+    return best
+
+
+def fit_lorentzian(f: Sequence[float], nps: Sequence[float], grid: int = 512) -> dict:
+    """``rho^2 L(f) / mean(L) + 1 / N`` with ``L = 1 / (1 + (f / cutoff)^2)``: the correlated
+    residual of :func:`holofocus.noise.flat_field_residual` (RMS ``rho``) plus white noise of
+    ``N`` photons per pixel, fitted by a grid over ``cutoff``. ``mean(L)`` is taken over a
+    ``grid^2`` frequency grid as in the simulator; ``photons`` is ``None`` without white part.
+    """
+    f, nps = np.asarray(f, dtype=float), np.asarray(nps, dtype=float)
+    freq = np.fft.fftfreq(grid)
+    f_grid = np.sqrt(freq[:, None] ** 2 + freq[None, :] ** 2)
+    best = None
+    for cutoff in np.exp(np.linspace(np.log(0.02), np.log(2.0), 233)):
+        mean = float((1 / (1 + (f_grid / cutoff) ** 2)).mean())
+        a, b, rms = _two_component_fit(nps, 1 / (1 + (f / cutoff) ** 2) / mean)
+        if best is None or rms < best["log_rms"]:
+            best = {"cutoff": float(cutoff), "rho": float(np.sqrt(a)), "white": b, "log_rms": rms}
+    white = best.pop("white")
+    best["photons"] = float(1 / white) if white > 0 else None
+    return best
