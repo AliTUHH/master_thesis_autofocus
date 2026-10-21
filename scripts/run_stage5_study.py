@@ -105,6 +105,12 @@ def environment() -> dict:
     }
 
 
+def repo_relative(path: Path) -> str:
+    """``path`` relative to the repository if it lies inside, so committed records stay valid."""
+    path = Path(path).resolve()
+    return str(path.relative_to(REPO) if path.is_relative_to(REPO) else path)
+
+
 def write_json(path: Path, record: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=2) + "\n")
@@ -173,7 +179,7 @@ def cmd_measured(args) -> None:
                 autofocus, hologram, sample, references, args.repeats, phases
             )
             variants[run_name] = {
-                "model": str(run.relative_to(REPO) if run.is_relative_to(REPO) else run),
+                "model": repo_relative(run),
                 "model_sha256": file_sha256(run / "model.pt"),
                 "config_name": autofocus.config.name,
                 "representation": dataclasses.asdict(autofocus.config.representation),
@@ -293,13 +299,13 @@ def cmd_perturb(args) -> None:
         reference = [r for r in read_predictions(reference_path) if r["index"] < n]
         target = args.out / f"{name}.json"
         record = json.loads(target.read_text()) if target.exists() else {}
-        if record.get("model_sha256") != model_sha256 or record.get("data") != str(data):
+        if record.get("model_sha256") != model_sha256 or record.get("data") != repo_relative(data):
             record = {
                 "sample": name,
-                "data": str(data),
-                "model": str(model),
+                "data": repo_relative(data),
+                "model": repo_relative(model),
                 "model_sha256": model_sha256,
-                "reference": str(reference_path),
+                "reference": repo_relative(reference_path),
                 "measured_model": dataclasses.asdict(MEASURED_MODELS[name]),
                 "regeneration": regeneration_check(data),
                 "perturbations": {},
@@ -308,7 +314,7 @@ def cmd_perturb(args) -> None:
         record["measured_model"] = dataclasses.asdict(MEASURED_MODELS[name])
         reference_summary = summarize_predictions(reference)
         record["reference"] = {
-            "path": str(reference_path),
+            "path": repo_relative(reference_path),
             "n": len(reference),
             "error_um": reference_summary["error_um"],
             "interval": reference_summary["interval"],
@@ -404,7 +410,7 @@ def cmd_spectra(args) -> None:
         )
         record = {
             "sample": name,
-            "model": str(run),
+            "model": repo_relative(run),
             "fresnel_number_paper2_nm": fr_nm,
             "f2_axis": {"bins": len(radial.f2), "f2_max": float(radial.f2[-1] + radial.f2[0])},
             "ctf_bands": [list(b) for b in CTF_BANDS],
@@ -416,7 +422,7 @@ def cmd_spectra(args) -> None:
         for set_name, path in sets.items():
             features, inputs = set_features(path, radial, autofocus, args.limit)
             record["sets"][set_name] = {
-                "path": str(path),
+                "path": repo_relative(path),
                 "n": len(features),
                 "features": feature_distribution(features),
                 "measured_percentile": {
@@ -536,7 +542,11 @@ def cmd_compare(args) -> None:
                     row[f"realistic_{key}_mae_um"] = summary["error_um"]["mae"]
                     row[f"realistic_{key}_within_100"] = summary["error_um"]["within"]["100"]
         rows.append(row)
-        details[name] = {"row": row, "cnn": str(cnn_path), "test_summary": str(run / "test")}
+        details[name] = {
+            "row": row,
+            "cnn": repo_relative(cnn_path),
+            "test_summary": repo_relative(run / "test"),
+        }
     if not rows:
         raise SystemExit("no sample with a CNN estimate")
     fields = list(dict.fromkeys(k for r in rows for k in r))

@@ -375,7 +375,7 @@ def realistic_figure(learned: Path, measured: Path, sim2real: Path, out: Path, d
             reference = rec["reference"].get("path")
             curves = {
                 "matched test split": (
-                    Path(reference) if reference else learned / run / "test" / "predictions.csv",
+                    REPO / reference if reference else learned / run / "test" / "predictions.csv",
                     "-",
                 ),
                 "all measured properties": (base / name / "combined" / "predictions.csv", "--"),
