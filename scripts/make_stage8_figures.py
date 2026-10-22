@@ -604,6 +604,7 @@ def misspec_metrics(directory: Path) -> dict | None:
                         | {"spearman": {f: a["spearman"] for f, a in v["failures"].items()}}
                         for m, v in e["measures"].items()
                     },
+                    "neighbourhood": e.get("neighbourhood"),
                 }
                 for space, e in record["spaces"].items()
             },

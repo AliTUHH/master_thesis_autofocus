@@ -21,9 +21,11 @@ and ``matched-<sample>-seed<k>``.
   test split, for the hologram binned 4x and for its 16 binning phases. On the test split: how
   the distances go with what fails, the absolute error and the 95 % width of the two ensembles
   and the spread of their seeds (Spearman with bootstrap intervals, nearest against farthest
-  quarter); the 25 test samples nearest to the hologram in each space, how far the ensembles
-  move from the guess there (shrinkage); and the same failures on the hologram, with the
-  padding-4 search of Stage 3 as the truth, as percentiles among the test split
+  quarter); whether a neighbourhood predicts them, the Spearman of each test sample's failure
+  with its mean over the 25 nearest other test samples (``neighbourhood``); the 25 test
+  samples nearest to the hologram in each space, how far the ensembles move from the guess
+  there (shrinkage); and the same failures on the hologram, with the padding-4 search of
+  Stage 3 as the truth, as percentiles among the test split and among its nearest test samples
   (``results/misspecification/<sample>.json``, ``test-<sample>.csv``, ``summary.csv``). With
   ``--control results/npe``, the same distances to the sets of the Stage 5 simulator
   (``data/matched-<sample>``), in the input and in the embedding of the NPE trained on them,
@@ -515,6 +517,29 @@ def association(distance: np.ndarray, failure: np.ndarray, resamples: int) -> di
     }
 
 
+def neighbourhood_check(test: np.ndarray, fail: dict, k: int, resamples: int) -> dict:
+    """Whether a neighbourhood predicts the failures on the test split: per test sample, the
+    mean of each failure over its ``k`` nearest other test samples (Euclidean, as for the
+    hologram's neighbours) and the Spearman of that mean with the sample's own failure. The
+    bootstrap resamples the pairs and ignores that neighbourhoods overlap."""
+    t = test.astype(np.float64)
+    sq = (t**2).sum(axis=1)
+    d = sq[:, None] + sq[None, :] - 2.0 * t @ t.T
+    np.fill_diagonal(d, np.inf)
+    nearest = np.argpartition(d, k - 1, axis=1)[:, :k]
+    out = {"k": k}
+    for f, v in fail.items():
+        local = v[nearest].mean(axis=1)
+        rows = np.column_stack([local, v])
+        out[f] = {
+            "spearman": spearman(local, v),
+            "ci": list(
+                bootstrap_ci(rows, lambda r: spearman(r[:, 0], r[:, 1]), resamples=resamples)
+            ),
+        }
+    return out
+
+
 def measure_record(test: np.ndarray, measured: np.ndarray | None) -> dict:
     out = {
         "test": {
@@ -784,6 +809,9 @@ def cmd_misspec(args) -> None:
                 entry["measures"][measure] = m
                 columns[f"{space}_{measure}"] = d_test
                 summary.append(measure_row(name, space, measure, info["components"], m))
+            entry["neighbourhood"] = neighbourhood_check(
+                test, fail, min(NEAREST, len(test) - 1), args.resamples
+            )
             record["spaces"][space] = entry
             if measured is not None:
                 nearest = np.argsort(np.linalg.norm(test - measured[0], axis=1))[
@@ -809,6 +837,13 @@ def cmd_misspec(args) -> None:
                     f"{main['failures'][f]['spearman']:+.2f}"
                     for f in ("npe_abs_error_um", "npe_seed_std_um")
                     if f in main["failures"]
+                )
+                + f", of the {entry['neighbourhood']['k']} nearest test samples' mean with "
+                + "the own "
+                + " / ".join(
+                    f"{entry['neighbourhood'][f]['spearman']:+.2f}"
+                    for f in ("npe_abs_error_um", "npe_seed_std_um")
+                    if f in entry["neighbourhood"]
                 )
             )
         if x_measured is not None:
