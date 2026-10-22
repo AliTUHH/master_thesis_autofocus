@@ -3,7 +3,8 @@
 The smooth fibers of Stage 5 give spectra without the CTF modulation that three of the four
 measured holograms of [1] show (Laborbuch 05, 5.6). A weak-phase texture
 (:func:`holofocus.phantoms.texture_field`) inside the object or as a film over the field of
-view produces it. This module fits the texture of each measured hologram:
+view produces it. This module fits the texture of each measured hologram and builds training
+sets that never saw the hologram they are tested on:
 
 * :func:`region_weights` and :func:`region_ctf`: the CTF modulation of a region of a measured
   hologram (the object, its edge, the background around it), to find where it comes from
@@ -15,7 +16,12 @@ view produces it. This module fits the texture of each measured hologram:
 * :func:`texture_grid`, :func:`refined_grid` and :func:`fit_objective`: the textures tried for
   each sample and the distance of the spectral features of a simulated set from those of the
   measured hologram (``scripts/run_stage6_study.py fit``); :data:`TEXTURE_FITS` holds the
-  result.
+  result;
+* :func:`loo_ranges` and :func:`loo_changes`: the training set of one sample from the other
+  three (leave one out). Every property estimated from a measured hologram (detector, bulk
+  object, texture) becomes a range over the other three, widened by :data:`LOO_FACTOR`; the
+  setup and ``delta / beta`` (composition) stay those of the sample
+  (``configs/dataset/loo-<sample>.yaml``).
 """
 
 from __future__ import annotations
@@ -27,6 +33,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..dataset.config import PhantomConfig
 from ..geometry import P05_DETECTOR_SHAPE
 from ..measured import MEASURED_SAMPLES
 from .sim2real import (
@@ -300,3 +307,109 @@ TEXTURE_FITS: dict[str, Texture] = {
 none on the tooth, mostly inside the cactus needle, inside and around the Mg wire. The fit sees
 the whole hologram only; the Mg wire fills most of the field of view, so there texture and
 film are nearly interchangeable."""
+
+
+LOO_FACTOR = 2.0
+"""A range of a leave-one-out set reaches from the smallest value of the other three samples
+divided by this factor to the largest times it."""
+
+TEXTURE_FLOOR = 0.01
+"""Texture RMS (rad) up to which a fitted texture leaves the spectrum as it is without texture:
+such a sample counts as untextured. Every texture range of the leave-one-out sets starts at
+this value divided by :data:`LOO_FACTOR`, since a sample may have no texture."""
+
+SLOPE_MARGIN = 0.5
+"""Added on both sides of the range of the fitted slopes of the textured samples."""
+
+PSF_MARGIN = 0.3
+"""Unbinned pixels added on both sides of the range of the PSF fits."""
+
+
+@dataclass(frozen=True)
+class LooRanges:
+    """Ranges of the training set of ``sample`` from the measured holograms ``others``
+    (:func:`loo_ranges`); the keys of :class:`holofocus.dataset.config.DatasetConfig`."""
+
+    sample: str
+    others: tuple[str, ...]
+    psf_sigma: tuple[float, float]
+    photons: tuple[float, float]
+    flat_field: tuple[float, float]
+    flat_field_cutoff: float
+    phase_per_pixel: tuple[float, float]
+    fiber_diameter: tuple[float, float]
+    texture_rms: tuple[float, float]
+    texture_slope: tuple[float, float]
+
+
+def _round(value: float) -> float:
+    return float(f"{value:.3g}")
+
+
+def _widened(values: Sequence[float], cap: float = math.inf) -> tuple[float, float]:
+    return (_round(min(values) / LOO_FACTOR), _round(min(max(values) * LOO_FACTOR, cap)))
+
+
+def loo_ranges(sample: str, fits: Mapping[str, Texture] | None = None) -> LooRanges:
+    """What the three measured holograms other than ``sample`` say, as ranges for a training
+    set of ``sample`` (leave one out); values rounded to three significant digits.
+
+    Detector: the PSF over the range of :data:`DETECTOR_FITS` +- :data:`PSF_MARGIN`, the corner
+    frequency of the residual their median, the photons and residual RMS of
+    :data:`MEASURED_MODELS` widened by :data:`LOO_FACTOR` (the Mg wire, whose corners hold the
+    object, only with its photons). Bulk object: :func:`phase_per_pixel` and the fiber
+    diameters widened, the diameters at most the field of view. Texture (``fits``, default
+    :data:`TEXTURE_FITS`): it sits inside the object in one sample and around it in another,
+    so the object texture and the film both range from :data:`TEXTURE_FLOOR` divided by
+    :data:`LOO_FACTOR` to the largest amplitude of the others times it, and the slope over the
+    fitted slopes of the textured ones +- :data:`SLOPE_MARGIN`.
+    """
+    if sample not in MEASURED_SAMPLES:
+        raise ValueError(f"unknown sample {sample!r}; choose from {list(MEASURED_SAMPLES)}")
+    fits = TEXTURE_FITS if fits is None else fits
+    others = tuple(s for s in MEASURED_SAMPLES if s != sample)
+    with_corners = [s for s in others if DETECTOR_FITS[s] is not None]
+    psf = [DETECTOR_FITS[s].psf_sigma for s in with_corners]
+    textured = [fits[s] for s in others if fits[s].amplitude > TEXTURE_FLOOR]
+    slopes = [t.slope for t in textured] or [PhantomConfig().texture_slope_range[0]]
+    amplitude = max([TEXTURE_FLOOR] + [t.amplitude for t in textured])
+    diameters = [d for s in others for d in MEASURED_MODELS[s].fiber_diameter_range]
+    return LooRanges(
+        sample=sample,
+        others=others,
+        psf_sigma=(_round(min(psf) - PSF_MARGIN), _round(max(psf) + PSF_MARGIN)),
+        photons=_widened([MEASURED_MODELS[s].photons for s in others]),
+        flat_field=_widened([MEASURED_MODELS[s].flat_field for s in with_corners]),
+        flat_field_cutoff=_round(
+            float(np.median([DETECTOR_FITS[s].flat_field_cutoff for s in with_corners]))
+        ),
+        phase_per_pixel=_widened([phase_per_pixel(s) for s in others]),
+        fiber_diameter=_widened(diameters, cap=1.0),
+        texture_rms=(_round(TEXTURE_FLOOR / LOO_FACTOR), _round(amplitude * LOO_FACTOR)),
+        texture_slope=(min(slopes) - SLOPE_MARGIN, max(slopes) + SLOPE_MARGIN),
+    )
+
+
+def loo_changes(sample: str, fits: Mapping[str, Texture] | None = None) -> dict[str, dict]:
+    """Config changes of the leave-one-out training set of ``sample`` (:func:`loo_ranges`):
+    fibers with the ``delta / beta`` of its composition, the same range for the object texture
+    and the film."""
+    r = loo_ranges(sample, fits)
+    return {
+        "simulation": {"psf_sigma_range": list(r.psf_sigma)},
+        "noise": {
+            "photons_range": list(r.photons),
+            "flat_field_range": list(r.flat_field),
+            "flat_field_cutoff": r.flat_field_cutoff,
+        },
+        "phantoms": {
+            "types": {"fiber": 1.0},
+            "delta_beta": MEASURED_MODELS[sample].delta_beta,
+            "fiber_diameter_range": list(r.fiber_diameter),
+            "phase_per_pixel_range": list(r.phase_per_pixel),
+            "texture_rms_range": list(r.texture_rms),
+            "background_texture_rms_range": list(r.texture_rms),
+            "texture_slope_range": list(r.texture_slope),
+            "texture_cutoff": TEXTURE_CUTOFF,
+        },
+    }

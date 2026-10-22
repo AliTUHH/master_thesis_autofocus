@@ -11,11 +11,15 @@
   then of a finer grid around the best one; the texture whose median spectral features lie
   closest to those of the measured hologram (:func:`~holofocus.learned.objectmodel.fit_objective`)
   is the fit (``results/objectmodel/fit-<sample>.{json,csv}``).
+* ``configs``: the leave-one-out dataset configs ``configs/dataset/loo-<sample>.yaml``
+  (:func:`holofocus.learned.objectmodel.loo_changes`) and ``loo-<sample>-large.yaml`` with
+  more training samples for GPU runs.
 
 Usage::
 
     python scripts/run_stage6_study.py regions --holograms DIR
     python scripts/run_stage6_study.py --threads 2 fit --holograms DIR --samples spider_hair
+    python scripts/run_stage6_study.py configs
 
 ``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365.
 ``regions`` reads the phase files ``<sample>-phase.npy`` of the Stage 3 run
@@ -29,28 +33,42 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import textwrap
 import time
 from pathlib import Path
 
 import numpy as np
 import torch
+import yaml
 
 from holofocus.baseline.runner import file_sha256
 from holofocus.dataset import DatasetConfig, HologramGenerator
 from holofocus.learned.objectmodel import (
     BINNING,
+    DETECTOR_FITS,
     FIT_SCALES,
+    LOO_FACTOR,
     REGION_FRACTIONS,
+    TEXTURE_FITS,
+    TEXTURE_FLOOR,
     Texture,
     fit_changes,
     fit_objective,
+    loo_changes,
+    loo_ranges,
     median_features,
+    phase_per_pixel,
     refined_grid,
     region_ctf,
     region_weights,
     texture_grid,
 )
-from holofocus.learned.sim2real import RadialPower, perturbed_config, spectral_features
+from holofocus.learned.sim2real import (
+    MEASURED_MODELS,
+    RadialPower,
+    perturbed_config,
+    spectral_features,
+)
 from holofocus.measured import MEASURED_SAMPLES, load_measured
 from run_stage5_study import environment, repo_relative, write_csv, write_json
 
@@ -58,10 +76,115 @@ REPO = Path(__file__).resolve().parents[1]
 RESULTS = REPO / "results"
 CONFIGS = REPO / "configs" / "dataset"
 SPLIT = "test"
+LOO_SEEDS = {name: 20261061 + k for k, name in enumerate(MEASURED_SAMPLES)}
+LARGE_SEEDS = {name: 20261071 + k for k, name in enumerate(MEASURED_SAMPLES)}
+LARGE_TRAIN = 50000
 
 
 def matched_config(name: str) -> DatasetConfig:
     return DatasetConfig.from_yaml(CONFIGS / f"matched-{name}.yaml")
+
+
+def loo_config(name: str, large: bool = False) -> DatasetConfig:
+    """``configs/dataset/loo-<name>[-large].yaml``: the matched config of ``name`` with
+    :func:`~holofocus.learned.objectmodel.loo_changes` and its own seed."""
+    stem = f"loo-{name}" + ("-large" if large else "")
+    data = perturbed_config(matched_config(name), loo_changes(name), stem).to_dict()
+    data["seed"] = (LARGE_SEEDS if large else LOO_SEEDS)[name]
+    if large:
+        data["splits"] = {"train": LARGE_TRAIN}
+    return DatasetConfig.from_dict(data)
+
+
+def _g(value: float) -> str:
+    return f"{value:.3g}".replace("e+0", "e")
+
+
+def loo_header(name: str, large: bool) -> str:
+    sample, r = MEASURED_SAMPLES[name], loo_ranges(name)
+    others = ", ".join(MEASURED_SAMPLES[s].label for s in r.others)
+    if large:
+        text = (
+            f"loo-{name}.yaml with {LARGE_TRAIN} training samples and another seed, for GPU runs "
+            "(docs/maxwell-gpu.md)."
+        )
+        title = f"Large leave-one-out training data for the measured {sample.label} (Stage 6)."
+    else:
+        text = (
+            f"matched-{name}.yaml changed by holofocus.learned.objectmodel.loo_changes: what "
+            "the measured holograms show about detector and object comes from the other three "
+            f"({others}) as ranges, widened by a factor of {LOO_FACTOR:g}; the setup and "
+            f"delta/beta = {MEASURED_MODELS[name].delta_beta:g} (composition of the sample) stay. "
+            f"Gaussian detector PSF of {_g(r.psf_sigma[0])}-{_g(r.psf_sigma[1])} unbinned "
+            f"pixels, {_g(r.photons[0])}-{_g(r.photons[1])} photons per binned pixel "
+            f"(log-uniform), flat-field residual of {_g(100 * r.flat_field[0])}-"
+            f"{_g(100 * r.flat_field[1])} % RMS with the corner frequency "
+            f"{_g(r.flat_field_cutoff)} per binned pixel; fibers of {_g(100 * r.fiber_diameter[0])}"
+            f"-{_g(100 * r.fiber_diameter[1])} % of the field of view (log-uniform) with "
+            f"{_g(r.phase_per_pixel[0])}-{_g(r.phase_per_pixel[1])} rad per binned pixel of "
+            "projected thickness (log-uniform); a texture with the power-law slope "
+            f"{_g(r.texture_slope[0])}-{_g(r.texture_slope[1])} inside the fiber and as a film "
+            f"over the field of view, each {_g(r.texture_rms[0])}-{_g(r.texture_rms[1])} rad RMS "
+            "(log-uniform). Own seed."
+        )
+        title = f"Leave-one-out training data for the measured {sample.label} (Stage 6)."
+    lines = [title, ""] + textwrap.wrap(text, 94)
+    return "".join(f"# {line}".rstrip() + "\n" for line in lines)
+
+
+def own_values(name: str) -> dict:
+    """What the measured hologram of ``name`` itself shows, in the keys of
+    :class:`~holofocus.learned.objectmodel.LooRanges`; ``None`` where it shows nothing (the
+    detector of the Mg wire, the slope of an untextured fit)."""
+    model, detector, texture = MEASURED_MODELS[name], DETECTOR_FITS[name], TEXTURE_FITS[name]
+    return {
+        "psf_sigma": None if detector is None else detector.psf_sigma,
+        "photons": model.photons,
+        "flat_field": None if detector is None else model.flat_field,
+        "flat_field_cutoff": None if detector is None else detector.flat_field_cutoff,
+        "phase_per_pixel": phase_per_pixel(name),
+        "fiber_diameter": list(model.fiber_diameter_range),
+        "texture_rms": texture.rms,
+        "background_texture_rms": texture.background_rms,
+        "texture_slope": texture.slope if texture.amplitude > TEXTURE_FLOOR else None,
+    }
+
+
+def loo_coverage(name: str) -> dict:
+    """The leave-one-out ranges of ``name`` and whether its own values lie inside them."""
+    ranges = dataclasses.asdict(loo_ranges(name))
+    own = own_values(name)
+    inside = {}
+    for key, value in own.items():
+        texture = key in ("texture_rms", "background_texture_rms")
+        bounds = ranges["texture_rms" if texture else key]
+        if value is None or not isinstance(bounds, (list, tuple)):
+            continue
+        if texture and value <= TEXTURE_FLOOR:
+            inside[key] = bounds[0] <= TEXTURE_FLOOR
+            continue
+        values = value if isinstance(value, list) else [value]
+        inside[key] = all(bounds[0] <= v <= bounds[1] for v in values)
+    return {"ranges": ranges, "own": own, "inside": inside}
+
+
+def cmd_configs(args) -> None:
+    coverage = {}
+    for name in args.samples:
+        for large in (False, True):
+            config = loo_config(name, large)
+            body = yaml.safe_dump(config.to_dict(), sort_keys=False, default_flow_style=None)
+            path = args.out / f"{config.name}.yaml"
+            path.write_text(loo_header(name, large) + body)
+            print(f"{repo_relative(path)}: seed {config.seed}, splits {config.splits}")
+        coverage[name] = loo_coverage(name)
+        outside = [k for k, v in coverage[name]["inside"].items() if not v]
+        print(f"{name}: own values outside the leave-one-out ranges: {outside or 'none'}")
+    fits = {name: dataclasses.asdict(t) for name, t in TEXTURE_FITS.items()}
+    write_json(
+        args.results / "loo-ranges.json",
+        {"texture_fits": fits, "samples": coverage, **environment()},
+    )
 
 
 def measured_features(holograms: Path, name: str) -> tuple[RadialPower, dict]:
@@ -263,6 +386,12 @@ def main() -> None:
     fi.add_argument("--n", type=int, default=16, help="test samples per texture")
     fi.add_argument("--out", type=Path, default=RESULTS / "objectmodel")
     fi.set_defaults(func=cmd_fit)
+
+    cf = sub.add_parser("configs", help="the leave-one-out dataset configs")
+    cf.add_argument("--samples", **samples)
+    cf.add_argument("--out", type=Path, default=CONFIGS)
+    cf.add_argument("--results", type=Path, default=RESULTS / "objectmodel")
+    cf.set_defaults(func=cmd_configs)
 
     args = parser.parse_args()
     if args.threads:

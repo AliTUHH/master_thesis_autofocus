@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import math
 from pathlib import Path
@@ -9,13 +10,18 @@ from holofocus.dataset import DatasetConfig
 from holofocus.learned.objectmodel import (
     DETECTOR_FITS,
     FIT_SCALES,
+    LOO_FACTOR,
     REFINE_FACTOR,
     TEXTURE_FITS,
+    TEXTURE_FLOOR,
     TEXTURE_GRID,
+    DetectorFit,
     Texture,
     field_of_view,
     fit_changes,
     fit_objective,
+    loo_changes,
+    loo_ranges,
     median_features,
     phase_per_pixel,
     refined_grid,
@@ -178,6 +184,69 @@ def test_median_features_take_the_bands_one_by_one():
     assert median["ctf_bands"] == pytest.approx([0.2, 0.4, 0.0, -0.2])
 
 
+FITS = {
+    "spider_hair": Texture(0.0, 0.1, 3.0),
+    "tooth": Texture(0.0, 0.0, 2.0),
+    "cactus_needle": Texture(0.3, 0.0, 2.5),
+    "magnesium_wire": Texture(0.5, 0.0, 2.0),
+}
+"""Synthetic texture fits with the pattern of the measured holograms: a film around the spider
+hair, nothing on the tooth, texture inside needle and wire."""
+
+
+@pytest.mark.parametrize("name", list(MEASURED_SAMPLES))
+def test_loo_sets_know_nothing_of_the_left_out_hologram(name, monkeypatch):
+    changes = loo_changes(name, FITS)
+    model = MEASURED_MODELS[name]
+    monkeypatch.setitem(
+        MEASURED_MODELS,
+        name,
+        dataclasses.replace(
+            model,
+            photons=7.0,
+            flat_field=0.7,
+            phase_shift_range=(70.0, 80.0),
+            fiber_diameter_range=(0.7, 0.8),
+        ),
+    )
+    monkeypatch.setitem(DETECTOR_FITS, name, DetectorFit(7.0, 0.7))
+    assert loo_changes(name, {**FITS, name: Texture(7.0, 7.0, 0.7)}) == changes
+    # only delta / beta, known from the composition, is the sample's own
+    assert changes["phantoms"]["delta_beta"] == model.delta_beta
+
+
+@pytest.mark.parametrize("name", list(MEASURED_SAMPLES))
+def test_loo_ranges_contain_the_other_holograms(name):
+    r = loo_ranges(name, FITS)
+    assert r.others == tuple(s for s in MEASURED_SAMPLES if s != name)
+    for other in r.others:
+        m = MEASURED_MODELS[other]
+        assert r.photons[0] < m.photons < r.photons[1]
+        assert r.phase_per_pixel[0] < phase_per_pixel(other) < r.phase_per_pixel[1]
+        assert r.fiber_diameter[0] < m.fiber_diameter_range[0]
+        assert m.fiber_diameter_range[1] <= r.fiber_diameter[1] <= 1.0
+        if DETECTOR_FITS[other] is not None:
+            assert r.psf_sigma[0] < DETECTOR_FITS[other].psf_sigma < r.psf_sigma[1]
+            assert r.flat_field[0] < m.flat_field < r.flat_field[1]
+        texture = FITS[other]
+        assert r.texture_rms[0] < TEXTURE_FLOOR and texture.amplitude < r.texture_rms[1]
+        if texture.amplitude > TEXTURE_FLOOR:
+            assert r.texture_slope[0] < texture.slope < r.texture_slope[1]
+
+
+def test_loo_textures_pool_object_and_film():
+    # none of the other three has a film, but the spider hair may get one as strong as the
+    # texture inside the Mg wire; the untextured tooth adds no slope
+    spider = loo_changes("spider_hair", FITS)["phantoms"]
+    assert spider["background_texture_rms_range"] == spider["texture_rms_range"]
+    assert spider["texture_rms_range"] == [TEXTURE_FLOOR / LOO_FACTOR, 0.5 * LOO_FACTOR]
+    assert spider["texture_slope_range"] == [1.5, 3.0]
+    assert loo_ranges("magnesium_wire", FITS).texture_rms[1] == 0.3 * LOO_FACTOR
+    # the Mg wire has no detector fit: three PSF fits for it, two for the others
+    assert loo_ranges("magnesium_wire", FITS).psf_sigma == (1.2, 2.01)
+    assert loo_ranges("tooth", FITS).flat_field_cutoff == pytest.approx((0.179 + 0.192) / 2, 1e-2)
+
+
 @pytest.mark.parametrize("name", list(MEASURED_SAMPLES))
 def test_texture_fits_are_the_best_textures_of_the_fit_records(name):
     record = json.loads((ROOT / "results" / "objectmodel" / f"fit-{name}.json").read_text())
@@ -185,3 +254,16 @@ def test_texture_fits_are_the_best_textures_of_the_fit_records(name):
     assert record["best"]["objective"] == min(e["objective"] for e in record["settings"])
     refined = refined_grid(Texture(**record["best_coarse"]))
     assert len(record["settings"]) == len(texture_grid()) + len(refined)
+
+
+@pytest.mark.parametrize("name", list(MEASURED_SAMPLES))
+def test_loo_configs_are_the_matched_ones_with_the_loo_changes(name):
+    matched = DatasetConfig.from_yaml(CONFIGS / f"matched-{name}.yaml")
+    small = DatasetConfig.from_yaml(CONFIGS / f"loo-{name}.yaml")
+    large = DatasetConfig.from_yaml(CONFIGS / f"loo-{name}-large.yaml")
+    expected = perturbed_config(matched, loo_changes(name), f"loo-{name}")
+    assert small == dataclasses.replace(expected, seed=small.seed) and small.seed != matched.seed
+    assert small.phantoms.textured and small.splits == matched.splits
+    assert large.name == f"loo-{name}-large" and large.splits == {"train": 50000}
+    for section in ("geometry", "sampling", "simulation", "phantoms", "noise", "storage"):
+        assert getattr(large, section) == getattr(small, section), section
