@@ -9,7 +9,8 @@
 * ``compare``: NPE, its variants and the CNN on the full test split, the 48 test samples of
   the Stage 3 baseline (with its raw and offset-corrected errors) and the calibration split:
   errors of the point estimate, coverage and width of the central 68/95 % intervals, NLL,
-  PIT (SBC) and HPD (expected coverage) statistics, paired bootstrap differences
+  whether wider intervals go with larger errors (rank correlation), PIT (SBC) and HPD
+  (expected coverage) statistics, paired bootstrap differences
   (``results/npe/comparison/<set>.{json,csv}``, ``comparison.csv``).
 * ``timing``: time per estimate of the CNN and the NPEs at the same thread count on the same
   test holograms, alternating, with the parts of one NPE estimate (``results/npe/timing.json``).
@@ -259,6 +260,24 @@ def restrict(table: dict[str, np.ndarray], indices) -> dict[str, np.ndarray]:
     return {k: v[rows] for k, v in table.items()}
 
 
+def spearman(x: np.ndarray, y: np.ndarray) -> float:
+    """Rank correlation; ties are broken by position (widths and errors are continuous)."""
+    rx, ry = (np.argsort(np.argsort(v, kind="stable")) for v in (x, y))
+    return float(np.corrcoef(rx, ry)[0, 1])
+
+
+def width_error(table: dict[str, np.ndarray]) -> dict:
+    """How well the 68 % width orders the samples by their error: rank correlation of width
+    and absolute error, and the MAE of the quarters with the narrowest and widest intervals."""
+    width, error = table["width_68_um"], np.abs(table["error_um"])
+    narrow, wide = width <= np.quantile(width, 0.25), width >= np.quantile(width, 0.75)
+    return {
+        "spearman": spearman(width, error),
+        "mae_narrowest_quarter_um": float(error[narrow].mean()),
+        "mae_widest_quarter_um": float(error[wide].mean()),
+    }
+
+
 def table_metrics(table: dict[str, np.ndarray]) -> dict:
     """Metrics of a method table; point metrics and cost only for methods without intervals
     (the baseline)."""
@@ -277,6 +296,7 @@ def table_metrics(table: dict[str, np.ndarray]) -> dict:
         },
         "sigma_median_um": float(np.median(table["sigma_um"])),
         "nll": float(-table["log_density_um"].mean()),
+        "width_error": width_error(table),
         "calibration": calibration_summary(table["pit"], table["hpd_level"]),
         "seconds_median": float(np.median(table["seconds"])),
     }
@@ -306,6 +326,15 @@ def paired(a: dict[str, np.ndarray], b: dict[str, np.ndarray], seed: int = 0) ->
     width = np.log(a["width_68_um"] / b["width_68_um"])
     out["width_68_ratio_median"] = float(np.exp(np.median(width)))
     out["fraction_first_better"] = float(np.mean(abs_a < abs_b))
+    rows = np.column_stack([a["width_68_um"], abs_a, b["width_68_um"], abs_b])
+
+    def gain(d: np.ndarray) -> float:
+        return spearman(d[:, 0], d[:, 1]) - spearman(d[:, 2], d[:, 3])
+
+    out["width_error_spearman"] = {
+        "difference": gain(rows),
+        "ci": list(bootstrap_ci(rows, gain, resamples=2000, seed=seed)),
+    }
     return out
 
 
@@ -413,6 +442,7 @@ def summary_row(set_name: str, method: str, m: dict) -> dict:
                 "coverage_curve_max_dev": hpd["curve"]["max_abs_deviation"],
                 "pit_ks_p": m["calibration"]["pit"]["ks"]["p_value"],
                 "nll": m["nll"],
+                "width_error_spearman": m["width_error"]["spearman"],
             }
         )
     row["seconds_median"] = m["seconds_median"]
