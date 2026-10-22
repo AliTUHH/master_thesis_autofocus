@@ -10,7 +10,7 @@ Outputs in the run directory:
 * ``summary.json``: aggregate accuracy and cost, rewritten after every sample.
 
 Runs are resumable: samples already in ``results.csv`` are skipped, and a run directory
-created with another config, dataset or warm start is refused. A split can be run in
+created with another config, dataset, warm start or box is refused. A split can be run in
 contiguous chunks (one per task of a job array); :func:`merge_runs` joins them into one run
 directory.
 """
@@ -80,13 +80,15 @@ def dataset_identity(path: str | Path) -> dict:
 
 
 def _run_key(info: dict) -> tuple:
-    """What must match to continue a run: method, settings, dataset content and warm start."""
+    """What must match to continue a run: method, settings, dataset content, warm start and
+    search intervals."""
     dataset = info.get("dataset") or {}
     return (
         info.get("config"),
         info.get("asrm_settings"),
         dataset.get("sha256"),
         info.get("warm_start"),
+        info.get("box"),
     )
 
 
@@ -164,6 +166,49 @@ class WarmStart:
         return (center - width, center + width)
 
 
+@dataclass(frozen=True)
+class Box:
+    """Search intervals from interval estimates of ``z01``, e.g. the 95 % interval of a learned
+    model (Stage 9): sample ``i`` is searched in ``[l_i, u_i]`` cut to ``Omega_z``, with the
+    ends of that interval as the initial simplex of Nelder-Mead. ``source`` is a CSV with the
+    columns ``index``, ``z01_lower_<level>`` and ``z01_upper_<level>`` in metres, e.g. the
+    ``predictions.csv`` of an NPE.
+    """
+
+    source: str
+    sha256: str
+    level: str
+    lower: dict[int, float]
+    upper: dict[int, float]
+
+    @classmethod
+    def from_csv(cls, path: str | Path, level: str = "95"):
+        lower, upper = {}, {}
+        columns = ("index", f"z01_lower_{level}", f"z01_upper_{level}")
+        with open(path, newline="") as fh:
+            reader = csv.DictReader(fh)
+            missing = [c for c in columns if c not in (reader.fieldnames or ())]
+            if missing:
+                raise ValueError(f"{path} has no columns {missing}")
+            for row in reader:
+                index = int(row["index"])
+                lower[index] = float(row[columns[1]])
+                upper[index] = float(row[columns[2]])
+        return cls(str(path), file_sha256(path), str(level), lower, upper)
+
+    def identity(self) -> dict:
+        return {"source": self.source, "sha256": self.sha256, "level": self.level}
+
+    def bounds(self, index: int, lower: float, upper: float) -> tuple[float, float]:
+        cut = (max(self.lower[index], lower), min(self.upper[index], upper))
+        if not cut[0] < cut[1]:
+            raise ValueError(
+                f"the {self.level} % interval of sample {index} "
+                f"[{self.lower[index]}, {self.upper[index]}] m misses [{lower}, {upper}] m"
+            )
+        return cut
+
+
 def phase_rmse(result: ASRMResult | None, phase: torch.Tensor | None) -> float | None:
     """RMS error of the reconstructed phase; ``None`` without truth or on another grid."""
     if result is None or phase is None or tuple(result.obj.shape) != tuple(phase.shape):
@@ -204,11 +249,14 @@ def run_baseline(
     warm_start: WarmStart | None = None,
     log: Callable[[str], None] | None = print,
     chunk: tuple[int, int] | None = None,
+    box: Box | None = None,
 ) -> dict:
     """Autofocus every selected sample of the split file ``data``; returns the summary.
 
-    Without ``warm_start`` the search starts from the ends of ``Omega_z`` as in [2]. The
-    selection is that of :func:`select_indices`.
+    Without ``warm_start`` the search starts from the ends of ``Omega_z`` as in [2]; with
+    ``box`` it searches in the interval of each sample instead of ``Omega_z`` (with a warm
+    start, its simplex is moved inside that interval). The method is ``config.search.method``.
+    The selection is that of :func:`select_indices`.
     """
     data, out = Path(data), Path(out)
     dataset_config = read_config(data)
@@ -219,6 +267,10 @@ def run_baseline(
         missing = [i for i in chosen if i not in warm_start.centers]
         if missing:
             raise ValueError(f"warm start {warm_start.source} has no estimate for {missing}")
+    if box is not None:
+        missing = [i for i in chosen if i not in box.lower]
+        if missing:
+            raise ValueError(f"box {box.source} has no interval for {missing}")
     binning = dataset_config.geometry.binning
     settings = config.reconstruction.settings(binning)
     torch_device = get_device(device or config.reconstruction.device)
@@ -234,6 +286,8 @@ def run_baseline(
     }
     if warm_start is not None:
         run_info["warm_start"] = warm_start.identity()
+    if box is not None:
+        run_info["box"] = box.identity()
     out.mkdir(parents=True, exist_ok=True)
     run_file = out / "run.yaml"
     if run_file.exists():
@@ -274,10 +328,12 @@ def run_baseline(
             z01_true = float(labels["z01"][index])
             z01_guess = float(labels["z01_guess"][index])
             geometry = dataset_config.geometry.at(z01_guess)
-            simplex = None
+            simplex, bounds = None, None
+            omega = (z01_guess - search.confidence, z01_guess + search.confidence)
+            if box is not None:
+                bounds = box.bounds(index, *omega)
             if warm_start is not None:
-                bounds = (z01_guess - search.confidence, z01_guess + search.confidence)
-                simplex = warm_start.simplex(index, *bounds)
+                simplex = warm_start.simplex(index, *(omega if bounds is None else bounds))
             result = find_focus(
                 hologram,
                 geometry,
@@ -287,6 +343,8 @@ def run_baseline(
                 fatol=search.fatol,
                 max_evaluations=search.max_evaluations,
                 initial_simplex=simplex,
+                bounds=bounds,
+                method=search.method,
             )
             mfe_true, truth = None, None
             if config.evaluate_truth:

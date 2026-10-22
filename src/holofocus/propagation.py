@@ -16,7 +16,7 @@ import warnings
 
 import torch
 
-from .device import complex_dtype_of
+from .device import complex_dtype_of, one_thread
 
 
 def _kernel_factor(n: int, fresnel_number: float, device, dtype: torch.dtype) -> torch.Tensor:
@@ -37,7 +37,9 @@ class FresnelPropagator:
     """Pre-computed Fresnel propagator ``D_Fr`` for a fixed array shape.
 
     The 2-D kernel is separable, ``exp(-i pi ky^2/Fr) exp(-i pi kx^2/Fr)``, so only the two
-    1-D factors are stored. Fields may carry leading batch dimensions ``(..., H, W)``.
+    1-D factors are stored. Fields may carry leading batch dimensions ``(..., H, W)``. The
+    complex products run on one thread (:func:`~holofocus.device.one_thread`), so kernel and
+    propagated field have the same bits for every thread count.
     """
 
     def __init__(
@@ -73,7 +75,8 @@ class FresnelPropagator:
         """The full 2-D transfer function (materialised on demand)."""
         if self._ky is None:
             return torch.ones(self.shape, dtype=self.dtype, device=self.device)
-        return self._ky * self._kx
+        with one_thread():
+            return self._ky * self._kx
 
     def __call__(self, field: torch.Tensor) -> torch.Tensor:
         if tuple(field.shape[-2:]) != self.shape:
@@ -82,7 +85,8 @@ class FresnelPropagator:
         if self._ky is None:
             return field.clone()
         spectrum = torch.fft.fft2(field)
-        spectrum = spectrum * self._ky * self._kx
+        with one_thread():
+            spectrum = spectrum * self._ky * self._kx
         return torch.fft.ifft2(spectrum)
 
     def inverse(self) -> FresnelPropagator:

@@ -1,0 +1,23 @@
+# Classical autofocus with Brent's bounded method (Stage 9): the reconstruction and the MFE
+# of paper2-cpu.yaml, unchanged; scipy.optimize.minimize_scalar(method="bounded") replaces
+# Nelder-Mead on the same Omega_z = z01_guess +- 5 mm (or on the interval of
+# holofocus-baseline run --box), with xatol 100 um. The extra reconstruction at the true z01
+# is skipped: it does not depend on the search and is already in the Stage 3 run.
+name: paper2-cpu-brent
+reconstruction:
+  schedule: paper2
+  padding_factor: 2.0
+  fade_width: null
+  a0: 1.0
+  update: reference
+  gradient: reference
+  pin_phase: true
+  precision: single
+  device: auto
+search:
+  confidence: 5.0e-3
+  xatol: 1.0e-4
+  fatol: 1.0e6            # not used by Brent's method
+  max_evaluations: null
+  method: brent
+evaluate_truth: false

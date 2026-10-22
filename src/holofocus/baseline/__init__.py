@@ -2,11 +2,12 @@
 
 from .config import BaselineConfig, ReconstructionConfig, SearchConfig
 from .results import RESULT_FIELDS, read_rows, read_traces, summarize
-from .runner import WarmStart, merge_runs, run_baseline, select_indices
+from .runner import Box, WarmStart, merge_runs, run_baseline, select_indices
 
 __all__ = [
     "RESULT_FIELDS",
     "BaselineConfig",
+    "Box",
     "ReconstructionConfig",
     "SearchConfig",
     "WarmStart",
