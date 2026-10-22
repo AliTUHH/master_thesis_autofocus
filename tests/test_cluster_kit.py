@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 from holofocus.dataset.config import DatasetConfig
 from holofocus.dataset.storage import write_split
@@ -210,6 +211,28 @@ def test_local_pipeline_datagen_train_baseline_merge(tmp_path):
     for args, env in ((baseline, {"SLURM_ARRAY_TASK_ID": "0"}), ([*baseline, "--chunks=2"], None)):
         result = kit("--local", *args, config=config, env=env)
         assert result.returncode != 0 and "--chunks" in result.stderr
+
+
+def test_local_npe_job_as_array_task(tmp_path):
+    pytest.importorskip("sbi")
+    config = kit_config(tmp_path)
+    scratch, dust = tmp_path / "scratch", tmp_path / "dust"
+    dataset = DatasetConfig.from_yaml(REPO / "configs" / "dataset" / "ci.yaml")
+    (scratch / "data" / "ci").mkdir(parents=True)
+    for split, n in (("train", 8), ("val", 4)):
+        write_split(dataset, split, scratch / "data" / "ci" / f"{split}.h5", n_samples=n, log=None)
+    args = ["npe", "npe/ci", "configs/learned/npe-ci.yaml", "--train", "ci/train.h5"]
+    args += ["--val", "ci/val.h5", "--calibration", "ci/val.h5"]
+    result = kit("--local", *args, config=config, env={"SLURM_ARRAY_TASK_ID": "1"})
+    assert result.returncode == 0, result.stdout + result.stderr
+    run = scratch / "runs" / "npe" / "ci-seed1"
+    for name in ("model.pt", "val/predictions.csv", "calibration/predictions.csv"):
+        assert (run / name).exists(), name
+    assert yaml.safe_load((run / "config.yaml").read_text())["training"]["seed"] == 1
+    kept = dust / "holofocus" / "runs" / "npe" / "ci-seed1"
+    assert (kept / "model.pt").exists() and (kept / "calibration" / "sbi-checks.json").exists()
+    result = kit("--local", "npe", "npe/x", "configs/learned/npe-ci.yaml", config=config)
+    assert result.returncode != 0 and "usage: npe" in result.stderr
 
 
 def small_split(tmp_path: Path, n: int = 2) -> Path:

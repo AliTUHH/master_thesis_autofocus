@@ -1,4 +1,4 @@
-"""YAML configuration of the learned autofocus (Stage 4).
+"""YAML configuration of the learned autofocus (Stage 4) and of its NPE (Stage 7).
 
 Example (``configs/learned/spectrum-cnn.yaml``)::
 
@@ -13,7 +13,9 @@ Example (``configs/learned/spectrum-cnn.yaml``)::
     training:
       epochs: 60
 
-Lengths in metres. Unknown keys are rejected.
+:class:`NPEConfig` (``configs/learned/npe-*.yaml``) has the same ``representation``, an
+``embedding`` in place of ``model``, a ``density`` section for the density estimator of sbi
+and its own ``training``. Lengths in metres. Unknown keys are rejected.
 """
 
 from __future__ import annotations
@@ -151,4 +153,139 @@ _SECTIONS = {
     "representation": RepresentationConfig,
     "model": ModelConfig,
     "training": TrainingConfig,
+}
+
+DENSITY_ESTIMATORS = ("nsf", "mdn")
+
+
+@dataclass(frozen=True)
+class EmbeddingConfig:
+    """Embedding network of the NPE: the convolution stack of the Stage 4 CNN for the
+    representation (``channels``, ``kernel_size``, ``pool_to`` as in :class:`ModelConfig`) and
+    an MLP with one hidden layer of ``hidden`` units and ``dropout`` to ``features`` outputs,
+    the condition of the density estimator (a learned summary statistic, [6] Sec. 3.2).
+    """
+
+    channels: tuple[int, ...] = (16, 32, 64, 64)
+    kernel_size: int = 7
+    pool_to: int = 16
+    hidden: int = 128
+    dropout: float = 0.1
+    features: int = 32
+
+    def __post_init__(self) -> None:
+        self.model_config()
+        if self.features < 1:
+            raise ValueError("features must be positive")
+
+    def model_config(self) -> ModelConfig:
+        """The convolution stack and head width as a :class:`ModelConfig` (validated)."""
+        return ModelConfig(
+            channels=self.channels,
+            kernel_size=self.kernel_size,
+            pool_to=self.pool_to,
+            hidden=self.hidden,
+            dropout=self.dropout,
+        )
+
+
+@dataclass(frozen=True)
+class DensityConfig:
+    """Conditional density estimator of sbi (``posterior_nn``) for ``t`` given the embedding.
+
+    ``nsf``: neural spline flow of ``num_transforms`` rational-quadratic splines with
+    ``num_bins`` bins, whose parameters an MLP with ``hidden_features`` units computes from
+    the embedding (for one parameter they depend on the embedding only). ``mdn``: mixture of
+    ``num_components`` Gaussians from an MLP with ``hidden_features`` units. ``t`` enters
+    z-scored with the mean and standard deviation of the uniform prior.
+    """
+
+    estimator: str = "nsf"
+    hidden_features: int = 50
+    num_transforms: int = 5
+    num_bins: int = 10
+    num_components: int = 10
+
+    def __post_init__(self) -> None:
+        if self.estimator not in DENSITY_ESTIMATORS:
+            raise ValueError(f"estimator {self.estimator!r}, choose from {DENSITY_ESTIMATORS}")
+        if min(self.hidden_features, self.num_transforms, self.num_bins) < 1:
+            raise ValueError("hidden_features, num_transforms and num_bins must be positive")
+        if self.num_components < 1:
+            raise ValueError("num_components must be positive")
+
+
+@dataclass(frozen=True)
+class NPETrainingConfig:
+    """AdamW with linear warm-up and cosine decay (the schedule of the Stage 4 CNN) on the
+    NPE loss ``-log q(t | x)``; the epoch with the smallest validation loss is kept ([6],
+    A1.1). ``clip_max_norm`` clips the gradient norm (sbi's default 5; ``null``: off).
+    ``limit``, ``patience`` and ``seed`` as in :class:`TrainingConfig`.
+    """
+
+    epochs: int = 60
+    batch_size: int = 32
+    learning_rate: float = 1.0e-3
+    weight_decay: float = 1.0e-4
+    warmup_epochs: int = 2
+    clip_max_norm: float | None = 5.0
+    limit: int | None = None
+    patience: int | None = None
+    seed: int = 0
+
+    def __post_init__(self) -> None:
+        if self.epochs < 1 or self.batch_size < 2:
+            raise ValueError("epochs must be >= 1 and batch_size >= 2")
+        if self.learning_rate <= 0 or self.weight_decay < 0 or self.warmup_epochs < 0:
+            raise ValueError("learning_rate must be positive, weight_decay and warm-up >= 0")
+        if self.clip_max_norm is not None and self.clip_max_norm <= 0:
+            raise ValueError("clip_max_norm must be positive or null")
+        if self.limit is not None and self.limit < 2:
+            raise ValueError("limit must be at least 2")
+
+
+@dataclass(frozen=True)
+class NPEConfig:
+    """Neural posterior estimation of ``t = dz01 / target_scale`` (Stage 7).
+
+    ``grid_points``: values of ``t`` over the prior box at which the posterior density is
+    evaluated for its median, intervals and calibration statistics.
+    """
+
+    name: str = "npe"
+    target_scale: float = 5.0e-3
+    representation: RepresentationConfig = field(default_factory=RepresentationConfig)
+    embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
+    density: DensityConfig = field(default_factory=DensityConfig)
+    training: NPETrainingConfig = field(default_factory=NPETrainingConfig)
+    grid_points: int = 2001
+    device: str = "auto"
+
+    def __post_init__(self) -> None:
+        if self.target_scale <= 0:
+            raise ValueError("target_scale must be positive")
+        if self.grid_points < 101:
+            raise ValueError("grid_points must be at least 101")
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> NPEConfig:
+        return build(cls, data, "config", _NPE_SECTIONS)
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> NPEConfig:
+        with open(path) as fh:
+            return cls.from_dict(yaml.safe_load(fh) or {})
+
+    def to_dict(self) -> dict[str, Any]:
+        return plain(dataclasses.asdict(self))
+
+    def to_yaml(self) -> str:
+        return yaml.safe_dump(self.to_dict(), sort_keys=False)
+
+
+_NPE_SECTIONS = {
+    "representation": RepresentationConfig,
+    "embedding": EmbeddingConfig,
+    "density": DensityConfig,
+    "training": NPETrainingConfig,
 }

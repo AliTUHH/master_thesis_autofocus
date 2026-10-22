@@ -9,3 +9,13 @@ matplotlib==3.11.2
 scipy==1.18.1
 pytest==9.1.1
 ruff==0.17.1
+# NPE of Stage 7 (setup_env.sh --with-sbi): holofocus.learned.npe uses internal functions of
+# sbi 0.27, and the flows and the classifier tests of sbi's checks come from these packages.
+sbi==0.27.0
+zuko==1.6.0
+nflows==0.14
+scikit-learn==1.9.1
+skorch==1.4.0
+joblib==1.6.0
+tensorboard==2.21.0
+tqdm==4.70.1

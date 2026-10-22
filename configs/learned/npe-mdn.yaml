@@ -1,0 +1,31 @@
+# Variant of npe-nsf.yaml with a mixture density network (10 Gaussians) in place of the
+# spline flow ([6], Sec. 3.1: flows by default, mixtures as the cheaper alternative).
+name: npe-mdn
+target_scale: 5.0e-3
+representation:
+  kind: spectrum
+  bins: 1024
+  f2_max: 0.125
+embedding:
+  channels: [32, 64, 128, 128]
+  kernel_size: 7
+  pool_to: 16
+  hidden: 128
+  dropout: 0.1
+  features: 32
+density:
+  estimator: mdn
+  hidden_features: 50
+  num_components: 10
+training:
+  epochs: 100
+  batch_size: 32
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  warmup_epochs: 2
+  clip_max_norm: 5.0
+  limit: null
+  patience: null
+  seed: 0
+grid_points: 2001
+device: auto

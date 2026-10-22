@@ -1,0 +1,35 @@
+{
+  "npe": "results/npe",
+  "cnn": "results/learned/spectrum-cnn-wide",
+  "baseline": "results/comparison/cpu-4x-test",
+  "test": "/workspace/data/cpu-4x/test.h5",
+  "calibration": "/workspace/data/cpu-4x-calibration/calibration.h5",
+  "sets": {
+    "test": [
+      "cnn",
+      "npe-mdn",
+      "npe-nsf",
+      "npe-nsf-ensemble"
+    ],
+    "calibration": [
+      "cnn",
+      "npe-mdn",
+      "npe-nsf",
+      "npe-nsf-ensemble"
+    ],
+    "baseline-48": [
+      "baseline_corrected",
+      "baseline_raw",
+      "cnn",
+      "npe-mdn",
+      "npe-nsf",
+      "npe-nsf-ensemble"
+    ]
+  },
+  "git_commit": "55c0d03",
+  "torch_version": "2.14.1+cpu",
+  "sbi_version": "0.27.0",
+  "threads": 1,
+  "host": "cursor",
+  "cpu_count": 4
+}

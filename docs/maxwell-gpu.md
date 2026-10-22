@@ -2,7 +2,7 @@
 
 Diese Anleitung beschreibt, wie du die rechenintensiven Läufe der Arbeit auf den A100-Knoten
 von Maxwell startest und ihre Ergebnisse prüfst: die Baseline von [2] auf dem ganzen
-synthetischen Test-Split, größere Trainingsläufe und später NPE. Die Werkzeuge liegen in
+synthetischen Test-Split, größere Trainingsläufe und NPE (Etappe 7). Die Werkzeuge liegen in
 `cluster/maxwell/`: SLURM-Jobs, ein Skript für die Python-Umgebung und
 `scripts/check_cluster_run.py`, das Läufe auf Maxwell Sample für Sample mit den committeten
 Ergebnissen der VM vergleicht.
@@ -23,8 +23,8 @@ Reihenfolge:
 2. Python-Umgebung einrichten (Abschnitt 3).
 3. Einen GPU-Knoten prüfen (Abschnitt 4).
 4. Val- und Test-Split auf der CPU erzeugen, Trainingsdaten auf der GPU (Abschnitt 5).
-5. Baseline auf dem ganzen Test-Split (Abschnitt 6), Training (Abschnitt 7), weitere Läufe
-   (Abschnitt 8).
+5. Baseline auf dem ganzen Test-Split (Abschnitt 6), Training (Abschnitt 7), NPE und weitere
+   Läufe (Abschnitt 8).
 6. Ergebnisse auf einem Branch zurückgeben (Abschnitt 9).
 
 | Was | Wo | Warum |
@@ -48,7 +48,8 @@ Die Jobs liegen in `cluster/maxwell/jobs/` und werden mit
 | `baseline` | klassischer Autofokus von [2] auf einem Split, als Job-Array in `--chunks N` Stücken (Abschnitt 6) | 24 h |
 | `merge` | fügt die Stücke eines Baseline-Arrays zu einem Laufverzeichnis zusammen | 15 min |
 | `train` | trainiert ein Modell und sagt Val und Test vorher, als Array mit einem Seed pro Task (Abschnitt 7) | 12 h |
-| `run` | beliebiger Befehl in der Umgebung, z. B. NPE oder ein MFE-Scan (Abschnitt 8) | 8 h |
+| `npe` | trainiert einen NPE (Etappe 7) und sagt Val, Test und den Kalibrier-Split vorher, mit den Prüfungen von sbi; als Array ein Seed pro Task (Abschnitt 8.1) | 12 h |
+| `run` | beliebiger Befehl in der Umgebung, z. B. ein MFE-Scan (Abschnitt 8) | 8 h |
 
 Die Zeitlimits stehen als `#SBATCH --time` in den Job-Skripten; `--time` ersetzt sie.
 Optionen von `submit.sh`, vor dem Namen des Jobs:
@@ -57,7 +58,7 @@ Optionen von `submit.sh`, vor dem Namen des Jobs:
 |---|---|
 | `--cpu` | CPU-Partition ohne GPU, die Jobs rechnen mit `--device cpu` |
 | `--time T` | Zeitlimit, z. B. `--time 12:00:00` |
-| `--array SPEC` | Job-Array, z. B. `0-9` oder `3`; bei `baseline` rechnet Task k Stück k von `--chunks N`, bei `train` trainiert Task k mit `--seed k` |
+| `--array SPEC` | Job-Array, z. B. `0-9` oder `3`; bei `baseline` rechnet Task k Stück k von `--chunks N`, bei `train` und `npe` trainiert Task k mit `--seed k` |
 | `--after ID` | startet erst, wenn Job `ID` (bei einem Array alle Tasks) erfolgreich beendet ist |
 | `--sbatch OPT` | weitere sbatch-Option, z. B. `--sbatch --mem=32G` (wiederholbar) |
 | `--dry-run` | zeigt den sbatch-Befehl, statt ihn abzuschicken |
@@ -141,8 +142,8 @@ Varianten:
   das `python` aus dem `PATH` nach `module load $HOLOFOCUS_MODULES`. In dieser Umgebung einmal
   `pip install -c cluster/maxwell/requirements-vm.txt -e ".[dev]"` ausführen.
 - **neu aufsetzen:** `setup_env.sh --recreate`.
-- **sbi für NPE:** `setup_env.sh --with-sbi`; torch und die gepinnten Pakete bleiben dabei,
-  wie sie sind.
+- **sbi für NPE (Etappe 7):** `setup_env.sh --with-sbi` installiert das Extra `npe` mit den
+  Versionen der VM (Abschnitt 8.1); torch und die gepinnten Pakete bleiben dabei, wie sie sind.
 
 In jeder neuen Shell auf Maxwell hilft `source cluster/maxwell/config.sh`: Dann stehen
 `$HOLOFOCUS_SCRATCH`, `$HOLOFOCUS_DUST` und `$HOLOFOCUS_ENV` auch in deinen eigenen Befehlen
@@ -502,21 +503,97 @@ der VM. In `$M/figures` entstehen `stage5-measured.png`, `stage5-sim2real.png` u
 `stage5-training.png` für die neuen Modelle; die übrigen Bilder brauchen Eingaben der VM und
 fehlen.
 
-## 8 NPE und weitere Läufe mit `run`
+## 8 NPE und weitere Läufe
 
-### 8.1 NPE (spätere Etappe)
+### 8.1 Etappe 7: NPE (Laborbuch 07)
 
-Für die NPE-Etappe (Plan, nach Etappe 4) installiert `setup_env.sh --with-sbi` das Paket sbi,
-ohne torch oder die gepinnten Pakete zu ändern (auf der VM sbi 0.27.0 zu torch 2.14.1). Die
-Läufe startet der allgemeine Job `run`, z. B.
+Etappe 7 schätzt die ganze Posterior von `dz01` mit neuronaler Posterior-Schätzung (NPE, das
+Paket sbi) statt eines Mittelwerts mit σ. Die Umgebung braucht dafür sbi:
+`cluster/maxwell/setup_env.sh --with-sbi` installiert das Extra `npe` des Pakets mit sbi 0.27.0
+und dessen Abhängigkeiten in den Versionen der VM (`requirements-vm.txt`); torch und die
+übrigen gepinnten Pakete bleiben unverändert. Bei `HOLOFOCUS_ENV_KIND=none` stattdessen
+`pip install -c cluster/maxwell/requirements-vm.txt -e ".[dev,npe]"`. `holofocus.learned.npe`
+nutzt interne Funktionen von sbi 0.27; mit einer anderen sbi-Version ist nichts geprüft.
+
+Der Job `npe` trainiert mit `holofocus-learn npe-train`, behält die Epoche mit dem kleinsten
+Val-Verlust (−log q des wahren `dz01`), sagt Val vorher, mit `--test` den Test-Split und mit
+`--calibration` den Kalibrier-Split; auf diesem rechnet er auch die Prüfungen von sbi (SBC,
+erwartete Abdeckung und TARP, `calibration/sbi-checks.json`). Als Array trainiert Task k mit
+`--seed k` nach `<name>-seedk`.
+
+Zuerst der Kalibrier-Split (2000 Ziehungen aus dem Prior mit der Physik von cpu-4x, eigener
+Seed), auf der CPU, damit der Job ihn mit seinem Fingerabdruck
+`results/datasets/cpu-4x-calibration-calibration.csv` vergleicht (PASS oder WARN wie in
+Abschnitt 5). Auf der VM dauerte er mit 3 Threads 958 s (0,48 s pro Sample) und ist 1,4 GB
+groß.
 
 ```bash
-cluster/maxwell/submit.sh run bash -c 'python -m <npe-modul> --out "$HOLOFOCUS_RUNS/npe/..."'
+cluster/maxwell/submit.sh --cpu --time 08:00:00 datagen configs/dataset/cpu-4x-calibration.yaml
 ```
 
-Die einfachen Anführungszeichen sorgen dafür, dass `$HOLOFOCUS_DATA`, `$HOLOFOCUS_RUNS` und
-`$HOLOFOCUS_DEVICE` erst im Job aufgelöst werden. Die NPE-Etappe bringt ihren eigenen Befehl
-und ihre Config mit und ergänzt diesen Abschnitt.
+Dann die Läufe. Die Namen unter `npe/` und `npe-large/` folgen `results/npe/` der VM (Seed 0
+ohne Endung, die Seeds 1–4 als Array), damit `scripts/run_stage7_study.py` sie unverändert
+auswertet:
+
+```bash
+# 1. Kontrolle: der NPE der VM auf denselben 10 000 Samples, jetzt auf der GPU
+cluster/maxwell/submit.sh npe npe/npe-nsf configs/learned/npe-nsf.yaml \
+    --train cpu-4x/train.h5 cpu-4x-extra/train.h5 --val cpu-4x/val.h5 --test cpu-4x/test.h5 \
+    --calibration cpu-4x-calibration/calibration.h5
+
+# 2. 60 000 Samples (cpu-4x-large aus Abschnitt 5): Seed 0, die Seeds 1-4, die Mischdichte
+large=(--train cpu-4x/train.h5 cpu-4x-extra/train.h5 cpu-4x-large/train.h5 --val cpu-4x/val.h5
+    --test cpu-4x/test.h5 --calibration cpu-4x-calibration/calibration.h5)
+cluster/maxwell/submit.sh npe npe-large/npe-nsf configs/learned/npe-nsf.yaml "${large[@]}"
+cluster/maxwell/submit.sh --array 1-4 npe npe-large/npe-nsf configs/learned/npe-nsf.yaml \
+    "${large[@]}"
+cluster/maxwell/submit.sh npe npe-large/npe-mdn configs/learned/npe-mdn.yaml "${large[@]}"
+
+# 3. die vier Messproben auf 56 000 Samples (Daten aus 7.1)
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    cluster/maxwell/submit.sh npe npe-large/matched-$p configs/learned/npe-nsf.yaml \
+        --train matched-$p/train.h5 matched-$p-large/train.h5 \
+        --val matched-$p/val.h5 --test matched-$p/test.h5
+done
+```
+
+Lauf 1 sollte ähnliche, nicht dieselben Zahlen liefern wie `results/npe/npe-nsf/summary.json`
+(auf der VM: beste Epoche 27, Val-MAE 196 µm, Abdeckung der 68-/95-%-Intervalle 0,68/0,92,
+48 min Training mit 1 Thread); der Grund steht in Abschnitt 7. Auf der VM passten sich alle
+NPE-Läufe nach 21 bis 38 von 100 Epochen den Trainingsdaten an: Der Val-Verlust stieg danach
+wieder, während der Trainingsverlust weiter fiel (Laborbuch 07). Die Auswahl nach dem
+Val-Verlust fängt das ab, die übrigen Epochen kosten nur Zeit. Ob 60 000 Samples die beste
+Epoche nach hinten schieben, zeigt `history.csv` von Lauf 2.
+
+Ausgewertet wird nach dem Zurückgeben (Abschnitt 9) auf der VM, mit den CNNs auf denselben
+Daten als Vergleich (Abschnitt 7, Lauf 2, und Abschnitt 7.1):
+
+```bash
+N=results/maxwell/npe-large
+C=results/maxwell/learned/spectrum-cnn-wide-60k-seed0
+S="python scripts/run_stage7_study.py --npe $N --cnn $C"
+$S --threads 3 predict
+$S compare
+$S --threads 1 timing
+$S examples
+$S --threads 3 perturb --cnn-learned results/maxwell/learned-large --cnn-sim2real $N/cnn-sim2real
+$S --threads 1 measured --holograms DIR
+python scripts/make_stage7_figures.py --npe $N --cnn $C --learned results/maxwell/learned-large \
+    --out $N/figures
+```
+
+`perturb` vergleicht mit den Vorhersagen des CNN derselben Probe auf denselben gestörten Sets
+und nimmt sie nur, wenn Datensatz und Modell (SHA-256) mit der Referenz übereinstimmen. Für die
+großen CNNs erzeugt sie
+`python scripts/run_stage5_study.py --learned results/maxwell/learned-large --threads 3 perturb --out $N/cnn-sim2real`
+(Laborbuch 05); fehlen sie, bleibt die Spalte des CNN in `$N/sim2real/<probe>.json` leer.
+Die Zeit pro Schätzung (`timing`) gehört auf die CPU der VM wie in Etappe 4, nicht auf die GPU.
+
+Nur auf Maxwell zu prüfen (**PRÜFEN**): ob der NPE auf der A100 trainiert und vorhersagt (der
+CUDA-Pfad von sbi und des Gitters ist auf der VM nicht gelaufen), die Zeit pro Epoche, der
+Speicher (die Eingaben brauchen 4 KB pro Sample wie beim Spektrum-CNN) und ob die Zeitlimits
+reichen. Die Batchgröße 32 und die übrigen Einstellungen der Config bleiben wie auf der VM,
+damit die Läufe vergleichbar sind.
 
 ### 8.2 Dichter MFE-Scan (Laborbuch 04, 9.1)
 
@@ -558,12 +635,14 @@ M=results/maxwell
 git checkout -b maxwell-ergebnisse-$(date +%Y%m%d)
 mkdir -p $M/logs
 cp -r $R/baseline $R/comparison $R/learned $R/learned-large $R/gpu-check $R/mfe-scan $M/  # was es davon gibt
+cp -r $R/npe $R/npe-large $M/       # die NPE-Läufe aus 8.1, falls trainiert
 rm -rf $M/baseline/*/chunk-*
 cp $HOLOFOCUS_SCRATCH/logs/holofocus-*.out $M/logs/
 cp $HOLOFOCUS_ENV/holofocus-env.txt $M/
 git add $M                          # HDF5-Dateien und *.pt schließt .gitignore aus
 git add -f $M/learned/*/model.pt    # die trainierten Modelle gehören dazu
 git add -f $M/learned-large/*/model.pt   # die Modelle aus 7.1, falls trainiert
+git add -f $M/npe*/*/model.pt       # die NPEs aus 8.1, falls trainiert
 git commit -m "Maxwell: Baseline auf dem ganzen Test-Split, Training auf 60 000 Samples"
 git push -u origin maxwell-ergebnisse-$(date +%Y%m%d)
 ```
@@ -612,12 +691,15 @@ Auf der VM geprüft (4 CPU-Kerne, ohne SLURM und ohne GPU, mit `--device cpu`):
 - `setup_env.sh` als venv mit den CPU-Wheels von torch 2.14.1 (34 s) und mit conda aus einem
   frischen Miniforge nach Abschnitt 3 (Python 3.12.15, 34 s): Die Downloads landen in
   `$HOLOFOCUS_SCRATCH/cache`, `~/.cache/pip` bleibt unverändert. `--with-sbi` installiert
-  sbi 0.27.0 und lässt torch 2.14.1 und numpy 2.5.4 unverändert. Ein Python älter als 3.12
-  wird abgelehnt (Test).
+  das Extra `npe` mit sbi 0.27.0 und lässt torch 2.14.1 und numpy 2.5.4 unverändert
+  (venv mit den CPU-Wheels, 40 s; zuko, nflows, scikit-learn und die übrigen Abhängigkeiten in
+  den Versionen der VM). Ein Python älter als 3.12 wird abgelehnt (Test).
 - Die Aktivierung der Umgebung im Job für venv und conda, mit einem minimalen `PATH`.
 - Alle Jobs mit `--local` auf dem CI-Datensatz: `datagen`, `train`, `baseline` als Array mit
   zwei Stücken in umgekehrter Reihenfolge, `merge` und die Kopie nach DUST ohne HDF5-Dateien
-  (Test, 24 s).
+  (Test, 24 s); `npe` als Array-Task 1 mit Training nach `<name>-seed1` und Seed 1 in der
+  Config, Vorhersagen für Val und den Kalibrier-Split, den Prüfungen von sbi und der Kopie nach
+  DUST (Test, 13 s).
 - `gpu-check --local` auf der CPU der VM: alle Prüfungen PASS einschließlich `training`, „no
   check failed“, 5,5 min mit 4 Threads; die Baseline von Sample 0 trifft die Schätzung aus
   Etappe 3 auf 0 µm.
@@ -645,6 +727,7 @@ Nur auf Maxwell zu prüfen (**PRÜFEN**, Abschnitt 2 und gpu-check):
   üblichen Init-Skripte), Internetzugang und glibc des Login-Knotens.
 - Treiber und CUDA-Version der A100-Knoten und damit der PyTorch-Index.
 - Alles, was auf der GPU rechnet: die Ergebnisse des gpu-check auf der A100 (Abschnitt 4), die
-  Laufzeiten und damit die Zahl der Stücke und die Zeitlimits.
+  Laufzeiten und damit die Zahl der Stücke und die Zeitlimits, der NPE auf der GPU
+  (Abschnitt 8.1).
 - Pfade und Kontingente von Scratch und DUST und ob alte Dateien auf Scratch gelöscht werden.
 - Ob von Maxwell aus ein Push zu GitHub geht (Abschnitt 9).

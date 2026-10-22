@@ -1,0 +1,62 @@
+models:
+- /home/ubuntu/stage7/results/npe/npe-mdn
+model_sha256:
+- f5104a5919f19a6421bdc5aee8a5928e2be19be7e70320285f1ed3f8fcd2d22b
+ensemble_size: 1
+config:
+  name: npe-mdn
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  embedding:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    features: 32
+  density:
+    estimator: mdn
+    hidden_features: 50
+    num_transforms: 5
+    num_bins: 10
+    num_components: 10
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    clip_max_norm: 5.0
+    limit: null
+    patience: null
+    seed: 0
+  grid_points: 2001
+  device: auto
+prior:
+- -1.0
+- 1.0
+dataset:
+  path: /home/ubuntu/stage7/data/cpu-4x/test.h5
+  sha256: 147e633662b32414262f0860f4192a22939e6c06ae41cad22090b0c67efa4519
+  split: test
+  n_samples: 250
+  seed: 20261020
+  generator_commit: 222f75f
+  created_utc: '2026-10-20T21:40:07+00:00'
+holofocus_version: 0.1.0
+git_commit: 55c0d03
+torch_version: 2.14.1+cpu
+sbi_version: 0.27.0
+device: cpu
+threads: 3
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-22T04:41:30+00:00'

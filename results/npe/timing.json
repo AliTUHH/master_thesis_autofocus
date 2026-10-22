@@ -1,0 +1,54 @@
+{
+  "data": "/workspace/data/cpu-4x/test.h5",
+  "samples": 50,
+  "repeats": 4,
+  "device": "cpu",
+  "what": "one estimate from the hologram in memory, batch of one: representation, network, for the NPE the density on the grid, median and intervals",
+  "methods": {
+    "cnn": {
+      "median": 0.003905526995367836,
+      "mean": 0.003919251515108044,
+      "p10": 0.00382753159647109,
+      "p90": 0.004030494106700644,
+      "ratio_to_cnn": 1.0
+    },
+    "npe-nsf": {
+      "median": 0.012199097502161749,
+      "mean": 0.012247333875202458,
+      "p10": 0.012140766190714202,
+      "p90": 0.012332765806058887,
+      "ratio_to_cnn": 3.1235470953421984
+    },
+    "npe-nsf-ensemble": {
+      "median": 0.047516137492493726,
+      "mean": 0.04760147318527743,
+      "p10": 0.047311360301682724,
+      "p90": 0.04799928440043004,
+      "ratio_to_cnn": 12.166383064014257
+    },
+    "npe-mdn": {
+      "median": 0.0049623615050222725,
+      "mean": 0.00498441003037442,
+      "p10": 0.004870094299258198,
+      "p90": 0.005131241801427678,
+      "ratio_to_cnn": 1.2705997195533147
+    }
+  },
+  "npe_parts_median": {
+    "representation": 0.002901272993767634,
+    "embedding": 0.000716065005690325,
+    "density_on_grid": 0.00790473649976775,
+    "summaries": 0.0003512264956953004
+  },
+  "load_average": [
+    1.158203125,
+    2.07373046875,
+    2.591796875
+  ],
+  "git_commit": "55c0d03",
+  "torch_version": "2.14.1+cpu",
+  "sbi_version": "0.27.0",
+  "threads": 1,
+  "host": "cursor",
+  "cpu_count": 4
+}

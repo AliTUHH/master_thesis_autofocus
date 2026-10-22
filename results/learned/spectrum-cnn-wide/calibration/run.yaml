@@ -1,0 +1,50 @@
+model: /home/ubuntu/stage7/results/learned/spectrum-cnn-wide
+model_sha256: 1c4ecf5a41044685fbf2acd4e41ff12238a465cb22dded704972c295ea396458
+config:
+  name: spectrum-cnn-wide
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  model:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    min_sigma: 0.001
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    beta: 0.5
+    augment: false
+    limit: null
+    patience: null
+    seed: 0
+  device: auto
+sigma_scale: 1.138501423952376
+dataset:
+  path: /home/ubuntu/stage7/data/cpu-4x-calibration/calibration.h5
+  sha256: 997eecd9c77c1edff3849652297e497819ca5d5b6deed4a754d1734ca51a367a
+  split: calibration
+  n_samples: 2000
+  seed: 20261070
+  generator_commit: 57dbee6
+  created_utc: '2026-10-22T01:42:18+00:00'
+holofocus_version: 0.1.0
+git_commit: 0bcbad9
+torch_version: 2.14.1+cpu
+device: cpu
+threads: 1
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-22T03:02:04+00:00'

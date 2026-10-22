@@ -1,0 +1,26 @@
+# CI smoke test of the NPE on configs/dataset/ci.yaml: the representation and convolution
+# stack of ci.yaml, a small spline flow, 3 epochs.
+name: npe-ci
+target_scale: 5.0e-3
+representation:
+  kind: spectrum
+  bins: 128
+  f2_max: 0.25
+embedding:
+  channels: [8, 16]
+  kernel_size: 5
+  pool_to: 4
+  hidden: 16
+  features: 8
+density:
+  estimator: nsf
+  hidden_features: 16
+  num_transforms: 2
+  num_bins: 4
+training:
+  epochs: 3
+  batch_size: 8
+  warmup_epochs: 1
+  seed: 0
+grid_points: 201
+device: cpu

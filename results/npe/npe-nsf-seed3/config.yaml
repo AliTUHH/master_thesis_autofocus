@@ -1,0 +1,36 @@
+name: npe-nsf
+target_scale: 0.005
+representation:
+  kind: spectrum
+  binning: 2
+  bins: 1024
+  f2_max: 0.125
+embedding:
+  channels:
+  - 32
+  - 64
+  - 128
+  - 128
+  kernel_size: 7
+  pool_to: 16
+  hidden: 128
+  dropout: 0.1
+  features: 32
+density:
+  estimator: nsf
+  hidden_features: 50
+  num_transforms: 5
+  num_bins: 10
+  num_components: 10
+training:
+  epochs: 100
+  batch_size: 32
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  warmup_epochs: 2
+  clip_max_norm: 5.0
+  limit: null
+  patience: null
+  seed: 3
+grid_points: 2001
+device: auto

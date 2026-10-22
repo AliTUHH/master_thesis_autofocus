@@ -1,0 +1,62 @@
+models:
+- /home/ubuntu/stage7/results/npe/matched-magnesium_wire
+model_sha256:
+- 69008e9c55cbbf1ec76a90187d5a2d313be42dff34b1299669d27c919e26ddfa
+ensemble_size: 1
+config:
+  name: npe-nsf
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  embedding:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    features: 32
+  density:
+    estimator: nsf
+    hidden_features: 50
+    num_transforms: 5
+    num_bins: 10
+    num_components: 10
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    clip_max_norm: 5.0
+    limit: null
+    patience: null
+    seed: 0
+  grid_points: 2001
+  device: auto
+prior:
+- -1.0
+- 1.0
+dataset:
+  path: /home/ubuntu/stage7/data/sim2real/magnesium_wire/object.h5
+  sha256: c41f0683fb5b4e4b5f5bdc95fd2443c2720211120881d981d33001ed09e297d7
+  split: test
+  n_samples: 250
+  seed: 20261034
+  generator_commit: 44f9631
+  created_utc: '2026-10-21T17:54:09+00:00'
+holofocus_version: 0.1.0
+git_commit: 0bcbad9
+torch_version: 2.14.1+cpu
+sbi_version: 0.27.0
+device: cpu
+threads: 1
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-22T03:04:10+00:00'
