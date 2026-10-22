@@ -118,6 +118,28 @@ jobs:
             --learned $root/learned --measured $root/none --out ${{ runner.temp }}/figures-ci
           python scripts/make_stage7_figures.py --quick --out ${{ runner.temp }}/figures
 
+      - name: Stage 7 on the object model (smoke run; comparison and figures from the committed results)
+        run: |
+          demo=${{ runner.temp }}/demo-dataset
+          root=${{ runner.temp }}/npe-loo-ci
+          mkdir -p $root/data/loo-cactus_needle $root/learned
+          ln -s $demo/val.h5 $root/data/loo-cactus_needle/val.h5
+          ln -s $demo/test.h5 $root/data/loo-cactus_needle/test.h5
+          ln -s ${{ runner.temp }}/learned-ci $root/learned/loo-cactus_needle
+          train="configs/learned/npe-ci.yaml --train $demo/train.h5 --val $demo/val.h5 --threads 2"
+          holofocus-learn npe-train $train --out $root/npe/matched-cactus_needle
+          holofocus-learn npe-train $train --seed 1 --out $root/npe/matched-cactus_needle-seed1
+          study="python scripts/run_stage7_loo_study.py --threads 2 --npe $root/npe"
+          study="$study --cnn $root/learned --cnn-seeds $root/none"
+          pick="--seeds 0 1 --samples cactus_needle"
+          $study predict --data $root/data $pick
+          $study compare $pick
+          $study timing --data $root/data --per-sample 2 --repeats 1 $pick
+          python scripts/make_stage7_loo_figures.py --quick --npe $root/npe --cnn $root/learned \
+            --cnn-seeds $root/none --out ${{ runner.temp }}/figures-loo-ci
+          python scripts/run_stage7_loo_study.py compare --out ${{ runner.temp }}/npe-loo-compare
+          python scripts/make_stage7_loo_figures.py --quick --out ${{ runner.temp }}/figures
+
       - name: Upload demo dataset
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
