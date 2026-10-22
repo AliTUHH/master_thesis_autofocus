@@ -1,0 +1,11 @@
+{
+  "what": "central intervals z01_est +- z sigma of the Gaussian CNN (calibrated sigma) on the test split of cpu-4x, the search intervals of the bounded searches",
+  "source": "results/learned/spectrum-cnn-wide/test/predictions.csv",
+  "source_sha256": "260d7a89e865339f39c911470f97c7842eb917158525fe93958b89e19dfba1ca",
+  "z": {
+    "68": 0.9944578832097535,
+    "95": 1.959963984540056
+  },
+  "n_samples": 250,
+  "sha256": "402df316a98cef2a37699aba900dc8d9e1a91dfac72ec06a3df11d032f5e4c41"
+}

@@ -800,6 +800,102 @@ results/measured/{warm,box95}-{cnn,npe}-loo-ensemble-b1-p4/  the searches
 results/measured/warmstart.{json,csv}    all searches against the full one
 ```
 
+## Stage 9: steps of the MFE, Brent next to Nelder–Mead
+
+Two parts (Laborbuch 09), both on the CPU.
+
+**The MFE and the thread count.** Since Stage 9 a reconstruction gives the bits of a run with
+one thread for every `torch.set_num_threads` (`holofocus.device.one_thread`: the products of
+complex arrays, the norm of `Im(y)` and the loss run on one thread; about 6 % slower with 3
+threads). Reconstructions made before with one thread keep their MFE bit for bit; those made
+with 3 threads (most searches on the measured holograms, the Stage 3 baseline) differ by a few
+ppm, and at the step of the tooth by about 700 ppm. Compare MFE values of older runs only within
+one thread count; `steps` labels every reconstruction with its numerics.
+
+**Brent's bounded method.** `find_focus(..., method="brent")` searches with
+`scipy.optimize.minimize_scalar(method="bounded")` instead of Nelder–Mead, in the same interval,
+with the same `xatol`. In a baseline config it is `search: {method: brent}`
+(`configs/baseline/paper2-cpu-brent.yaml`), for the measured holograms
+`run_stage3_experiments.py measured --method brent`. `holofocus-baseline run --box CSV
+[--box-level 95]` searches every sample inside its own interval, cut to `Omega_z`: the CSV has
+the columns `index`, `z01_lower_<level>` and `z01_upper_<level>` in metres, like the
+`predictions.csv` of an NPE.
+
+```bash
+holofocus-baseline run configs/baseline/paper2-cpu-brent.yaml --data data/cpu-4x/test.h5 \
+    --out runs/baseline/cpu-4x-test-brent-box --limit 48 \
+    --box results/npe/npe-nsf-ensemble/test/predictions.csv
+```
+
+`scripts/run_stage9_study.py`:
+
+- `sources`: the central 68 and 95 % intervals of the Stage 4 CNN on the cpu-4x test split
+  (`results/stage9/intervals-cnn-test.csv`); the NPE ensemble has them in its predictions.
+- `queue` and `merge`: the 248 searches on the 48 synthetic baseline samples (Brent cold, Brent
+  and Nelder–Mead in the 95 % intervals of the NPE ensemble and of the CNN, and the Stage 3
+  search again on 8 samples), taken one at a time by any number of lanes; `merge` writes them
+  to `results/baseline/cpu-4x-test-<search>` and which lane ran what to
+  `results/stage9/lanes.csv`.
+- `scan`: reconstructions of a measured hologram at given `z01` (`--z01-mm`, or `--z01` in
+  metres to hit a recorded point exactly) with the settings of the padding-4 searches: MFE,
+  loss history, losses at the ends of the stages and object statistics per point. Points
+  already in `results/stage9/scan-<sample>.json` are skipped. The objects go to
+  `results/stage9/scan-<sample>/*.npz` (not tracked).
+- `steps`: every padding-4 reconstruction of the measured holograms (all searches and scans)
+  as MFE against `z01`, per probe and numerics, screened for steps (jumps between close
+  neighbours, reversals away from the minimum), with the density of the points about the
+  minimum, the same `z01` with the same and with the other numerics, where the loss histories
+  of two scans part and the scan objects against each other.
+- `compare`: Brent against Nelder–Mead, cold and in the learned intervals, on the measured
+  holograms (against the references of [2] and the full search) and on the synthetic samples
+  (against the truth): error, share within 100 µm, reconstructions, time at the 3-thread rate,
+  and the reconstructions the interval saves with each method, paired over the samples.
+
+The runs of Laborbuch 09, on a 4-core machine (3 threads next to at most one 1-thread run):
+
+```bash
+H=/path/to/Examples/data/holograms      # Zenodo record 10.5281/zenodo.8349365
+m="python scripts/run_stage3_experiments.py --threads 3 measured --holograms $H --binning 1 --padding 4"
+$m --method brent --revisit-tolerance 1e-9 --out results/measured/brent-b1-p4
+for e in cnn npe; do
+    $m --method brent --revisit-tolerance 1e-9 --box results/measured/$e-loo-ensemble \
+        --out results/measured/brent-box95-$e-loo-ensemble-b1-p4
+done
+$m --out results/measured/b1-p4-repeat
+python scripts/run_stage9_study.py sources
+python scripts/run_stage9_study.py --threads 3 queue --lane a    # next to: --threads 1 --lane b
+python scripts/run_stage9_study.py merge
+python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth \
+    --z01-mm 80.694 80.696 80.698 80.702 80.710 80.725      # the points of Laborbuch 09, 5.1
+python scripts/run_stage9_study.py steps
+python scripts/run_stage9_study.py compare
+python scripts/make_stage9_figures.py
+```
+
+The scans with the library of before Stage 9 run in a checkout of `4349d6a`:
+
+```bash
+git worktree add /tmp/before 4349d6a && cp scripts/run_stage9_study.py /tmp/before/scripts/
+(cd /tmp/before && PYTHONPATH=src python scripts/run_stage9_study.py --threads 3 scan \
+    --holograms $H --sample tooth --z01 0.08069255535982456 0.080694 \
+    --out results/stage9/threads-3-4349d6a)
+cp -r /tmp/before/results/stage9/threads-3-4349d6a results/stage9/
+```
+
+The results:
+
+```
+results/stage9/scan-<sample>.json          scans with this stage's library, one thread
+results/stage9/threads-3/                  the same points with 3 threads (the same bits)
+results/stage9/threads-3-4349d6a/          the same points with the library before, 3 threads
+results/stage9/steps.json, mfe-points.csv, steps-objects.json   the screening for steps
+results/stage9/compare.json, measured.csv, synthetic.csv        Brent against Nelder–Mead
+results/stage9/lanes.csv, intervals-cnn-test.{csv,json}
+results/measured/brent-b1-p4/, brent-box95-{cnn,npe}-loo-ensemble-b1-p4/, b1-p4-repeat/
+results/baseline/cpu-4x-test-{brent,brent-box95-npe-ensemble,box95-npe-ensemble,
+                              brent-box95-cnn,box95-cnn,repeat}/
+```
+
 ## GPU runs on DESY Maxwell
 
 `cluster/maxwell/` is a SLURM kit for the A100 nodes of DESY Maxwell; [maxwell-gpu.md](maxwell-gpu.md)

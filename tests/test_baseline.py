@@ -364,6 +364,13 @@ def test_search_method_in_the_configs():
     assert (brent.evaluate_truth, box.evaluate_truth) == (False, False)
     assert "method" not in paper.to_dict()["search"]
     assert brent.to_dict()["search"]["method"] == "brent"
+    ci, ci_brent = (
+        BaselineConfig.from_yaml(ROOT / "configs" / "baseline" / f"{name}.yaml")
+        for name in ("ci", "ci-brent")
+    )
+    assert ci_brent.reconstruction == ci.reconstruction
+    assert dataclasses.replace(ci_brent.search, method="nelder-mead") == ci.search
+    assert (ci_brent.search.method, ci_brent.evaluate_truth) == ("brent", False)
     assert BaselineConfig.from_dict(yaml.safe_load(brent.to_yaml())) == brent
     with pytest.raises(ValueError):
         BaselineConfig.from_dict({**TINY, "search": {"method": "golden"}})

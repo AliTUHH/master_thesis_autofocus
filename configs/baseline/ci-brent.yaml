@@ -1,0 +1,18 @@
+# CI smoke test of Brent's bounded method (Stage 9) on configs/dataset/ci.yaml: the
+# reconstruction of ci.yaml, searched with Brent instead of Nelder-Mead (in Omega_z, or in the
+# interval of holofocus-baseline run --box). The reconstruction at the true z01 is skipped.
+name: ci-brent
+reconstruction:
+  stages:
+    - {iterations: 35, step: 0.9, down_sampling: 16, momentum: 1.0, momentum_fwhm: 8.0,
+       phase_fwhm: 2.0, absorption_fwhm: 0.0, l2_weight: 10.0}
+    - {iterations: 15, step: 1.1, down_sampling: 4, momentum: 1.0, momentum_fwhm: 16.0,
+       phase_fwhm: 2.0, absorption_fwhm: 8.0, l2_weight: 10.0}
+    - {iterations: 25, step: 1.1, down_sampling: 4, momentum: 1.0, momentum_fwhm: 16.0,
+       phase_fwhm: 2.0, absorption_fwhm: 8.0, l2_weight: 1.0}
+  padding_factor: 2.0
+search:
+  confidence: 5.0e-3
+  xatol: 1.0e-3
+  method: brent
+evaluate_truth: false
