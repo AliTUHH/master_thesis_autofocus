@@ -576,6 +576,7 @@ def warmstart_figure(measured: Path, out: Path, dpi: int) -> dict | None:
                         "seconds",
                         "threads",
                         "seconds_per_reconstruction",
+                        "seconds_at_cold_rate",
                         "start_minus_cold_um",
                         "bounds",
                     )

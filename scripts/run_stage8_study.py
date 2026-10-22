@@ -1074,6 +1074,9 @@ def search_entry(path: Path, cold: dict | None) -> dict:
                 "mfe_relative_to_cold": res["mfe"] / cold["mfe"] - 1.0,
                 "reconstructions_to_cold": res["n_reconstructions"] / cold["n_reconstructions"],
                 "seconds_to_cold": res["seconds"] / cold["seconds"],
+                "seconds_at_cold_rate": res["n_reconstructions"]
+                * cold["seconds"]
+                / cold["n_reconstructions"],
                 "cold_inside_bounds": bool(lower <= cold["z01"] <= upper),
             }
         )
@@ -1103,8 +1106,8 @@ def cmd_warmstart(args) -> None:
                 "minus_cold_um", "same_as_cold", "minus_paper2_um", "mfe", "mfe_relative_to_best",
                 "n_reconstructions", "distinct_points", "duplicates", "n_evaluations",
                 "nm_iterations", "converged", "seconds", "seconds_per_reconstruction", "threads",
-                "reconstructions_to_cold", "seconds_to_cold", "start_minus_cold_um",
-                "cold_inside_bounds",
+                "reconstructions_to_cold", "seconds_to_cold", "seconds_at_cold_rate",
+                "start_minus_cold_um", "cold_inside_bounds",
             ):  # fmt: skip
                 value = e.get(key, "")
                 row[key] = int(value) if isinstance(value, bool) else value
@@ -1138,6 +1141,7 @@ def cmd_warmstart(args) -> None:
             cold = [samples[n]["cold"] for n in totals[variant]["samples"]]
             totals[variant]["cold_reconstructions"] = sum(e["n_reconstructions"] for e in cold)
             totals[variant]["cold_seconds"] = sum(e["seconds"] for e in cold)
+            totals[variant]["seconds_at_cold_rate"] = sum(e["seconds_at_cold_rate"] for e in found)
     record = {
         "xatol_um": XATOL_UM,
         "same_point_m": SAME_POINT,
