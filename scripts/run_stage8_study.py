@@ -37,8 +37,9 @@ and ``matched-<sample>-seed<k>``.
 * ``warmstart``: the padding-4 searches on the measured holograms started from an ensemble's
   estimate (``results/measured/warm-{cnn,npe}-loo-ensemble-b1-p4``) or bounded by its 95 %
   interval (``box95-...``), against the full search of Stage 3 (``b1-p4``) and the warm start
-  from the CNN of Stage 5 (``warm-b1-p4``): position, MFE, reconstructions and time
-  (``results/measured/warmstart.{json,csv}``).
+  from the CNN of Stage 5 (``warm-b1-p4``): position, MFE, reconstructions and time, and
+  whether each warm start kept to the 95 % interval of its ensemble, which makes it also the
+  warm start bounded by that interval (``results/measured/warmstart.{json,csv}``).
 
 Usage (Laborbuch 08)::
 
@@ -145,6 +146,10 @@ SEARCHES = (
 XATOL_UM = 100.0
 """Tolerance of the search in ``z01`` (``find_focus``): results closer than this are the same."""
 SAME_POINT = 1e-9
+WARM_IN_BOX = (("warm-cnn", "box95-cnn"), ("warm-npe", "box95-npe"))
+"""A warm start and the bounded search of the same ensemble. ``find_focus`` only clips trial
+points to its interval, so a warm start whose points all lie in the 95 % interval is exactly
+the search that starts there and is bounded by it."""
 
 
 def cnn_estimates(args, name: str) -> list[Path]:
@@ -1058,6 +1063,10 @@ def search_entry(path: Path, cold: dict | None) -> dict:
         "seconds_per_reconstruction": r["seconds_per_reconstruction"],
         "bounds": res["bounds"],
         "initial_simplex": res.get("initial_simplex"),
+        "evaluated_range": [
+            min(e["z01"] for e in res["evaluations"]),
+            max(e["z01"] for e in res["evaluations"]),
+        ],
         "revisit_tolerance": r.get("revisit_tolerance", 0.0),
         "minus_paper2_um": r["z01_minus_paper2_nm_um"],
     }
@@ -1098,6 +1107,15 @@ def cmd_warmstart(args) -> None:
             path = args.measured / folder / f"{name}.json"
             if path.exists():
                 entries[variant] = search_entry(path, None if variant == "cold" else cold)
+        for warm, box in WARM_IN_BOX:
+            if warm in entries and box in entries:
+                lower, upper = entries[box]["bounds"]
+                low, high = entries[warm]["evaluated_range"]
+                entries[warm]["inside_bounds_of"] = {
+                    "search": box,
+                    "bounds": [lower, upper],
+                    "inside": bool(lower <= low and high <= upper),
+                }
         best = min(e["mfe"] for e in entries.values())
         for variant, e in entries.items():
             e["mfe_relative_to_best"] = e["mfe"] / best - 1.0
@@ -1112,6 +1130,9 @@ def cmd_warmstart(args) -> None:
                 value = e.get(key, "")
                 row[key] = int(value) if isinstance(value, bool) else value
             row["bounds_mm"] = "-".join(f"{b * 1e3:.3f}" for b in e["bounds"])
+            row["evaluated_mm"] = "-".join(f"{z * 1e3:.3f}" for z in e["evaluated_range"])
+            inside = e.get("inside_bounds_of")
+            row["inside_bounds_of_box95"] = "" if inside is None else int(inside["inside"])
             rows.append(row)
             print(
                 f"{name} {variant}: {e['z01'] * 1e3:.4f} mm"
@@ -1142,6 +1163,12 @@ def cmd_warmstart(args) -> None:
             totals[variant]["cold_reconstructions"] = sum(e["n_reconstructions"] for e in cold)
             totals[variant]["cold_seconds"] = sum(e["seconds"] for e in cold)
             totals[variant]["seconds_at_cold_rate"] = sum(e["seconds_at_cold_rate"] for e in found)
+            inside = [e["inside_bounds_of"]["inside"] for e in found if "inside_bounds_of" in e]
+            if inside:
+                totals[variant]["inside_bounds_of_box95"] = {
+                    "inside": sum(inside),
+                    "checked": len(inside),
+                }
     record = {
         "xatol_um": XATOL_UM,
         "same_point_m": SAME_POINT,

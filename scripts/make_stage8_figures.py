@@ -579,6 +579,8 @@ def warmstart_figure(measured: Path, out: Path, dpi: int) -> dict | None:
                         "seconds_at_cold_rate",
                         "start_minus_cold_um",
                         "bounds",
+                        "evaluated_range",
+                        "inside_bounds_of",
                     )
                 }
                 for v, e in summary["samples"][s].items()
