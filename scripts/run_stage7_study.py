@@ -10,7 +10,8 @@
   the Stage 3 baseline (with its raw and offset-corrected errors) and the calibration split:
   errors of the point estimate, coverage and width of the central 68/95 % intervals, NLL,
   whether wider intervals go with larger errors (rank correlation), PIT (SBC) and HPD
-  (expected coverage) statistics, paired bootstrap differences
+  (expected coverage) statistics, paired bootstrap differences, and coverage, error and width
+  on subsets by photon count, phantom type and position of dz01 in its range
   (``results/npe/comparison/<set>.{json,csv}``, ``comparison.csv``).
 * ``timing``: time per estimate of the CNN and the NPEs at the same thread count on the same
   test holograms, alternating, with the parts of one NPE estimate (``results/npe/timing.json``).
@@ -78,6 +79,7 @@ from holofocus.learned.sim2real import (
     perturbed_config,
 )
 from holofocus.measured import MEASURED_SAMPLES, load_measured
+from holofocus.phantoms import PHANTOM_TYPES
 
 REPO = Path(__file__).resolve().parents[1]
 RESULTS = REPO / "results"
@@ -347,6 +349,44 @@ def paired(a: dict[str, np.ndarray], b: dict[str, np.ndarray], seed: int = 0) ->
     return out
 
 
+def subsets(labels: dict, index: np.ndarray, dz01_range) -> dict[str, np.ndarray]:
+    """Subsets of a split for a local look at the calibration ([6], Sec. 3.4): photon terciles,
+    phantom types and the four quarters of the dz01 range."""
+    photons, kind, dz01 = (labels[k][index] for k in ("photons", "phantom_type", "dz01"))
+    low, high = np.quantile(photons, [1 / 3, 2 / 3])
+    quarter = np.clip(np.searchsorted(np.linspace(*dz01_range, 5), dz01, side="right") - 1, 0, 3)
+    masks = {
+        "photons_low": photons <= low,
+        "photons_mid": (photons > low) & (photons <= high),
+        "photons_high": photons > high,
+        **{f"phantom_{PHANTOM_TYPES[t]}": kind == t for t in np.unique(kind)},
+        **{f"dz01_quarter_{q + 1}": quarter == q for q in range(4)},
+    }
+    return {name: m for name, m in masks.items() if m.any()}
+
+
+def subset_metrics(tables: dict[str, dict], masks: dict[str, np.ndarray]) -> dict:
+    """Error, bias, coverage and width of each method with intervals on each subset, and its
+    MAE minus that of the CNN on the subset with a paired bootstrap interval."""
+    out = {}
+    for name, m in masks.items():
+        out[name] = {"n": int(m.sum()), "methods": {}}
+        for method, t in tables.items():
+            if "width_68_um" not in t:
+                continue
+            entry = {
+                "mae_um": float(np.abs(t["error_um"][m]).mean()),
+                "bias_um": float(t["error_um"][m].mean()),
+                "coverage": {k: float(t[f"covered_{k}"][m].mean()) for k in LEVELS},
+                "width_68_median_um": float(np.median(t["width_68_um"][m])),
+            }
+            if method != "cnn" and "cnn" in tables:
+                cnn = {"error_um": tables["cnn"]["error_um"][m]}
+                entry["mae_vs_cnn_um"] = paired_mae({"error_um": t["error_um"][m]}, cnn)
+            out[name]["methods"][method] = entry
+    return out
+
+
 def per_sample_rows(tables: dict[str, dict], labels: dict | None) -> list[dict]:
     first = next(iter(tables.values()))
     rows = []
@@ -380,7 +420,9 @@ def method_tables(npe: Path, cnn: Path, split: str) -> dict[str, dict]:
     return tables
 
 
-def comparison_set(name: str, tables: dict[str, dict], labels: dict | None, out: Path) -> dict:
+def comparison_set(
+    name: str, tables: dict[str, dict], labels: dict | None, out: Path, dz01_range=None
+) -> dict:
     if "cnn" not in tables or MAIN not in tables:
         raise FileNotFoundError(f"{name}: predictions of the CNN or of {MAIN} missing")
     record = {
@@ -394,6 +436,9 @@ def comparison_set(name: str, tables: dict[str, dict], labels: dict | None, out:
             record["paired"][f"{method}_vs_cnn"] = paired(t, tables["cnn"])
         elif method.startswith("baseline"):
             record["paired"][f"{MAIN}_vs_{method}"] = {"mae_um": paired_mae(tables[MAIN], t)}
+    if labels is not None and dz01_range is not None:
+        masks = subsets(labels, tables[MAIN]["index"].astype(int), dz01_range)
+        record["subsets"] = subset_metrics(tables, masks)
     write_json(out / f"{name}.json", record)
     write_csv(out / f"{name}.csv", per_sample_rows(tables, labels))
     return record
@@ -471,12 +516,16 @@ def cmd_compare(args) -> None:
         z01 = dict(enumerate(labels["test"]["z01"]))
         restricted = {m: restrict(t, indices) for m, t in sets["test"].items()}
         sets[f"baseline-{len(indices)}"] = {**restricted, **baseline_tables(baseline_csv, z01)}
+    ranges = {
+        split: read_config(path).sampling.dz01_range
+        for split, path in (("test", args.test), ("calibration", args.calibration))
+    }
     records = {}
     for name, tables in sets.items():
         if not tables:
             continue
-        split_labels = labels["calibration" if name == "calibration" else "test"]
-        records[name] = comparison_set(name, tables, split_labels, args.out)
+        split = "calibration" if name == "calibration" else "test"
+        records[name] = comparison_set(name, tables, labels[split], args.out, ranges[split])
         for method, metrics in records[name]["methods"].items():
             summary_rows.append(summary_row(name, method, metrics))
         main, cnn = records[name]["methods"][MAIN], records[name]["methods"]["cnn"]
@@ -489,6 +538,16 @@ def cmd_compare(args) -> None:
             f"{main['coverage']['68']:.3f}/{main['coverage']['95']:.3f} "
             f"({cnn['coverage']['68']:.3f}/{cnn['coverage']['95']:.3f}), NLL {main['nll']:.3f} "
             f"({cnn['nll']:.3f})"
+        )
+        groups = records[name]["subsets"].values()
+        spread = {
+            method: [s["methods"][method]["coverage"]["68"] for s in groups]
+            for method in ("cnn", MAIN)
+        }
+        print(
+            f"{name}: coverage 68 % over {len(groups)} subsets: NPE "
+            f"{min(spread[MAIN]):.3f}-{max(spread[MAIN]):.3f}, "
+            f"CNN {min(spread['cnn']):.3f}-{max(spread['cnn']):.3f}"
         )
     write_csv(args.out / "comparison.csv", summary_rows)
     write_json(
