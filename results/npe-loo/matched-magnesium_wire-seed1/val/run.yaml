@@ -1,0 +1,62 @@
+models:
+- results/npe-loo/matched-magnesium_wire-seed1
+model_sha256:
+- 2a5d7dba4e22e74521cf4f94846e4e6098f55ce058fb12598b426b44a5d881a0
+ensemble_size: 1
+config:
+  name: npe-nsf
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  embedding:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    features: 32
+  density:
+    estimator: nsf
+    hidden_features: 50
+    num_transforms: 5
+    num_bins: 10
+    num_components: 10
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    clip_max_norm: 5.0
+    limit: null
+    patience: null
+    seed: 1
+  grid_points: 2001
+  device: auto
+prior:
+- -1.0
+- 1.0
+dataset:
+  path: data/loo-magnesium_wire/val.h5
+  sha256: e2bff851609f3bd2ac84fc65c2a3648e151452dada5b35f8b5cfdb39079abbc7
+  split: val
+  n_samples: 250
+  seed: 20261064
+  generator_commit: 9fd4155
+  created_utc: '2026-10-22T02:08:19+00:00'
+holofocus_version: 0.1.0
+git_commit: 5eeecd1
+torch_version: 2.14.1+cpu
+sbi_version: 0.27.0
+device: cpu
+threads: 3
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-22T10:57:41+00:00'
