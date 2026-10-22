@@ -2,6 +2,7 @@ import json
 import math
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from holofocus.dataset import DatasetConfig
@@ -17,13 +18,67 @@ from holofocus.learned.objectmodel import (
     median_features,
     phase_per_pixel,
     refined_grid,
+    region_ctf,
+    region_weights,
     texture_grid,
 )
-from holofocus.learned.sim2real import MEASURED_MODELS, perturbed_config
+from holofocus.learned.sim2real import (
+    MEASURED_MODELS,
+    RadialPower,
+    perturbed_config,
+    spectral_features,
+)
 from holofocus.measured import MEASURED_SAMPLES
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIGS = ROOT / "configs" / "dataset"
+FRESNEL_NUMBER = 0.02
+
+
+def _modulated(shape, seed):
+    """White noise with the power ``1 + 3 sin^2(pi f^2 / Fr)``: CTF modulation and nothing
+    else."""
+    fy, fx = np.fft.fftfreq(shape[0])[:, None], np.fft.fftfreq(shape[1])[None, :]
+    gain = np.sqrt(1 + 3 * np.sin(np.pi * (fx**2 + fy**2) / FRESNEL_NUMBER) ** 2)
+    noise = np.random.default_rng(seed).standard_normal(shape)
+    return np.fft.ifft2(np.fft.fft2(noise) * gain).real
+
+
+def test_region_ctf_of_the_whole_image_is_that_of_the_spectral_features():
+    hologram = _modulated((512, 512), 0)
+    features = spectral_features(RadialPower(hologram.shape), hologram, FRESNEL_NUMBER)
+    whole = region_ctf(hologram, np.ones_like(hologram), FRESNEL_NUMBER)
+    assert features["ctf"] > 0.8
+    assert whole["ctf"] == pytest.approx(features["ctf"], abs=1e-9)
+    assert whole["ctf_bands"] == pytest.approx(features["ctf_bands"], abs=1e-9)
+
+
+def test_region_weights_split_object_edge_and_background():
+    phase = np.zeros((256, 256))
+    phase[:, 100:160] = -2.0  # a fiber, 60 pixels wide
+    phase[:, :40] = -1.0  # an object cut by the left border of the image
+    w = region_weights(phase, 0.15)
+    centre, boundary, far, border = (128, 130), (128, 100), (128, 220), (128, 5)
+    assert w["object"][centre] == pytest.approx(1) and w["object"][far] == pytest.approx(0)
+    assert w["background"][far] == pytest.approx(1)
+    assert w["background"][centre] == pytest.approx(0) and w["background"][boundary] < 0.01
+    assert w["edge"][boundary] == pytest.approx(1, abs=1e-3)
+    assert w["edge"][centre] == pytest.approx(0, abs=1e-3) == w["edge"][far]
+    # the border of the image is no edge of the object
+    assert w["edge"][border] == pytest.approx(0, abs=1e-3)
+    assert w["object"][border] == pytest.approx(1)
+
+
+def test_region_ctf_finds_the_modulation_where_it_is():
+    phase = np.zeros((512, 512))
+    phase[:, :256] = -1.0
+    white = np.random.default_rng(2).standard_normal(phase.shape)
+    hologram = np.where(phase < 0, _modulated(phase.shape, 1), white)
+    w = region_weights(phase, 0.15)
+    inside = region_ctf(hologram, w["object"], FRESNEL_NUMBER)
+    outside = region_ctf(hologram, w["background"], FRESNEL_NUMBER)
+    assert inside["ctf"] > 0.8 and min(inside["ctf_bands"]) > 0.5
+    assert abs(outside["ctf"]) < 0.3
 
 
 def test_detector_fits_are_the_medians_of_the_corner_fits():

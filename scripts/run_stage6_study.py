@@ -1,5 +1,10 @@
 """Stage 6: a textured object model for the measured holograms (Laborbuch 06).
 
+* ``regions``: where the CTF modulation of each measured hologram comes from. CTF correlation
+  at ``Fr`` of [2], and at 1.3 ``Fr`` as a control, of the whole hologram, of the object, of
+  its edge and of the background around it; the regions come from the phase reconstruction of
+  Stage 3 (:func:`holofocus.learned.objectmodel.region_weights`,
+  ``results/objectmodel/regions.json``).
 * ``fit``: the texture of each measured hologram. Test samples of the matched dataset with the
   detector and the bulk object of the measured hologram
   (:func:`holofocus.learned.objectmodel.fit_changes`) and every texture of the coarse grid,
@@ -9,9 +14,12 @@
 
 Usage::
 
+    python scripts/run_stage6_study.py regions --holograms DIR
     python scripts/run_stage6_study.py --threads 2 fit --holograms DIR --samples spider_hair
 
-``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365. ``fit``
+``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365.
+``regions`` reads the phase files ``<sample>-phase.npy`` of the Stage 3 run
+``results/measured/b1-p4`` (not tracked; ``scripts/run_stage3_experiments.py``). ``fit``
 continues a record of the same sample, setup and number of samples and writes it after every
 texture.
 """
@@ -27,15 +35,19 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from holofocus.baseline.runner import file_sha256
 from holofocus.dataset import DatasetConfig, HologramGenerator
 from holofocus.learned.objectmodel import (
     BINNING,
     FIT_SCALES,
+    REGION_FRACTIONS,
     Texture,
     fit_changes,
     fit_objective,
     median_features,
     refined_grid,
+    region_ctf,
+    region_weights,
     texture_grid,
 )
 from holofocus.learned.sim2real import RadialPower, perturbed_config, spectral_features
@@ -59,6 +71,69 @@ def measured_features(holograms: Path, name: str) -> tuple[RadialPower, dict]:
     radial = RadialPower(tuple(hologram.shape))
     fresnel_number = sample.geometry(BINNING, sample.z01_nm).fresnel_number
     return radial, spectral_features(radial, hologram, fresnel_number)
+
+
+REGION_CONTROL = 1.3
+"""``regions`` repeats every correlation at this multiple of ``Fr``, off the CTF of the
+hologram."""
+
+
+def _correlations(hologram: np.ndarray, weight: np.ndarray, fresnel_number: float) -> dict:
+    ctf = region_ctf(hologram, weight, fresnel_number)
+    control = region_ctf(hologram, weight, REGION_CONTROL * fresnel_number)
+    return {
+        "area": round(float(weight.mean()), 4),
+        "ctf": round(ctf["ctf"], 4),
+        "ctf_bands": [round(v, 4) for v in ctf["ctf_bands"]],
+        "control_ctf": round(control["ctf"], 4),
+        "control_ctf_bands": [round(v, 4) for v in control["ctf_bands"]],
+    }
+
+
+def sample_regions(name: str, holograms: Path, phases: Path) -> dict:
+    """CTF correlations of the whole measured hologram and of its regions at both thresholds."""
+    sample = MEASURED_SAMPLES[name]
+    hologram = load_measured(holograms, sample, BINNING).numpy()
+    phase_path = phases / f"{name}-phase.npy"
+    phase = np.load(phase_path)
+    if phase.shape != hologram.shape:
+        raise SystemExit(f"{phase_path}: shape {phase.shape}, hologram {hologram.shape}")
+    fresnel_number = sample.geometry(BINNING, sample.z01_nm).fresnel_number
+    return {
+        "fresnel_number_paper2_nm": fresnel_number,
+        "phase_sha256": file_sha256(phase_path),
+        "full": _correlations(hologram, np.ones_like(hologram), fresnel_number),
+        "regions": {
+            f"{fraction:g}": {
+                region: _correlations(hologram, weight, fresnel_number)
+                for region, weight in region_weights(phase, fraction).items()
+            }
+            for fraction in REGION_FRACTIONS
+        },
+    }
+
+
+def cmd_regions(args) -> None:
+    record = {
+        "phases": repo_relative(args.phases),
+        "fractions": list(REGION_FRACTIONS),
+        "control_factor": REGION_CONTROL,
+        "samples": {},
+    }
+    for name in args.samples:
+        entry = sample_regions(name, args.holograms, args.phases)
+        record["samples"][name] = entry
+        rows = [("full", entry["full"])] + [
+            (f"{region} ({fraction})", values)
+            for fraction, regions in entry["regions"].items()
+            for region, values in regions.items()
+        ]
+        for label, values in rows:
+            print(
+                f"{name} {label}: area {values['area']:.2f}, ctf {values['ctf']:+.2f} bands "
+                f"{values['ctf_bands']}, control {values['control_ctf']:+.2f}"
+            )
+    write_json(args.out / "regions.json", {**record, **environment()})
 
 
 def simulated_features(config: DatasetConfig, n: int, radial: RadialPower) -> list[dict]:
@@ -174,6 +249,13 @@ def main() -> None:
     parser.add_argument("--threads", type=int, help="torch CPU threads")
     sub = parser.add_subparsers(dest="command", required=True)
     samples = {"nargs": "+", "choices": list(MEASURED_SAMPLES), "default": list(MEASURED_SAMPLES)}
+
+    rg = sub.add_parser("regions", help="CTF modulation of object, edge and background")
+    rg.add_argument("--holograms", type=Path, required=True)
+    rg.add_argument("--samples", **samples)
+    rg.add_argument("--phases", type=Path, default=RESULTS / "measured" / "b1-p4")
+    rg.add_argument("--out", type=Path, default=RESULTS / "objectmodel")
+    rg.set_defaults(func=cmd_regions)
 
     fi = sub.add_parser("fit", help="the texture of each measured hologram")
     fi.add_argument("--holograms", type=Path, required=True)

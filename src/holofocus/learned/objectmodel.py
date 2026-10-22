@@ -5,6 +5,9 @@ measured holograms of [1] show (Laborbuch 05, 5.6). A weak-phase texture
 (:func:`holofocus.phantoms.texture_field`) inside the object or as a film over the field of
 view produces it. This module fits the texture of each measured hologram:
 
+* :func:`region_weights` and :func:`region_ctf`: the CTF modulation of a region of a measured
+  hologram (the object, its edge, the background around it), to find where it comes from
+  (``scripts/run_stage6_study.py regions``);
 * :data:`DETECTOR_FITS` and :func:`phase_per_pixel`: the detector and the bulk object of each
   measured hologram, from its background corners and the phase reconstructions of Stage 3;
 * :func:`fit_changes`: a split with the detector and bulk object of one sample and a fixed
@@ -31,6 +34,9 @@ from .sim2real import (
     FLAT_FIELD_CUTOFF,
     MEASURED_MODELS,
     PSF_SIGMA,
+    SPECTRUM_BINS,
+    SPECTRUM_F2_MAX,
+    _ctf_correlation,
 )
 
 BINNING = 4
@@ -63,6 +69,84 @@ DETECTOR_FITS: dict[str, DetectorFit | None] = {
 """``None``: the corners of the Mg wire hold the object, so its fits are not those of the
 detector; its texture fit uses :data:`PSF_SIGMA`, :data:`FLAT_FIELD_CUTOFF` and the residual
 RMS set in :data:`MEASURED_MODELS`."""
+
+
+def region_ctf(
+    hologram: np.ndarray,
+    weight: np.ndarray,
+    fresnel_number: float,
+    bins: int = SPECTRUM_BINS,
+    f2_max: float = SPECTRUM_F2_MAX,
+) -> dict:
+    """CTF correlation of one region of a hologram over the band of the spectrum CNN and per
+    band of :data:`CTF_BANDS`, as in :func:`holofocus.learned.sim2real.spectral_features`.
+
+    ``weight`` (1 inside the region, smooth at its border) multiplies the Hann window, so a
+    large irregular region keeps the frequency resolution of the whole image; the hologram
+    minus its weighted mean is transformed and radially averaged on the ``f^2`` axis of
+    :class:`~holofocus.learned.sim2real.RadialPower`.
+    """
+    x = np.asarray(hologram, dtype=np.float64)
+    h, w = x.shape
+    window = np.outer(np.hanning(h), np.hanning(w)) * weight
+    mean = (x * window).sum() / window.sum()
+    power = np.abs(np.fft.fft2((x - mean) * window)) ** 2
+    fy, fx = np.fft.fftfreq(h)[:, None], np.fft.fftfreq(w)[None, :]
+    index = np.floor((fx**2 + fy**2) / f2_max * bins).astype(np.int64).ravel()
+    valid = index < bins
+    total = np.bincount(index[valid], weights=power.ravel()[valid], minlength=bins)
+    counts = np.bincount(index[valid], minlength=bins)
+    log_power = np.log(np.maximum(total / np.maximum(counts, 1), 1e-30))
+    f2 = (np.arange(bins) + 0.5) * f2_max / bins
+    return {
+        "ctf": _ctf_correlation(f2, log_power, fresnel_number, (0.002, 0.125)),
+        "ctf_bands": [_ctf_correlation(f2, log_power, fresnel_number, b) for b in CTF_BANDS],
+    }
+
+
+def _smoothed(mask: np.ndarray, sigma: float) -> np.ndarray:
+    """Gaussian smoothing with mirrored borders, so nothing wraps around the image."""
+    pad = int(math.ceil(4 * sigma))
+    x = np.pad(np.asarray(mask, dtype=np.float64), pad, mode="symmetric")
+    fy = np.fft.fftfreq(x.shape[0])[:, None]
+    fx = np.fft.rfftfreq(x.shape[1])[None, :]
+    transfer = np.exp(-2.0 * math.pi**2 * sigma**2 * (fx**2 + fy**2))
+    return np.fft.irfft2(np.fft.rfft2(x) * transfer, s=x.shape)[pad:-pad, pad:-pad]
+
+
+def _dilated(mask: np.ndarray, radius: int) -> np.ndarray:
+    """``mask`` grown by a disk of ``radius`` pixels; nothing outside the image."""
+    yy, xx = np.mgrid[-radius : radius + 1, -radius : radius + 1]
+    disk = (xx**2 + yy**2 <= radius**2).astype(np.float64)
+    shape = (mask.shape[0] + 2 * radius, mask.shape[1] + 2 * radius)
+    full = np.fft.irfft2(
+        np.fft.rfft2(np.asarray(mask, dtype=np.float64), shape) * np.fft.rfft2(disk, shape), shape
+    )
+    return full[radius:-radius, radius:-radius] > 0.5
+
+
+REGION_FRACTIONS = (0.15, 0.05)
+"""Thresholds of the object core in :func:`region_weights`: the phase below this fraction of
+its minimum. The lower one takes in the thin and weak parts of the object as well."""
+
+
+def region_weights(phase: np.ndarray, fraction: float) -> dict[str, np.ndarray]:
+    """Smooth weights (0 to 1) of three regions of a measured hologram from the phase
+    reconstruction at its distance (Stage 3, negative inside the object).
+
+    The core is where ``phase`` lies below ``fraction`` of its minimum. ``object``: the core
+    grown by 8 pixels, smoothed with a Gaussian of 6 pixels; ``background``: the complement
+    of the core grown by 16 pixels, smoothed with 6 pixels; ``edge``: the band from the core
+    shrunk by 16 pixels to the core grown by 16 pixels, smoothed with 4 pixels.
+    """
+    core = np.asarray(phase) < fraction * float(np.min(phase))
+    grown = _dilated(core, 16)
+    shrunk = ~_dilated(~core, 16)
+    return {
+        "object": np.clip(_smoothed(_dilated(core, 8), 6.0), 0.0, 1.0),
+        "edge": np.clip(_smoothed(grown & ~shrunk, 4.0), 0.0, 1.0),
+        "background": 1.0 - np.clip(_smoothed(grown, 6.0), 0.0, 1.0),
+    }
 
 
 def field_of_view(sample: str) -> int:
