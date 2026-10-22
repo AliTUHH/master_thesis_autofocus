@@ -87,6 +87,11 @@ jobs:
             --out ${{ runner.temp }}/figures-ci
           python scripts/make_stage5_figures.py --quick --out ${{ runner.temp }}/figures
 
+      - name: Stage 6 comparison and figures (quick mode, from the committed results)
+        run: |
+          python scripts/run_stage6_study.py compare --out ${{ runner.temp }}/objectmodel-ci
+          python scripts/make_stage6_figures.py --quick --out ${{ runner.temp }}/figures
+
       - name: NPE smoke run (configs/learned/npe-ci.yaml), Stage 7 study and figures (quick mode)
         run: |
           demo=${{ runner.temp }}/demo-dataset
