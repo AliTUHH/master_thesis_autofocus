@@ -45,6 +45,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import yaml  # noqa: E402
+from matplotlib.ticker import NullFormatter  # noqa: E402
 
 from holofocus.learned import read_history, read_predictions  # noqa: E402
 from holofocus.learned.metrics import interval_quantile  # noqa: E402
@@ -83,6 +84,20 @@ PIT_BINS = 20
 def _save(fig, path: Path, dpi: int) -> None:
     fig.savefig(path, dpi=dpi)
     plt.close(fig)
+
+
+def _plain_log_y(ax) -> None:
+    """Major ticks of a log y axis at 1, 2 and 5 (or more) times powers of ten inside its
+    limits, as plain numbers; on axes spanning about a decade, matplotlib labels the minor
+    ticks as 2×10^2 and the like."""
+    lo, hi = ax.get_ylim()
+    decades = range(math.floor(math.log10(lo)), math.ceil(math.log10(hi)) + 1)
+    for steps in ((1, 2, 5), (1, 2, 3, 5), (1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9)):
+        ticks = [m * 10.0**d for d in decades for m in steps if lo <= m * 10.0**d <= hi]
+        if len(ticks) >= 3:
+            break
+    ax.set_yticks(ticks, [f"{t:g}" for t in ticks])
+    ax.yaxis.set_minor_formatter(NullFormatter())
 
 
 def _json(path: Path) -> dict | None:
@@ -203,6 +218,7 @@ def training_figure(npe: Path, cnn: Path, learned: Path, out: Path, dpi: int) ->
     axes[2].axhline(0.68, color="0.4", lw=0.8, ls=":")
     nll = [m["validation_nll_um_at_best"] for m in metrics.values() if m]
     axes[1].set_ylim(min(nll) - 0.3, min(nll) + 2.5)
+    _plain_log_y(axes[0])
     for ax in axes:
         ax.set_xlabel("epoch")
         ax.grid(alpha=0.3, which="both")
@@ -589,6 +605,8 @@ def robustness_figure(sim2real: Path, out: Path, dpi: int) -> dict | None:
         finite = np.array(ratios)[np.isfinite(ratios) & (np.array(ratios) > 0)]
         axes[1, col].set_ylim(min(0.5, finite.min() / 1.3), max(2.0, finite.max() * 1.3))
         axes[2, col].set_yscale("log")
+        _plain_log_y(axes[1, col])
+        _plain_log_y(axes[2, col])
         axes[0, col].set_ylim(0, 1.02)
         axes[0, col].set_title(MEASURED_SAMPLES[sample].label, fontsize=9)
         axes[2, col].set_xticks(x, names, rotation=45, ha="right", fontsize=8)
