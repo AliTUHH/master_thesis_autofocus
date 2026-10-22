@@ -7,11 +7,11 @@
 # venv or conda environment in HOLOFOCUS_ENV, installs PyTorch (HOLOFOCUS_TORCH_SPEC from
 # HOLOFOCUS_TORCH_INDEX), the package versions of the committed results
 # (cluster/maxwell/requirements-vm.txt) and this repository in editable mode, and writes the
-# versions to HOLOFOCUS_ENV/holofocus-env.txt. --with-sbi adds sbi for the NPE stage without
-# changing torch or the pinned packages (pip stops if they conflict), --recreate deletes the
-# environment first. With HOLOFOCUS_ENV_KIND=none nothing is installed; the script only
-# reports the environment on PATH. pip and conda cache their downloads in
-# HOLOFOCUS_SCRATCH/cache unless PIP_CACHE_DIR or CONDA_PKGS_DIRS are set.
+# versions to HOLOFOCUS_ENV/holofocus-env.txt. --with-sbi adds the npe extra for Stage 7 (sbi
+# at the version of the VM) without changing torch or the pinned packages (pip stops if they
+# conflict), --recreate deletes the environment first. With HOLOFOCUS_ENV_KIND=none nothing is
+# installed; the script only reports the environment on PATH. pip and conda cache their
+# downloads in HOLOFOCUS_SCRATCH/cache unless PIP_CACHE_DIR or CONDA_PKGS_DIRS are set.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=SCRIPTDIR/lib.sh
@@ -71,7 +71,8 @@ if [[ $HOLOFOCUS_ENV_KIND != none ]]; then
     kit_do python -m pip install -c "$here/requirements-vm.txt" -e "${HOLOFOCUS_REPO}[dev]"
     if ((with_sbi)); then
         pin=$(python -c 'import torch; print(f"torch=={torch.__version__}")')
-        kit_do python -m pip install sbi -c "$here/requirements-vm.txt" -c <(echo "$pin")
+        kit_do python -m pip install -c "$here/requirements-vm.txt" -c <(echo "$pin") \
+            -e "${HOLOFOCUS_REPO}[dev,npe]"
     fi
 fi
 
