@@ -24,7 +24,10 @@ and ``matched-<sample>-seed<k>``.
   quarter); the 25 test samples nearest to the hologram in each space, how far the ensembles
   move from the guess there (shrinkage); and the same failures on the hologram, with the
   padding-4 search of Stage 3 as the truth, as percentiles among the test split
-  (``results/misspecification/<sample>.json``, ``test-<sample>.csv``, ``summary.csv``).
+  (``results/misspecification/<sample>.json``, ``test-<sample>.csv``, ``summary.csv``). With
+  ``--control results/npe``, the same distances to the sets of the Stage 5 simulator
+  (``data/matched-<sample>``), in the input and in the embedding of the NPE trained on them,
+  as the positive control (``control`` in the records, ``control-*`` rows in the summary).
 * ``ensembles``: the CNN ensemble (per test sample the mixture of the Gaussians of the seeds)
   against the NPE ensemble on the leave-one-out test splits, with the seeds and the guess:
   the metrics of Stage 7, paired bootstrap differences, per probe and pooled over the four;
@@ -38,7 +41,7 @@ and ``matched-<sample>-seed<k>``.
 Usage (Laborbuch 08)::
 
     python scripts/run_stage8_study.py sources
-    python scripts/run_stage8_study.py --threads 1 misspec --holograms DIR
+    python scripts/run_stage8_study.py --threads 1 misspec --holograms DIR --control results/npe
     python scripts/run_stage8_study.py ensembles
     python scripts/run_stage3_experiments.py --threads 3 measured --holograms DIR --binning 1 \\
         --padding 4 --revisit-tolerance 1e-9 --warm-start results/measured/npe-loo-ensemble \\
@@ -117,6 +120,11 @@ INPUT_COMPONENTS = 20
 EMBEDDING_VARIANCE = 0.999
 NEAREST = 25
 """Test samples nearest to a measured hologram for the local look (10 % of a test split)."""
+CONTROL = "matched"
+"""Prefix of the sets of the Stage 5 simulator (``data/matched-<sample>``) and of the NPE
+trained on each (``results/npe/matched-<sample>``, Laborbuch 07, 5.7), the positive control of
+``misspec``: with that simulator the learned estimates missed the measured holograms by
+millimetres."""
 ENSEMBLES = ("cnn-ensemble", "npe-ensemble")
 PAIRS = (
     ("npe-ensemble", "cnn-ensemble"),
@@ -609,6 +617,72 @@ def measured_failures(args, name: str, fail: dict) -> dict:
     return out
 
 
+def measure_row(name: str, space: str, measure: str, components: int, m: dict) -> dict:
+    """A row of ``summary.csv``: the hologram's distance in one space and measure, its
+    percentile among the test split and the Spearman of the distance with each failure."""
+    phases = m.get("phases", {})
+    row = {
+        "sample": name,
+        "space": space,
+        "measure": measure,
+        "components": components,
+        "measured": m.get("measured", ""),
+        "percentile": m.get("percentile", ""),
+        "phases_percentile_min": phases.get("percentile_min", ""),
+        "phases_percentile_max": phases.get("percentile_max", ""),
+        "test_median": m["test"]["median"],
+        "test_p95": m["test"]["p95"],
+    }
+    for f, a in m.get("failures", {}).items():
+        row[f"spearman_{f}"] = a["spearman"]
+        row[f"spearman_{f}_lo"], row[f"spearman_{f}_hi"] = a["ci"]
+    return row
+
+
+def control_record(args, name: str, autofocus: NPEAutofocus, x_measured: np.ndarray) -> dict | None:
+    """The positive control: the same distances of the hologram (and its binning phases) to
+    the training set of the Stage 5 simulator, in the network input and in the embedding of
+    the NPE trained on it, as percentiles among that set's test split."""
+    run, root = args.control / f"{CONTROL}-{name}", args.data / f"{CONTROL}-{name}"
+    if not (run / "model.pt").exists() or not (root / "train.h5").exists():
+        print(f"{name}: no control ({repo_relative(run)}, {repo_relative(root)})")
+        return None
+    control = NPEAutofocus.load([run], args.device)
+    rep, scale = control.representation, control.config.target_scale
+    if (
+        dataclasses.asdict(rep.config) != dataclasses.asdict(autofocus.representation.config)
+        or tuple(rep.shape) != tuple(autofocus.representation.shape)
+        or control.fov_shape != autofocus.fov_shape
+    ):
+        raise ValueError(f"{name}: the control model {run} sees another input")
+    x_train, train_id = network_inputs(root / "train.h5", rep, scale, args.cache)
+    x_test, test_id = network_inputs(root / "test.h5", rep, scale, args.cache)
+    spaces = {
+        "input": tuple(flat(x) for x in (x_train, x_test, x_measured)),
+        "embedding": tuple(embeddings(control, x)[0] for x in (x_train, x_test, x_measured)),
+    }
+    out = {
+        "simulator": f"Stage 5 ({CONTROL}-{name}, without texture)",
+        "model": repo_relative(run),
+        "model_sha256": model_sha256(run),
+        "data": {"train": train_id, "test": test_id},
+        "spaces": {},
+    }
+    for space, (train, test, measured) in spaces.items():
+        measures, info = space_measures(train, test, measured, space == "input")
+        out["spaces"][space] = {
+            **info,
+            "measures": {m: measure_record(t, v) for m, (t, v) in measures.items()},
+        }
+        main = out["spaces"][space]["measures"][f"knn{min(NEIGHBOURS[0], len(train))}"]
+        print(
+            f"{name} control-{space}: knn test median {main['test']['median']:.3f}, hologram "
+            f"{main['measured']:.3f} = {main['percentile']:.1f} % (phases "
+            f"{main['phases']['percentile_min']:.1f}-{main['phases']['percentile_max']:.1f} %)"
+        )
+    return out
+
+
 def cmd_misspec(args) -> None:
     summary = []
     for name in args.samples:
@@ -691,30 +765,7 @@ def cmd_misspec(args) -> None:
                 m["failures"] = {f: association(d_test, v, args.resamples) for f, v in fail.items()}
                 entry["measures"][measure] = m
                 columns[f"{space}_{measure}"] = d_test
-                row = {
-                    "sample": name,
-                    "space": space,
-                    "measure": measure,
-                    "components": info["components"],
-                }
-                row.update(
-                    {
-                        "measured": m.get("measured", ""),
-                        "percentile": m.get("percentile", ""),
-                        "phases_percentile_min": m["phases"]["percentile_min"]
-                        if "phases" in m
-                        else "",
-                        "phases_percentile_max": m["phases"]["percentile_max"]
-                        if "phases" in m
-                        else "",
-                        "test_median": m["test"]["median"],
-                        "test_p95": m["test"]["p95"],
-                    }
-                )
-                for f, a in m["failures"].items():
-                    row[f"spearman_{f}"] = a["spearman"]
-                    row[f"spearman_{f}_lo"], row[f"spearman_{f}_hi"] = a["ci"]
-                summary.append(row)
+                summary.append(measure_row(name, space, measure, info["components"], m))
             record["spaces"][space] = entry
             if measured is not None:
                 nearest = np.argsort(np.linalg.norm(test - measured[0], axis=1))[
@@ -744,6 +795,17 @@ def cmd_misspec(args) -> None:
             )
         if x_measured is not None:
             record["measured_failures"] = measured_failures(args, name, fail)
+            if args.control is not None:
+                control = control_record(args, name, autofocus, x_measured)
+                if control is not None:
+                    record["control"] = control
+                    for space, entry in control["spaces"].items():
+                        for measure, m in entry["measures"].items():
+                            summary.append(
+                                measure_row(
+                                    name, f"control-{space}", measure, entry["components"], m
+                                )
+                            )
         record.update(environment())
         write_json(args.out / f"{name}.json", record)
         n = len(columns["index"])
@@ -1073,6 +1135,12 @@ def main() -> None:
     mi.add_argument("--data", type=Path, default=DATA, help="<data>/loo-<sample>/{train,test}.h5")
     mi.add_argument("--holograms", type=Path, help="without it, only the test split")
     mi.add_argument("--cache", type=Path, help="keep the network inputs of the splits here")
+    mi.add_argument(
+        "--control",
+        type=Path,
+        help=f"Stage 7 NPE runs <control>/{CONTROL}-<sample> on the Stage 5 sets "
+        f"<data>/{CONTROL}-<sample> (positive control, e.g. results/npe)",
+    )
     mi.add_argument("--resamples", type=int, default=2000, help="bootstrap of the Spearman")
     mi.add_argument("--device", default="cpu")
     mi.add_argument("--out", type=Path, default=RESULTS / "misspecification")

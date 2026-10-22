@@ -4,7 +4,8 @@
   sample (histogram) and of the measured hologram (line) and its 16 binning phases (ticks),
   in the network input and in the embedding of each NPE seed, per probe.
 * ``stage8-misspec-percentiles.png``: the percentiles of the measured holograms among the test
-  split for every distance (dot) and the range over the binning phases (bar).
+  split for every distance (dot) and the range over the binning phases (bar), with the
+  positive control against the Stage 5 simulator if ``misspec`` ran with ``--control``.
 * ``stage8-misspec-failures.png``: on the test split, the spread of the NPE seeds and the
   absolute error of the NPE ensemble against the rank of the embedding distance (seed 0), with
   the measured hologram (star; error against our padding-4 search).
@@ -49,6 +50,7 @@ RESULTS = REPO / "results"
 SAMPLES = list(MEASURED_SAMPLES)
 NPE_COLOR, CNN_COLOR, ENSEMBLE_COLOR, GUESS_COLOR = "tab:red", "tab:blue", "tab:purple", "tab:green"
 CNN_ENSEMBLE_COLOR = "navy"
+CONTROL_COLOR = "tab:brown"
 SPACES = {
     "input": "network input",
     "embedding": "embedding, NPE seed 0",
@@ -147,30 +149,47 @@ def _measure_label(space: str, measure: str, components: int) -> str:
     return f"{'input' if space == 'input' else space.replace('embedding', 'emb.')}: {text}"
 
 
+def _percentile_groups(record: dict) -> list[tuple[str, dict, bool]]:
+    """``(space, entry, control)`` of a record: the leave-one-out spaces, then the positive
+    control against the Stage 5 simulator."""
+    groups = [(s, record["spaces"][s], False) for s in SPACES if s in record["spaces"]]
+    control = (record.get("control") or {}).get("spaces", {})
+    return groups + [(s, control[s], True) for s in ("input", "embedding") if s in control]
+
+
 def percentiles_figure(directory: Path, out: Path, dpi: int) -> dict | None:
     data = _misspec(directory)
     data = {s: d for s, d in data.items() if d[0].get("measured")}
     if not data:
         return None
-    fig, axes = plt.subplots(
-        1, len(data), figsize=(3.4 * len(data) + 1.6, 5.2), squeeze=False, layout="constrained"
+    rows = max(
+        sum(len(e["measures"]) for _, e, _ in _percentile_groups(r)) for r, _ in data.values()
     )
-    metrics = {}
+    fig, axes = plt.subplots(
+        1,
+        len(data),
+        figsize=(3.4 * len(data) + 2.0, 0.22 * rows + 1.8),
+        squeeze=False,
+        layout="constrained",
+    )
+    metrics, controls = {}, False
     for k, (ax, (name, (record, _))) in enumerate(zip(axes[0], data.items(), strict=True)):
         labels, positions, metrics[name] = [], [], {}
         y = 0.0
-        for space in SPACES:
-            entry = record["spaces"].get(space)
-            if entry is None:
-                continue
+        for space, entry, control in _percentile_groups(record):
+            controls |= control
             for measure, m in entry["measures"].items():
-                color = "black" if space == "input" else ENSEMBLE_COLOR
+                if control:
+                    color = CONTROL_COLOR
+                else:
+                    color = "black" if space == "input" else ENSEMBLE_COLOR
                 lo, hi = m["phases"]["percentile_min"], m["phases"]["percentile_max"]
                 ax.plot([lo, hi], [y, y], color=color, lw=3, alpha=0.35, solid_capstyle="butt")
                 ax.plot(m["percentile"], y, "o", color=color, ms=5)
-                labels.append(_measure_label(space, measure, entry["components"]))
+                label = _measure_label(space, measure, entry["components"])
+                labels.append(f"Stage 5 {label}" if control else label)
                 positions.append(y)
-                metrics[name][f"{space}/{measure}"] = m["percentile"]
+                metrics[name][f"{'control-' if control else ''}{space}/{measure}"] = m["percentile"]
                 y -= 1
             y -= 0.6
         ax.set_yticks(positions, labels if k == 0 else [""] * len(labels), fontsize=7)
@@ -182,6 +201,14 @@ def percentiles_figure(directory: Path, out: Path, dpi: int) -> dict | None:
     ax = axes[0, 0]
     ax.plot([], [], "o", color="black", label="measured hologram, network input")
     ax.plot([], [], "o", color=ENSEMBLE_COLOR, label="measured hologram, NPE embedding")
+    if controls:
+        ax.plot(
+            [],
+            [],
+            "o",
+            color=CONTROL_COLOR,
+            label="against the Stage 5 simulator (input, embedding of its NPE)",
+        )
     ax.plot([], [], color="0.5", lw=3, alpha=0.5, label="range over the 16 binning phases")
     _legend(fig, axes, columns=3)
     _save(fig, out / "stage8-misspec-percentiles.png", dpi)
@@ -587,6 +614,22 @@ def misspec_metrics(directory: Path) -> dict | None:
             },
             "measured_failures": record.get("measured_failures"),
         }
+        control = record.get("control")
+        if control is not None:
+            out[name]["control"] = {
+                "model": control["model"],
+                "spaces": {
+                    space: {
+                        "components": e["components"],
+                        "measures": {
+                            m: {k: v[k] for k in ("measured", "percentile", "phases", "test")}
+                            | {"measured_to_test_max": v["measured"] / v["test"]["max"]}
+                            for m, v in e["measures"].items()
+                        },
+                    }
+                    for space, e in control["spaces"].items()
+                },
+            }
     return out
 
 
