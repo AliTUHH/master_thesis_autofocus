@@ -734,6 +734,62 @@ results/npe-loo/measured/<sample>.json   seeds and ensemble on the four measured
 results/npe-loo/timing.json              time per estimate, CNN against NPE and ensemble
 ```
 
+## Stage 8: misspecification, ensembles, warm start
+
+Three checks on the leave-one-out sets of Stage 6 with the models of Stage 7 (Laborbuch 08),
+all on the CPU. `scripts/run_stage8_study.py`:
+
+- `sources`: the ensemble of the three leave-one-out CNNs (the equal-weight mixture of their
+  Gaussians, `holofocus.learned.posterior.GaussianMixture`) and the NPE ensemble of Stage 7 on
+  the measured holograms, with central intervals; reads only committed records.
+- `misspec`: the distance of each measured hologram (and its 16 binning phases) to its
+  leave-one-out training set, in the network input and in the embedding of each NPE seed
+  (`holofocus.learned.misspecification`: mean distance to the k nearest training samples,
+  Mahalanobis distance in principal components), as a percentile among the test split; on the
+  test split, how the distances go with the errors, widths and seed spread of the two
+  ensembles; the 25 test samples nearest to the hologram; and, with `--control results/npe`,
+  the same distances to the sets of the Stage 5 simulator (`data/matched-<sample>`) as a
+  positive control. It needs `data/loo-<sample>` (and `data/matched-<sample>` for the control);
+  `--cache DIR` keeps the network inputs of the splits.
+- `ensembles`: CNN ensemble against NPE ensemble on the leave-one-out test splits, with the
+  seeds and the guess, per probe and pooled, and on the measured holograms.
+- `warmstart`: the padding-4 searches on the measured holograms side by side.
+
+The searches are `run_stage3_experiments.py measured` with `--warm-start` (start from the
+estimate +- 0.5 mm) or `--box` (search only inside the central interval `--box-level`, default
+95 %, cut to `Omega_z`), both with `--revisit-tolerance 1e-9` (points within 1 nm of an earlier
+one count as repeated). Each takes 35–50 min with 3 threads.
+
+```bash
+python scripts/run_stage8_study.py sources
+for e in cnn npe; do
+    for mode in warm-start box; do
+        out=results/measured/$([ $mode = box ] && echo box95 || echo warm)-$e-loo-ensemble-b1-p4
+        python scripts/run_stage3_experiments.py --threads 3 measured --holograms $H \
+            --binning 1 --padding 4 --revisit-tolerance 1e-9 \
+            --$mode results/measured/$e-loo-ensemble --out $out
+    done
+done
+python scripts/run_stage8_study.py --threads 3 misspec --holograms $H --control results/npe \
+    --cache /tmp/stage8-inputs
+python scripts/run_stage8_study.py ensembles
+python scripts/run_stage8_study.py warmstart
+python scripts/make_stage8_figures.py
+```
+
+`misspec` and `ensembles` take the runs as options (`--npe`, `--cnn`, `--cnn-seeds`, `--seeds`,
+`--samples`, `--data`), so the large Maxwell runs go through the same commands. The results:
+
+```
+results/measured/{cnn,npe}-loo-ensemble/<sample>.json   the two ensembles on the holograms
+results/misspecification/<sample>.json   distances, percentiles, failures, neighbours, control
+results/misspecification/test-<sample>.csv  per test sample: distances, errors, widths, spread
+results/misspecification/summary.csv     one row per probe, space and distance
+results/ensembles/                       CNN ensemble against NPE ensemble (test, measured)
+results/measured/{warm,box95}-{cnn,npe}-loo-ensemble-b1-p4/  the searches
+results/measured/warmstart.{json,csv}    all searches against the full one
+```
+
 ## GPU runs on DESY Maxwell
 
 `cluster/maxwell/` is a SLURM kit for the A100 nodes of DESY Maxwell; [maxwell-gpu.md](maxwell-gpu.md)
