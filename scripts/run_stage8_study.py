@@ -29,7 +29,9 @@ and ``matched-<sample>-seed<k>``.
   (``results/misspecification/<sample>.json``, ``test-<sample>.csv``, ``summary.csv``). With
   ``--control results/npe``, the same distances to the sets of the Stage 5 simulator
   (``data/matched-<sample>``), in the input and in the embedding of the NPE trained on them,
-  as the positive control (``control`` in the records, ``control-*`` rows in the summary).
+  as the positive control, and the same local look: that NPE's failures on its test split, on
+  the hologram (``results/npe/measured``) and among the hologram's nearest test samples
+  (``control`` in the records, ``control-*`` rows in the summary).
 * ``ensembles``: the CNN ensemble (per test sample the mixture of the Gaussians of the seeds)
   against the NPE ensemble on the leave-one-out test splits, with the seeds and the guess:
   the metrics of Stage 7, paired bootstrap differences, per probe and pooled over the four;
@@ -658,6 +660,28 @@ def measured_failures(args, name: str, fail: dict) -> dict:
     return out
 
 
+def control_failures(path: Path, fail: dict) -> dict:
+    """The failure of the control NPE on the measured hologram (its record of Laborbuch 07,
+    5.7), with the padding-4 search as the truth, and its percentiles among its test split."""
+    r = json.loads(path.read_text())
+    guess, p4 = r["z01_guess"], r["references"]["baseline_b1_p4"]
+    entry = {
+        "record": repo_relative(path),
+        "z01_est": r["z01_est"],
+        "shift_um": (r["z01_est"] - guess) * 1e6,
+        "width_95_um": r["intervals"]["95"]["width_um"],
+        "minus_p4_um": p4["distance_um"],
+        "p4_minus_guess_um": (p4["z01"] - guess) * 1e6,
+        "p4_hpd_level": p4["hpd_level"],
+    }
+    entry["moved_fraction"] = entry["shift_um"] / entry["p4_minus_guess_um"]
+    entry["percentiles"] = {
+        "abs_error_um": percentile_rank(fail["npe_abs_error_um"], abs(entry["minus_p4_um"])),
+        "width_95_um": percentile_rank(fail["npe_width_95_um"], entry["width_95_um"]),
+    }
+    return entry
+
+
 def neighbour_percentiles(fail: dict, shift: dict, measured: dict, rows: np.ndarray) -> dict:
     """Percentiles of the hologram's failures and shift from the guess (``measured_failures``)
     among those of its nearest test samples ``rows``."""
@@ -738,6 +762,40 @@ def control_record(args, name: str, autofocus: NPEAutofocus, x_measured: np.ndar
             f"{name} control-{space}: knn test median {main['test']['median']:.3f}, hologram "
             f"{main['measured']:.3f} = {main['percentile']:.1f} % (phases "
             f"{main['phases']['percentile_min']:.1f}-{main['phases']['percentile_max']:.1f} %)"
+        )
+    predictions, measured = run / "test" / "predictions.csv", args.control / "measured"
+    if not predictions.exists() or not (measured / f"{name}.json").exists():
+        print(f"{name}: control without predictions, no local look")
+        return out
+    rows = read_predictions(predictions)
+    tables = {"npe-ensemble": npe_table(rows)}
+    if not np.array_equal(tables["npe-ensemble"]["index"], np.arange(len(x_test))):
+        raise ValueError(f"{name}: {predictions} is not the whole test split of the control")
+    fail = {
+        "npe_abs_error_um": np.abs(tables["npe-ensemble"]["error_um"]),
+        "npe_width_95_um": tables["npe-ensemble"]["width_95_um"],
+    }
+    offset = np.array([r["z01_true"] - r["z01_guess"] for r in rows]) * 1e6
+    shift = {"npe": tables["npe-ensemble"]["error_um"] + offset}
+    failures_measured = control_failures(measured / f"{name}.json", fail)
+    out["predictions"] = repo_relative(predictions)
+    out["test"] = local_look(tables, fail, shift, offset, np.arange(len(x_test)))
+    out["measured_failures"] = {"npe": failures_measured}
+    out["neighbours"] = {}
+    for space, (_, test, hologram) in spaces.items():
+        nearest = np.argsort(np.linalg.norm(test - hologram[0], axis=1))[: min(NEAREST, len(test))]
+        out["neighbours"][space] = {
+            **local_look(tables, fail, shift, offset, nearest),
+            "indices": [int(i) for i in nearest],
+            "measured_percentiles": neighbour_percentiles(
+                fail, shift, {"npe": failures_measured}, nearest
+            ),
+        }
+        p = out["neighbours"][space]["measured_percentiles"]["npe"]
+        print(
+            f"{name} control-{space}: error {failures_measured['minus_p4_um']:+.0f} um, among "
+            f"the {len(nearest)} nearest test samples at {p['abs_error_um']:.0f} % (their MAE "
+            f"{out['neighbours'][space]['npe_mae_um']:.0f} um)"
         )
     return out
 

@@ -201,9 +201,10 @@ Die Intervalle, in mm (Breite in Klammern); das kalte Ergebnis liegt in allen ac
 | Mg-Draht | 467,400–473,247 (5,85; unten auf $\Omega_z$ geschnitten) | 467,636–475,433 (7,80) |
 
 Die Suchen liefen in zwei Lanes nebeneinander (E13): Lane A mit 3 Threads (warm NPE, 95 % NPE,
-warm CNN, nacheinander), Lane B mit einem Thread (95 % CNN). Beide liefen aus einem Worktree mit
-dem Stand `901c04e`, damit die Arbeit am Repo die Läufe nicht änderte; jede Ergebnisdatei nennt
-diesen Commit. `run_stage8_study.py warmstart` stellt alle sechs Suchen pro Probe nebeneinander
+warm CNN, nacheinander; zwischen den beiden letzten `misspec` mit der Positivkontrolle und
+`ensembles`, ebenfalls mit 3 Threads), Lane B mit einem Thread (95 % CNN). Die Suchen liefen aus
+einem Worktree mit dem Stand `901c04e`, damit die Arbeit am Repo sie nicht änderte; jede ihrer
+Ergebnisdateien nennt diesen Commit. `run_stage8_study.py warmstart` stellt alle sechs Suchen pro Probe nebeneinander
 (die kalte und die von Etappe 5 dazu) und schreibt `results/measured/warmstart.{json,csv}`.
 
 Um die Zahl der Rekonstruktionen zu erklären, rechnet `warmstart` jede Suche noch einmal auf
@@ -634,7 +635,23 @@ Und gestartet mit ±0,5 mm um eine Schätzung, die $d$ neben dem Minimum liegt, 
 
 ## 7 Nächste Schritte
 
-⟨TODO⟩
+1. **Eine Suche, die mehr aus der Posterior nimmt** (Plan-Schritt 15). Mit Nelder–Mead in
+   einer Dimension kostet jede Halbierung der Startbreite im Mittel 1,5 Rekonstruktionen (5.6);
+   ein gelerntes Intervall spart deshalb nur mit dem Logarithmus seiner Breite. Laborbuch 03, 7
+   hatte die engere Suche um die Netzschätzung als Beschleunigung vorgeschlagen; auf der Parabel
+   spart sie gegen die volle Suche im Mittel 40 % bei 1–1,5 mm Breite, 27 % bei 2–3 mm, 14 % bei
+   4–6 mm und nichts bei 7–10 mm. Wesentlich weniger Rekonstruktionen bräuchte ein anderes
+   Vorgehen, etwa die MFE an wenigen Quantilen der
+   Posterior und eine Parabel durch diese Punkte. Zu prüfen auf den simulierten Test-Splits, wo
+   die Wahrheit bekannt ist, mit dem Vorbehalt der schmalen Senken der MFE (Laborbuch 04, 9,
+   Punkt 1); nicht gerechnet.
+2. **Maxwell** (Laborbuch 07, 9.10, Punkt 1): die großen Läufe, dann dieselben Befehle wie
+   hier. Daran zeigt sich, ob mehr Trainingsdaten die NPE-Seeds beim Zahn einig machen und die
+   Intervalle bei Kaktusnadel und Mg-Draht schmaler; erst dann spart die Suche im Intervall auch
+   dort etwas (5.6).
+3. **Die Suche im Intervall auf den Test-Splits** (6, Punkt 1), ebenfalls auf Maxwell: wie oft
+   und wie weit sie das Minimum verfehlt, wenn die Wahrheit außerhalb des Intervalls liegt.
+4. ⟨TODO nach der Positivkontrolle: `misspec` als Prüfung bei jedem neuen Simulator⟩
 
 ## 8 Bezug zur Masterarbeit
 

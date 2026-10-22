@@ -749,8 +749,10 @@ all on the CPU. `scripts/run_stage8_study.py`:
   test split, how the distances go with the errors, widths and seed spread of the two
   ensembles; the 25 test samples nearest to the hologram; and, with `--control results/npe`,
   the same distances to the sets of the Stage 5 simulator (`data/matched-<sample>`) as a
-  positive control. It needs `data/loo-<sample>` (and `data/matched-<sample>` for the control);
-  `--cache DIR` keeps the network inputs of the splits.
+  positive control, with the failures of the NPE trained on them on its test split, on the
+  hologram and among the hologram's nearest test samples. It needs `data/loo-<sample>` (and
+  `data/matched-<sample>` for the control); `--cache DIR` keeps the network inputs of the
+  splits.
 - `ensembles`: CNN ensemble against NPE ensemble on the leave-one-out test splits, with the
   seeds and the guess, per probe and pooled, and on the measured holograms.
 - `warmstart`: the padding-4 searches on the measured holograms side by side, each also on the
