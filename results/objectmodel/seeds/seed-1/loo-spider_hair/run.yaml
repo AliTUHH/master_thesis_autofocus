@@ -1,0 +1,67 @@
+config:
+  name: spectrum-cnn-wide
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  model:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    min_sigma: 0.001
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    beta: 0.5
+    augment: false
+    limit: null
+    patience: null
+    seed: 1
+  device: auto
+datasets:
+  train:
+  - path: data/loo-spider_hair/train.h5
+    sha256: 8c3040ca4269920cd8b116b4553cffc7523eb04a1d361f30107498552b2e0b87
+    split: train
+    n_samples: 6000
+    seed: 20261061
+    generator_commit: d0f8a89
+    created_utc: '2026-10-22T02:03:15+00:00'
+  val:
+    path: data/loo-spider_hair/val.h5
+    sha256: 77dd2feb173cf88fdbf10995ab476bd85f39d4e8a0db33706a38f0448cd69c03
+    split: val
+    n_samples: 250
+    seed: 20261061
+    generator_commit: d0f8a89
+    created_utc: '2026-10-22T01:52:45+00:00'
+n_train: 6000
+n_val: 250
+input_shape:
+- 1
+- 1024
+n_parameters: 449826
+best_epoch: 15
+epochs_run: 100
+sigma_scale: 0.8717093102301765
+load_seconds: 62.51148704299703
+train_seconds: 1364.2275134530064
+holofocus_version: 0.1.0
+git_commit: 9fd4155
+torch_version: 2.14.1+cpu
+device: cpu
+threads: 1
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-22T07:09:45+00:00'

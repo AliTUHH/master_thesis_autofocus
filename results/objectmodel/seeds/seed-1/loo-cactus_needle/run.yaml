@@ -1,0 +1,67 @@
+config:
+  name: spectrum-cnn-wide
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  model:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    min_sigma: 0.001
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    beta: 0.5
+    augment: false
+    limit: null
+    patience: null
+    seed: 1
+  device: auto
+datasets:
+  train:
+  - path: data/loo-cactus_needle/train.h5
+    sha256: 4d65356ae3be79883759710694db89448145b5c5f910ae2a27aa1afbc7a4f664
+    split: train
+    n_samples: 6000
+    seed: 20261063
+    generator_commit: 9fd4155
+    created_utc: '2026-10-22T02:24:55+00:00'
+  val:
+    path: data/loo-cactus_needle/val.h5
+    sha256: 00871d2faa171c413cdabb47a34d66396e5f66c1c89ec4c9e5c2a7470c04c511
+    split: val
+    n_samples: 250
+    seed: 20261063
+    generator_commit: 9fd4155
+    created_utc: '2026-10-22T02:05:22+00:00'
+n_train: 6000
+n_val: 250
+input_shape:
+- 1
+- 1024
+n_parameters: 449826
+best_epoch: 9
+epochs_run: 100
+sigma_scale: 1.0269079910591563
+load_seconds: 64.6753779460123
+train_seconds: 1417.6792968630034
+holofocus_version: 0.1.0
+git_commit: 9fd4155
+torch_version: 2.14.1+cpu
+device: cpu
+threads: 1
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-22T06:22:01+00:00'
