@@ -560,7 +560,7 @@ done
 Lauf 1 sollte ähnliche, nicht dieselben Zahlen liefern wie `results/npe/npe-nsf/summary.json`
 (auf der VM: beste Epoche 27, Val-MAE 196 µm, Abdeckung der 68-/95-%-Intervalle 0,68/0,92,
 48 min Training mit 1 Thread); der Grund steht in Abschnitt 7. Auf der VM passten sich alle
-NPE-Läufe nach etwa 30 von 100 Epochen den Trainingsdaten an: Der Val-Verlust stieg danach
+NPE-Läufe nach 21 bis 38 von 100 Epochen den Trainingsdaten an: Der Val-Verlust stieg danach
 wieder, während der Trainingsverlust weiter fiel (Laborbuch 07). Die Auswahl nach dem
 Val-Verlust fängt das ab, die übrigen Epochen kosten nur Zeit. Ob 60 000 Samples die beste
 Epoche nach hinten schieben, zeigt `history.csv` von Lauf 2.
