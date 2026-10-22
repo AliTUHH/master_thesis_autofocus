@@ -1041,9 +1041,25 @@ def cmd_compare(args) -> None:
         )
 
 
+def object_loss(
+    hologram: torch.Tensor, fresnel_number: float, settings, fov: torch.Tensor
+) -> float:
+    """The fit of the returned object itself: the loss of one more iteration of the last stage,
+    started from the object ``fov`` (its field of view) without momentum. The MFE is the loss
+    at the lookahead ``obj - momentum * velocity`` of the last iteration instead."""
+    last = dataclasses.replace(settings.stages[-1], iterations=1)
+    grid = stage_grid(tuple(hologram.shape), last.down_sampling, settings.padding_factor)
+    init = torch.zeros(grid.shape, dtype=fov.dtype)
+    init[grid.fov] = fov
+    one = dataclasses.replace(settings, stages=(last,))
+    return float(asrm_reconstruct(hologram, fresnel_number, one, init=init).loss[0])
+
+
 def cmd_scan(args) -> None:
     sample = MEASURED_SAMPLES[args.sample]
     settings, nominal = measured_settings(sample, args.binning, args.padding)
+    if args.stages:
+        settings = dataclasses.replace(settings, stages=settings.stages[: args.stages])
     hologram = load_measured(args.holograms, sample, args.binning)
     geometry = sample.geometry(args.binning)
     grids = [
@@ -1068,41 +1084,59 @@ def cmd_scan(args) -> None:
         raise SystemExit(f"{target} holds a scan with other settings")
     objects = args.out / f"scan-{args.sample}"
     objects.mkdir(exist_ok=True)
+    for point in record["points"]:
+        if "object_loss" not in point and Path(point["arrays"]).exists():
+            arrays = np.load(point["arrays"])
+            fov = torch.complex(
+                torch.from_numpy(arrays["phase"]), torch.from_numpy(arrays["absorption"])
+            )
+            fresnel_number = geometry.with_z01(point["z01"]).fresnel_number
+            point["object_loss"] = object_loss(hologram, fresnel_number, settings, fov)
+            write_json(target, record)
     done = {point_key(p["z01"]) for p in record["points"]}
     for z01 in args.z01 or [z / 1e3 for z in args.z01_mm]:
         z01_mm = z01 * 1e3
         if point_key(z01) in done:
             print(f"{args.sample}: {z01_mm:.6f} mm scanned already, skipped")
             continue
+        fresnel_number = geometry.with_z01(z01).fresnel_number
         start = time.perf_counter()
-        result = asrm_reconstruct(hologram, geometry.with_z01(z01).fresnel_number, settings)
+        result = asrm_reconstruct(hologram, fresnel_number, settings)
         seconds = time.perf_counter() - start
         loss = np.asarray(result.loss, dtype=np.float64)
         path = objects / f"{z01_mm:.6f}.npz"
+        padded = {}
+        if args.stages:
+            padded = {
+                "phase_padded": result.padded.real.numpy().astype(np.float32),
+                "absorption_padded": result.padded.imag.numpy().astype(np.float32),
+            }
         np.savez(
             path,
             phase=result.obj.real.numpy().astype(np.float32),
             absorption=result.obj.imag.numpy().astype(np.float32),
             loss=loss,
+            **padded,
         )
-        record["points"].append(
-            {
-                "z01": z01,
-                "mfe": result.final_loss,
-                "seconds": seconds,
-                "stage_ends": list(result.stage_ends),
-                "stage_losses": [float(loss[e - 1]) for e in result.stage_ends],
-                "loss": [float(x) for x in loss[LOSS_EVERY - 1 :: LOSS_EVERY]],
-                "object": object_statistics(result.obj),
-                "arrays": repo_relative(path),
-                **environment(),
-            }
-        )
+        point = {
+            "z01": z01,
+            "mfe": result.final_loss,
+            "object_loss": object_loss(hologram, fresnel_number, settings, result.obj),
+            "seconds": seconds,
+            "stage_ends": list(result.stage_ends),
+            "stage_losses": [float(loss[e - 1]) for e in result.stage_ends],
+            "loss": [float(x) for x in loss[LOSS_EVERY - 1 :: LOSS_EVERY]],
+            "object": object_statistics(result.obj),
+            "arrays": repo_relative(path),
+            **environment(),
+        }
+        record["points"].append(point)
         record["points"].sort(key=lambda p: p["z01"])
         done.add(point_key(z01))
         write_json(target, record)
         print(
-            f"{args.sample}: {z01_mm:.6f} mm  MFE {result.final_loss:.10e}  ({seconds:.0f} s)",
+            f"{args.sample}: {z01_mm:.6f} mm  MFE {result.final_loss:.10e}  "
+            f"at the object {point['object_loss']:.10e}  ({seconds:.0f} s)",
             flush=True,
         )
 
@@ -1133,6 +1167,12 @@ def main() -> None:
     )
     scan.add_argument("--binning", type=int, default=1)
     scan.add_argument("--padding", type=float, default=4.0)
+    scan.add_argument(
+        "--stages",
+        type=int,
+        help="only the first STAGES stages of the plan, e.g. 1 with --out "
+        "results/stage9/first-stage; 'mfe' is then the loss at the end of the last of them",
+    )
     scan.add_argument("--out", type=Path, default=STAGE9)
     scan.set_defaults(func=cmd_scan)
     steps = sub.add_parser("steps", help="the MFE of the measured holograms against z01 (part 1)")
