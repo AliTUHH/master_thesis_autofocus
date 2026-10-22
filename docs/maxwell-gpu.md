@@ -503,6 +503,101 @@ der VM. In `$M/figures` entstehen `stage5-measured.png`, `stage5-sim2real.png` u
 `stage5-training.png` für die neuen Modelle; die übrigen Bilder brauchen Eingaben der VM und
 fehlen.
 
+### 7.2 Etappe 6: Leave-one-out-Sätze mit Textur (Laborbuch 06)
+
+Etappe 6 gibt den Fasern eine schwache Phasentextur, im Objekt und als Film über dem
+Sichtfeld, und trainiert pro Probe ein Spektrum-CNN auf einem Leave-one-out-Satz:
+`configs/dataset/loo-<probe>.yaml` nimmt Detektor, Objekt und Textur als Bereiche aus den drei
+anderen Proben, so dass kein Satz das Hologramm gesehen hat, auf dem sein Modell getestet wird.
+Auf der VM waren es 6000 Trainings-Samples pro Probe. `loo-<probe>-large.yaml` legt 50 000
+weitere mit eigenem Seed und derselben Physik dazu (das prüft
+`test_loo_configs_are_the_matched_ones_with_the_loo_changes` in `tests/test_objectmodel.py`);
+Val und Test bleiben die 250 Samples der kleinen Config.
+
+| Probe | Simulationsgitter | VM, Zeit pro Sample | 50 000 Samples |
+|---|---|---|---|
+| `spider_hair` | 4480² | 2,0 s (3 Threads) | 39 GB |
+| `tooth` | 3087² | 1,7 s (1 Thread) | 33 GB |
+| `cactus_needle` | 1620² | 0,37 s (1 Thread) | 38 GB |
+| `magnesium_wire` | 1568² | 0,34 s (1 Thread) | 38 GB |
+
+```bash
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    cluster/maxwell/submit.sh --cpu datagen configs/dataset/loo-$p.yaml --splits val test
+    cluster/maxwell/submit.sh datagen configs/dataset/loo-$p.yaml --splits train
+done
+```
+
+Es gelten die Regeln aus Abschnitt 5 und 7.1: Val und Test mit `--cpu`, damit der Job sie mit
+den Fingerabdrücken `results/datasets/loo-<probe>-{val,test}.csv` vergleicht (erwartet PASS
+oder WARN), und die kleine Config auf der GPU nur mit `--splits train`. Auf der VM dauerten Val
+und Test zusammen 3 min (Kaktusnadel, Mg-Draht, je 1 Thread), 15 min (Zahn, 1 Thread) und
+21 min (Spinnenhaar, 2 Threads).
+
+**PRÜFEN: Zeit pro Sample auf der GPU.** Die Textur kostet auf der VM viel Zeit: Das
+Spinnenhaar braucht mit 3 Threads 2,0 statt 0,66 s pro Sample wie in 7.1. Ein Teil davon
+läuft auch im GPU-Job auf der CPU: Das weiße Rauschen des Feldes zieht numpy auf dem ganzen
+Simulationsgitter (beim Spinnenhaar 20 Millionen Werte pro Sample), erst die FFT rechnet die
+GPU. Wie lange ein Sample auf der A100 braucht, folgt deshalb nicht aus dem gpu-check, und ich
+rate es nicht. Lies es im Log des kleinen Train-Jobs ab (`train: 600/6000 samples, … s/sample`)
+und schicke die große Config erst danach ab, mit einem Zeitlimit, in das 50 000 mal diese Zeit
+deutlich passt:
+
+```bash
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    cluster/maxwell/submit.sh --time 12:00:00 datagen configs/dataset/loo-$p-large.yaml
+done
+```
+
+Reicht das Zeitlimit nicht, `--limit 25000` anhängen: Der Job erzeugt dann die ersten 25 000
+Samples, mit denselben Seeds wie im vollen Satz. Ein abgebrochener Split beginnt von vorn
+(Abschnitt 5).
+
+Platz: Texturierte Hologramme lassen sich schlechter komprimieren als die aus 7.1 und brauchen
+etwa 15 % mehr, 33–39 GB pro Probe für 50 000 Samples. Mit den kleinen Configs (4,3–5,1 GB
+pro Probe) sind das zusammen etwa 170 GB auf Scratch, zusätzlich zu 7.1 und Abschnitt 5.
+Vorher mit `df -h` prüfen (Abschnitt 2); was nach dem Training nicht mehr gebraucht wird, darf
+gelöscht werden.
+
+Training, wenn alle Daten da sind:
+
+```bash
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    cluster/maxwell/submit.sh train learned-large/loo-$p configs/learned/spectrum-cnn-wide.yaml \
+        --train loo-$p/train.h5 loo-$p-large/train.h5 \
+        --val loo-$p/val.h5 --test loo-$p/test.h5
+done
+```
+
+Die Namen `learned-large/loo-<probe>` nicht ändern: `scripts/run_stage6_study.py measured`
+sucht die Modelle unter `<learned>/loo-<probe>`. Abschnitt 9 nimmt sie mit `$R/learned-large`
+mit zurück. Die Vorhersagen auf dem Test-Split der Etappe 5 und die Schätzung auf den
+Messhologrammen laufen danach auf der VM (Minuten auf der CPU); den `predict`-Job dafür nicht
+nehmen, denn er vergleicht neue Vorhersagen mit denen des Modells für einen Split desselben
+Namens, hier also mit dem Leave-one-out-Test-Split, und meldete einen Fehler.
+
+```bash
+L=results/maxwell/learned-large
+M=results/maxwell/measured-large
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    holofocus-dataset generate configs/dataset/matched-$p.yaml --out data/matched-$p --splits test
+    holofocus-learn predict $L/loo-$p --data data/matched-$p/test.h5 --out $L/loo-$p/matched-test
+done
+python scripts/run_stage6_study.py --threads 1 measured --holograms DIR --learned $L \
+    --out $M/cnn-loo
+python scripts/run_stage6_study.py compare --cnn $M/cnn-loo --seeds $M/seeds --out $M/objectmodel
+python scripts/make_stage6_figures.py --objectmodel $M/objectmodel --out $M/figures
+```
+
+`compare` nimmt die CNNs der Etappe 5 und die Baselines aus `results/measured` und die
+Testfehler aus genau den Läufen, die geschätzt haben. `$M/seeds` gibt es nicht, und das ist
+Absicht: Ohne `--seeds` nähme `compare` die Modelle der VM mit anderen Seeds
+(`results/objectmodel/seeds`, auf 6000 Samples trainiert) in die Streuung der großen Modelle
+auf. `$M/objectmodel/comparison.csv` hat dieselben Spalten wie
+`results/objectmodel/comparison.csv` mit den Modellen der VM. In `$M/figures` entstehen
+`stage6-measured.png`, `stage6-sim2real.png` und `stage6-training.png` für die großen Modelle;
+die übrigen Bilder brauchen Eingaben der VM und fehlen.
+
 ## 8 NPE und weitere Läufe
 
 ### 8.1 Etappe 7: NPE (Laborbuch 07)
@@ -641,7 +736,7 @@ cp $HOLOFOCUS_SCRATCH/logs/holofocus-*.out $M/logs/
 cp $HOLOFOCUS_ENV/holofocus-env.txt $M/
 git add $M                          # HDF5-Dateien und *.pt schließt .gitignore aus
 git add -f $M/learned/*/model.pt    # die trainierten Modelle gehören dazu
-git add -f $M/learned-large/*/model.pt   # die Modelle aus 7.1, falls trainiert
+git add -f $M/learned-large/*/model.pt   # die Modelle aus 7.1 und 7.2, falls trainiert
 git add -f $M/npe*/*/model.pt       # die NPEs aus 8.1, falls trainiert
 git commit -m "Maxwell: Baseline auf dem ganzen Test-Split, Training auf 60 000 Samples"
 git push -u origin maxwell-ergebnisse-$(date +%Y%m%d)
@@ -727,7 +822,7 @@ Nur auf Maxwell zu prüfen (**PRÜFEN**, Abschnitt 2 und gpu-check):
   üblichen Init-Skripte), Internetzugang und glibc des Login-Knotens.
 - Treiber und CUDA-Version der A100-Knoten und damit der PyTorch-Index.
 - Alles, was auf der GPU rechnet: die Ergebnisse des gpu-check auf der A100 (Abschnitt 4), die
-  Laufzeiten und damit die Zahl der Stücke und die Zeitlimits, der NPE auf der GPU
-  (Abschnitt 8.1).
+  Laufzeiten und damit die Zahl der Stücke und die Zeitlimits, die Zeit pro Sample der Sätze
+  mit Textur (Abschnitt 7.2), der NPE auf der GPU (Abschnitt 8.1).
 - Pfade und Kontingente von Scratch und DUST und ob alte Dateien auf Scratch gelöscht werden.
 - Ob von Maxwell aus ein Push zu GitHub geht (Abschnitt 9).

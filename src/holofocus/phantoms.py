@@ -13,6 +13,10 @@ as for a projection through one material. These compact types stay inside the fi
 The ``fiber`` type (Stage 5) models the measured samples of [1], hair, needle and wire: straight,
 possibly tapered cylinders that cross the field of view and continue into the free-space
 padding around it (:func:`fiber_thickness`).
+
+:func:`texture_field` (Stage 6) is the weak-phase texture that the smooth shapes lack and the
+measured holograms of [1] show: a Gaussian random field with a power-law spectrum, which the
+dataset generator adds inside the object and as a uniform film over the field of view.
 """
 
 from __future__ import annotations
@@ -22,6 +26,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 import numpy as np
+import torch
 
 from .arrays import center_slices
 
@@ -353,6 +358,7 @@ def random_phantom(
     supersample: int = 4,
     canvas: tuple[int, int] | None = None,
     fiber_diameter_range: tuple[float, float] = (0.03, 1.0),
+    normalize: bool = True,
 ) -> np.ndarray:
     """Normalised thickness (maximum 1 inside the field of view) of a random phantom.
 
@@ -360,12 +366,18 @@ def random_phantom(
     diameter relative to its shorter side and ``margin`` the free border relative to it;
     these objects never touch the border. ``fiber`` uses ``fiber_diameter_range`` instead
     (:func:`random_fibers`). With ``canvas`` the result covers that larger array with the field
-    of view in its centre (zero outside the field of view for the compact types).
+    of view in its centre (zero outside the field of view for the compact types). With
+    ``normalize=False`` a fiber keeps its projected thickness in pixels of ``shape``; the
+    compact shapes have no thickness in pixels.
     """
     if kind not in PHANTOM_TYPES:
         raise ValueError(f"unknown phantom type {kind!r}, choose from {PHANTOM_TYPES}")
+    if not normalize and kind != "fiber":
+        raise ValueError(f"only fibers have a thickness in pixels, not {kind!r}")
     if kind == "fiber":
         thickness = random_fibers(rng, shape, canvas, fiber_diameter_range)
+        if not normalize:
+            return thickness
         rows, cols = center_slices(thickness.shape, tuple(shape))
         peak = thickness[rows, cols].max()
         return thickness / peak if peak > 0 else thickness
@@ -380,3 +392,45 @@ def random_phantom(
     rows, cols = center_slices(tuple(canvas), tuple(shape))
     out[rows, cols] = thickness
     return out
+
+
+def texture_field(
+    shape: tuple[int, int],
+    rng: np.random.Generator,
+    slope: float,
+    cutoff: float,
+    oversample: int = 1,
+    device: torch.device | str | None = None,
+    dtype: torch.dtype = torch.float32,
+) -> torch.Tensor:
+    """Gaussian random field with the power spectrum ``(1 + (f / cutoff)^2)^(-slope / 2)``.
+
+    ``f`` is in cycles per pixel of the binned grid and ``shape`` a grid ``oversample`` times
+    finer. The field is periodic over ``shape``, has zero mean and is band-limited to the binned
+    grid (``|f_x|, |f_y| < 1/2``), so the oversampling of the simulation does not change it. Its
+    expected variance over that band is 1; one realisation deviates by the sampling of its
+    lowest frequencies. The white noise comes from ``rng`` (single precision), so the field is
+    the same on every device up to rounding.
+    """
+    if slope < 0 or cutoff <= 0 or oversample < 1:
+        raise ValueError("need slope >= 0, cutoff > 0 and oversample >= 1")
+    h, w = shape
+    white = torch.from_numpy(rng.standard_normal((h, w), dtype=np.float32))
+    white = white.to(device=device, dtype=dtype)
+    real = torch.float64
+    fy = torch.fft.fftfreq(h, device=white.device, dtype=real)[:, None] * oversample
+    fx = torch.fft.rfftfreq(w, device=white.device, dtype=real)[None, :] * oversample
+    band = (fy.abs() < 0.5) & (fx.abs() < 0.5)
+    amplitude = torch.where(band, (1.0 + (fx**2 + fy**2) / cutoff**2) ** (-slope / 4), 0.0)
+    amplitude[0, 0] = 0.0
+    # Each column of the half spectrum stands for two frequencies of the full one, except the
+    # zero column and, for even w, the Nyquist column.
+    weight = torch.full_like(amplitude, 2.0)
+    weight[:, 0] = 1.0
+    if w % 2 == 0:
+        weight[:, -1] = 1.0
+    variance = float((weight * amplitude**2).sum()) / (h * w)
+    if variance == 0:
+        raise ValueError(f"no frequency of the band on a {shape} grid with oversample {oversample}")
+    spectrum = torch.fft.rfft2(white) * (amplitude / math.sqrt(variance)).to(dtype)
+    return torch.fft.irfft2(spectrum, s=(h, w))

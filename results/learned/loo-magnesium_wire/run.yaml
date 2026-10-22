@@ -1,0 +1,67 @@
+config:
+  name: spectrum-cnn-wide
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  model:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    min_sigma: 0.001
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    beta: 0.5
+    augment: false
+    limit: null
+    patience: null
+    seed: 0
+  device: auto
+datasets:
+  train:
+  - path: data/loo-magnesium_wire/train.h5
+    sha256: 61416a45ae308ff3cc4a4c0e066a04636187d6bb38d0703deb2ee377c65a9af7
+    split: train
+    n_samples: 6000
+    seed: 20261064
+    generator_commit: 9fd4155
+    created_utc: '2026-10-22T03:09:30+00:00'
+  val:
+    path: data/loo-magnesium_wire/val.h5
+    sha256: e2bff851609f3bd2ac84fc65c2a3648e151452dada5b35f8b5cfdb39079abbc7
+    split: val
+    n_samples: 250
+    seed: 20261064
+    generator_commit: 9fd4155
+    created_utc: '2026-10-22T02:08:19+00:00'
+n_train: 6000
+n_val: 250
+input_shape:
+- 1
+- 1024
+n_parameters: 449826
+best_epoch: 7
+epochs_run: 100
+sigma_scale: 0.8807804410733089
+load_seconds: 55.672270765993744
+train_seconds: 1353.664487913993
+holofocus_version: 0.1.0
+git_commit: 9fd4155
+torch_version: 2.14.1+cpu
+device: cpu
+threads: 1
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-22T04:53:23+00:00'

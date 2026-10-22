@@ -517,6 +517,100 @@ results/sim2real/spectra-<sample>.json   spectral features, measured against sim
 results/sim2real/noise.json              noise spectra of the background corners and fits
 ```
 
+## Object model (Stage 6)
+
+The fibers of Stage 5 give spectra without the CTF modulation of the measured holograms.
+Stage 6 adds a weak-phase texture inside the object (`phantoms.texture_rms_range`) and as a
+film over the field of view (`background_texture_rms_range`): a Gaussian random field with
+the power `(1 + (f / texture_cutoff)^2)^(-texture_slope / 2)` from its own random stream, so
+configs without texture give the same holograms as before. `holofocus.learned.objectmodel`
+locates the modulation in each measured hologram (`region_weights`, `region_ctf`), fits the
+texture of each hologram on the spectral features of 16 test samples (`fit_objective`,
+`TEXTURE_FITS`) and builds the leave-one-out training sets: every property estimated from a
+measured hologram (detector, bulk object, texture) becomes a range over the other three
+samples, widened by a factor of 2 (`loo_ranges`, `loo_changes`), so a set never saw the
+hologram it is tested on.
+
+The object model lives in the dataset config alone: the `phantoms` keys `texture_rms_range`,
+`background_texture_rms_range`, `texture_slope_range`, `texture_cutoff` and
+`phase_per_pixel_range` (fibers only) switch it on in any config. The leave-one-out sets are
+ordinary splits, so every command that takes a split runs on them unchanged, the NPE of
+Stage 7 included (`npe-train --train data/loo-<sample>/train.h5 --val data/loo-<sample>/val.h5`;
+`run_stage7_study.py` takes the roots as `--data`, `--npe` and `--cnn-learned` and expects the
+names `matched-<sample>` below them; its `measured` reads the CNN to compare with from
+`cnn/<sample>.json` below `--measured`, the format of `results/measured/cnn-loo/<sample>.json`).
+
+| Config | Sample | Samples (train/val/test) | CPU time | Size |
+|---|---|---|---|---|
+| `loo-spider_hair.yaml` | spider hair, ranges from tooth, cactus needle, Mg wire | 6000/250/250 | 3.8 h, 3 threads (val, test 2) | 5.1 GB |
+| `loo-tooth.yaml` | tooth | 6000/250/250 | 3.1 h, 1 thread | 4.3 GB |
+| `loo-cactus_needle.yaml` | cactus needle | 6000/250/250 | 40 min, 1 thread | 5.0 GB |
+| `loo-magnesium_wire.yaml` | Mg wire | 6000/250/250 | 37 min, 1 thread | 4.9 GB |
+| `loo-<sample>-large.yaml` | as above, own seeds (for Maxwell, [maxwell-gpu.md](maxwell-gpu.md) 7.2) | 50 000/–/– | | 33–39 GB |
+
+```bash
+# where the CTF modulation comes from (needs the phase files of results/measured/b1-p4)
+python scripts/run_stage6_study.py regions --holograms $H
+# texture fits, 16 test samples per texture (resumable)
+python scripts/run_stage6_study.py --threads 2 fit --holograms $H
+# leave-one-out configs from the fits (configs/dataset/loo-*.yaml, loo-ranges.json)
+python scripts/run_stage6_study.py configs
+for s in spider_hair tooth cactus_needle magnesium_wire; do
+    holofocus-dataset generate configs/dataset/loo-$s.yaml --out data/loo-$s
+    for split in val test; do
+        python scripts/check_cluster_run.py fingerprint data/loo-$s/$split.h5 \
+            --out results/datasets/loo-$s-$split.csv
+    done
+done
+# the spectral check without training
+python scripts/run_stage6_study.py spectra --holograms $H
+for s in spider_hair tooth cactus_needle magnesium_wire; do
+    holofocus-learn train configs/learned/spectrum-cnn-wide.yaml --train data/loo-$s/train.h5 \
+        --val data/loo-$s/val.h5 --out results/learned/loo-$s --threads 1
+    for split in test val; do
+        holofocus-learn predict results/learned/loo-$s --data data/loo-$s/$split.h5 \
+            --out results/learned/loo-$s/$split --threads 1
+    done
+    holofocus-learn predict results/learned/loo-$s --data data/matched-$s/test.h5 \
+        --out results/learned/loo-$s/matched-test --threads 1
+    holofocus-learn predict results/learned/matched-$s --data data/loo-$s/test.h5 \
+        --out results/objectmodel/matched-model/$s --threads 1
+done
+# the leave-one-out CNNs on the measured holograms
+python scripts/run_stage6_study.py --threads 1 measured --holograms $H
+# the same CNNs with the training seeds 1 and 2, for the spread of the estimates
+for k in 1 2; do
+    for s in spider_hair tooth cactus_needle magnesium_wire; do
+        out=results/objectmodel/seeds/seed-$k/loo-$s
+        holofocus-learn train configs/learned/spectrum-cnn-wide.yaml --train data/loo-$s/train.h5 \
+            --val data/loo-$s/val.h5 --out $out --seed $k --threads 1
+        holofocus-learn predict $out --data data/loo-$s/test.h5 --out $out/test --threads 1
+    done
+    python scripts/run_stage6_study.py --threads 1 measured --holograms $H \
+        --learned results/objectmodel/seeds/seed-$k --out results/objectmodel/seeds/seed-$k/measured
+done
+# side by side with Stage 5, [2] and padding 4
+python scripts/run_stage6_study.py compare
+python scripts/make_stage6_figures.py --holograms $H
+```
+
+The results:
+
+```
+results/objectmodel/regions.json         CTF correlation of object, edge and background
+results/objectmodel/fit-<sample>.{json,csv}  texture fit: every texture tried and its features
+results/objectmodel/loo-ranges.json      leave-one-out ranges and the sample's own values
+results/objectmodel/spectra-<sample>.json  spectral features, measured against simulated
+results/learned/loo-<sample>/            CNN of the leave-one-out set with model.pt, val/,
+                                         test/ and matched-test/ (Stage 5 test split)
+results/objectmodel/matched-model/<sample>/  the Stage 5 CNN on the leave-one-out test split
+results/objectmodel/seeds/seed-<k>/      the leave-one-out CNNs trained with the seed k (without
+                                         model.pt), test predictions and measured/ estimates
+results/datasets/loo-*-{val,test}.csv    fingerprints of the val and test splits
+results/measured/cnn-loo/<sample>.json   estimates of the leave-one-out CNNs
+results/objectmodel/comparison.{csv,json}  leave-one-out CNN, Stage 5 CNN, [2], padding 4
+```
+
 ## Neural posterior estimation (Stage 7)
 
 `holofocus.learned.npe` estimates the whole posterior of `dz01` given a hologram with sbi

@@ -23,6 +23,7 @@ from `z01` and is available as an alternative label.
 | 3 | Classical autofocus baseline of [2]: ASRM ([1] Alg. 5) ported from the paper code with the [2] Table 3 schedule, model fit error, projected Nelder–Mead, image criteria and focus curves; runs on the synthetic test split and on the Zenodo holograms of [1], cross-checked against holowizard; per-sample results in `results/` | [docs/laborbuch/03-baseline.md](docs/laborbuch/03-baseline.md) |
 | 4 | First learned autofocus: a small CNN estimates `Δz01` with a Gaussian uncertainty from the radial power spectrum (or the binned hologram), trained on 10 000 synthetic samples on CPU; compared per sample with the raw and offset-corrected baseline of [2], and used as a warm start for its Nelder–Mead search | [docs/laborbuch/04-lernmodell.md](docs/laborbuch/04-lernmodell.md) |
 | 5 | The learned autofocus on the four measured Zenodo holograms: one spectrum CNN per measured setup (energy, geometry, detector path, guess ± 5 mm), compared with [2] Table 1 and our padding-4 baseline, and as a warm start; the sim-to-real gap measured with test splits that change one simulator assumption at a time (detector blur, flat-field residual, noise, fibers, the measured object) and with training sets that have the measured properties | [docs/laborbuch/05-messdaten.md](docs/laborbuch/05-messdaten.md) |
+| 6 | A more realistic object model: a weak-phase Gaussian random texture inside the object and as a film over the field of view, fitted per measured hologram on its spectral features; leave-one-out training sets (every property of a measured hologram estimated as a range over the other three), checked on the spectra before training; the spectrum CNNs of Stage 5 retrained on them and re-tested on the measured holograms against [2] Table 1 and our padding-4 search | [docs/laborbuch/06-objektmodell.md](docs/laborbuch/06-objektmodell.md) |
 | 7 | The posterior of `Δz01` instead of a point estimate, by neural posterior estimation with sbi [6]: a spline flow on an embedding of the radial power spectrum, trained on the 10 000 synthetic samples of Stage 4 on CPU (five seeds as an ensemble, a mixture-density variant); calibration with SBC, expected coverage and TARP on 2000 prior draws, compared with the Stage 4 CNN on the test split and on the 48 baseline samples, on the perturbed test splits of Stage 5 and, for completeness, on the four measured holograms | [docs/laborbuch/07-npe.md](docs/laborbuch/07-npe.md) |
 
 **GPU runs.** The heavy runs (the baseline on the whole synthetic test split, larger training
@@ -84,24 +85,25 @@ src/holofocus/baseline/   baseline runs on dataset splits: YAML config, per-samp
 src/holofocus/learned/    learned autofocus: representations, CNNs with a Gaussian head,
                           training, inference, metrics, comparison with the baseline, CLI;
                           sim2real.py: measured noise, blur and object models, perturbations;
+                          objectmodel.py: spectral regions, texture fits, leave-one-out ranges;
                           npe.py: neural posterior estimation with sbi; posterior.py: posterior
                           on a grid and its calibration statistics
 configs/dataset/          dataset configs (cpu-4x, cpu-4x-extra, cpu-4x-large, cpu-4x-z01-range,
                           cpu-4x-calibration, ci; matched-<sample> for the measured setups with
-                          -large, and -realistic for the cactus needle and the Mg wire)
+                          -large, and -realistic for the cactus needle and the Mg wire;
+                          loo-<sample> with -large, the leave-one-out sets with texture)
 configs/baseline/         baseline configs (paper2-cpu, paper2-cpu-warm, both at padding 4 as
                           -p4, ci)
 configs/learned/          learned-model configs (spectrum-cnn, spectrum-cnn-wide, -wide-hf,
                           image-cnn, ci; npe-nsf, npe-mdn, npe-ci for the NPE)
 results/                  per-sample results quoted in the lab notebook (baseline, learned
-                          models, comparison, measured holograms, sim-to-real study, NPE) and
-                          fingerprints of the val, test and calibration splits
+                          models, comparison, measured holograms, sim-to-real study, object
+                          model, NPE) and fingerprints of the val, test and calibration splits
 cluster/maxwell/          SLURM run kit for the A100 nodes of DESY Maxwell: settings template,
                           environment setup, submit script, jobs
 tests/                    pytest suite (CPU; CUDA tests are skipped without a GPU)
-scripts/                  figure scripts, Stage 3 experiments, Stage 4, 5 and 7 studies,
-                          cross-checks with holowizard, checks of cluster runs against the
-                          committed results
+scripts/                  figure scripts, Stage 3 experiments, Stage 4 to 7 studies, cross-checks
+                          with holowizard, checks of cluster runs against the committed results
 docs/usage.md             how to run things (English)
 docs/maxwell-gpu.md       GPU runs on DESY Maxwell, step by step (German)
 docs/laborbuch/           lab notebook, one entry per stage (German), figures in figures/

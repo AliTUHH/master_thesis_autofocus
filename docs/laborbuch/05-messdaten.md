@@ -29,7 +29,7 @@ Spinnenhaar, Zahn, Kaktusnadel und Mg-Draht. Die Aufgabe:
   Abweichung auf den Messdaten; welche Annahmen des Simulators den Unterschied erklären
   könnten: Rauschen, Flatfield, Detektorunschärfe, Phantomtypen.
 
-NPE mit sbi folgt in der nächsten Etappe.
+NPE mit sbi folgt in Etappe 7.
 
 ## 2 Ausgangslage
 
@@ -742,13 +742,13 @@ Suche eine Dreiviertelstunde auf der CPU.
    Objekte, bei denen die spektralen Merkmale der Messhologramme (3.8) in der Verteilung der
    simulierten Samples liegen; das lässt sich ohne Training prüfen. Dazu der Flatfield-Rest
    bei Spinnenhaar und Zahn, der an den höchsten Frequenzen zu stark ist (5.6, Punkt 3).
-3. **Objekte mit innerer Struktur.** In den Messhologrammen haben die Objekte innere Struktur,
-   am deutlichsten beim Mg-Draht, schwächer beim Zahn (Abb. `stage5-holograms.png`); die
-   simulierten Fasern sind homogene Zylinder aus einem Material. Im Simulator hieße das:
-   Fasern mit einer zufälligen Textur der Phase im Inneren (etwa ein Gaußfeld wie der
-   Flatfield-Rest, mit dem Faserprofil multipliziert) oder Objekte aus den
+3. **Objekte mit innerer Struktur** (Etappe 6). In den Messhologrammen haben die Objekte
+   innere Struktur, am deutlichsten beim Mg-Draht, schwächer beim Zahn (Abb.
+   `stage5-holograms.png`); die simulierten Fasern sind homogene Zylinder aus einem Material.
+   Im Simulator hieße das: Fasern mit einer zufälligen Textur der Phase im Inneren (etwa ein
+   Gaußfeld wie der Flatfield-Rest, mit dem Faserprofil multipliziert) oder Objekte aus den
    Phasenrekonstruktionen von Etappe 3, mit dem Vorbehalt aus 6.3.
-4. **NPE mit sbi** (Plan, nächste Etappe): eine Posterior-Verteilung von $\Delta z_{01}$ mit dem
+4. **NPE mit sbi** (Plan, Etappe 7): eine Posterior-Verteilung von $\Delta z_{01}$ mit dem
    Spektrum-CNN als Einbettung, auf denselben passenden Datensätzen, geprüft mit
    simulationsbasierter Kalibrierung auf den Test-Splits. Auf den Messhologrammen dieselben
    Abstände wie hier, dazu die gepaarten Störungen als Prüfung der Robustheit.

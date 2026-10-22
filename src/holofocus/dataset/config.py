@@ -84,6 +84,17 @@ class PhantomConfig:
 
     ``size_range`` and ``margin`` apply to the compact types, ``fiber_diameter_range``
     (relative to the field of view, log-uniform) to fibers, which cross the field of view.
+    ``phase_shift_range`` (uniform) is the largest phase shift in the field of view. With
+    ``phase_per_pixel_range`` (fibers only, log-uniform) the phase follows the projected
+    thickness instead: that many radians per binned pixel of path, so thin fibers shift less.
+
+    Texture (Stage 6, :func:`holofocus.phantoms.texture_field`): one Gaussian random field per
+    sample with the power ``(1 + (f / texture_cutoff)^2)^(-slope / 2)`` (``f`` in cycles per
+    binned pixel, ``slope`` uniform in ``texture_slope_range``) is added to the phase, with
+    the RMS ``texture_rms_range`` (rad, log-uniform) at the thickest point of the object and
+    proportional to the square root of the thickness, as for a random density of the material
+    integrated along the beam, plus ``background_texture_rms_range`` (rad, log-uniform) over
+    the whole field, as of a film around the object. ``[0, 0]`` switches a part off.
     """
 
     types: dict[str, float] = field(
@@ -95,6 +106,15 @@ class PhantomConfig:
     margin: float = 0.05
     supersample: int = 4
     fiber_diameter_range: tuple[float, float] = (0.03, 1.0)
+    phase_per_pixel_range: tuple[float, float] | None = None
+    texture_rms_range: tuple[float, float] = (0.0, 0.0)
+    background_texture_rms_range: tuple[float, float] = (0.0, 0.0)
+    texture_slope_range: tuple[float, float] = (3.0, 3.0)
+    texture_cutoff: float = 0.01
+
+    @property
+    def textured(self) -> bool:
+        return self.texture_rms_range[1] > 0 or self.background_texture_rms_range[1] > 0
 
 
 @dataclass(frozen=True)
@@ -172,6 +192,19 @@ class DatasetConfig:
             raise ValueError("phantom type weights must be >= 0 with a positive sum")
         if not 0 < ph.fiber_diameter_range[0] <= ph.fiber_diameter_range[1]:
             raise ValueError("fiber_diameter_range must be positive and increasing")
+        if ph.phase_per_pixel_range is not None:
+            if not 0 < ph.phase_per_pixel_range[0] <= ph.phase_per_pixel_range[1]:
+                raise ValueError("phase_per_pixel_range must be positive and increasing")
+            if any(w > 0 for kind, w in ph.types.items() if kind != "fiber"):
+                raise ValueError("phase_per_pixel_range needs fibers only, types {fiber: 1}")
+        for key in ("texture_rms_range", "background_texture_rms_range"):
+            lo, hi = getattr(ph, key)
+            if not (lo == hi == 0 or 0 < lo <= hi):
+                raise ValueError(f"{key} must be [0, 0] (off) or positive and increasing")
+        if not 0 <= ph.texture_slope_range[0] <= ph.texture_slope_range[1]:
+            raise ValueError("texture_slope_range must be >= 0 and increasing")
+        if ph.texture_cutoff <= 0:
+            raise ValueError("texture_cutoff must be positive")
         if self.noise.model not in NOISE_MODELS:
             raise ValueError(f"unknown noise model {self.noise.model!r}")
         if not 0 < self.noise.photons_range[0] <= self.noise.photons_range[1]:

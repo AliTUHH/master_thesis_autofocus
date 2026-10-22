@@ -1,0 +1,50 @@
+model: results/objectmodel/seeds/seed-2/loo-tooth
+model_sha256: 7c2c8f1f083ddec108bea3277b37fb2ef350183eb3b60dc76193b8300d5488ec
+config:
+  name: spectrum-cnn-wide
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  model:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    min_sigma: 0.001
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    beta: 0.5
+    augment: false
+    limit: null
+    patience: null
+    seed: 2
+  device: auto
+sigma_scale: 0.9096072494048802
+dataset:
+  path: data/loo-tooth/test.h5
+  sha256: 04db7ef123a92b6ce6c277fca1c327809c94c3441f085f85e1f115ccc4c88784
+  split: test
+  n_samples: 250
+  seed: 20261062
+  generator_commit: 9fd4155
+  created_utc: '2026-10-22T02:09:46+00:00'
+holofocus_version: 0.1.0
+git_commit: 9fd4155
+torch_version: 2.14.1+cpu
+device: cpu
+threads: 1
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-22T08:10:47+00:00'

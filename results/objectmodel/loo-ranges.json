@@ -1,0 +1,280 @@
+{
+  "texture_fits": {
+    "spider_hair": {
+      "rms": 0.0,
+      "background_rms": 0.1,
+      "slope": 3.0
+    },
+    "tooth": {
+      "rms": 0.0,
+      "background_rms": 0.0,
+      "slope": 2.0
+    },
+    "cactus_needle": {
+      "rms": 0.3,
+      "background_rms": 0.03,
+      "slope": 1.75
+    },
+    "magnesium_wire": {
+      "rms": 0.3,
+      "background_rms": 0.533,
+      "slope": 1.75
+    }
+  },
+  "samples": {
+    "spider_hair": {
+      "ranges": {
+        "sample": "spider_hair",
+        "others": [
+          "tooth",
+          "cactus_needle",
+          "magnesium_wire"
+        ],
+        "psf_sigma": [
+          1.2,
+          1.94
+        ],
+        "photons": [
+          15500.0,
+          78000.0
+        ],
+        "flat_field": [
+          0.013,
+          0.078
+        ],
+        "flat_field_cutoff": 0.151,
+        "phase_per_pixel": [
+          0.0155,
+          0.0957
+        ],
+        "fiber_diameter": [
+          0.04,
+          1.0
+        ],
+        "texture_rms": [
+          0.005,
+          1.07
+        ],
+        "texture_slope": [
+          1.25,
+          2.25
+        ]
+      },
+      "own": {
+        "psf_sigma": 1.71,
+        "photons": 68000.0,
+        "flat_field": 0.025,
+        "flat_field_cutoff": 0.179,
+        "phase_per_pixel": 0.021395412402545548,
+        "fiber_diameter": [
+          0.1,
+          0.25
+        ],
+        "texture_rms": 0.0,
+        "background_texture_rms": 0.1,
+        "texture_slope": 3.0
+      },
+      "inside": {
+        "psf_sigma": true,
+        "photons": true,
+        "flat_field": true,
+        "phase_per_pixel": true,
+        "fiber_diameter": true,
+        "texture_rms": true,
+        "background_texture_rms": true,
+        "texture_slope": false
+      }
+    },
+    "tooth": {
+      "ranges": {
+        "sample": "tooth",
+        "others": [
+          "spider_hair",
+          "cactus_needle",
+          "magnesium_wire"
+        ],
+        "psf_sigma": [
+          1.2,
+          2.01
+        ],
+        "photons": [
+          15500.0,
+          136000.0
+        ],
+        "flat_field": [
+          0.0125,
+          0.052
+        ],
+        "flat_field_cutoff": 0.185,
+        "phase_per_pixel": [
+          0.0107,
+          0.0957
+        ],
+        "fiber_diameter": [
+          0.04,
+          1.0
+        ],
+        "texture_rms": [
+          0.005,
+          1.07
+        ],
+        "texture_slope": [
+          1.25,
+          3.5
+        ]
+      },
+      "own": {
+        "psf_sigma": 1.64,
+        "photons": 35000.0,
+        "flat_field": 0.039,
+        "flat_field_cutoff": 0.111,
+        "phase_per_pixel": 0.03101377350472034,
+        "fiber_diameter": [
+          0.4,
+          0.7
+        ],
+        "texture_rms": 0.0,
+        "background_texture_rms": 0.0,
+        "texture_slope": null
+      },
+      "inside": {
+        "psf_sigma": true,
+        "photons": true,
+        "flat_field": true,
+        "phase_per_pixel": true,
+        "fiber_diameter": true,
+        "texture_rms": true,
+        "background_texture_rms": true
+      }
+    },
+    "cactus_needle": {
+      "ranges": {
+        "sample": "cactus_needle",
+        "others": [
+          "spider_hair",
+          "tooth",
+          "magnesium_wire"
+        ],
+        "psf_sigma": [
+          1.34,
+          2.01
+        ],
+        "photons": [
+          15500.0,
+          136000.0
+        ],
+        "flat_field": [
+          0.0125,
+          0.078
+        ],
+        "flat_field_cutoff": 0.145,
+        "phase_per_pixel": [
+          0.0107,
+          0.0723
+        ],
+        "fiber_diameter": [
+          0.05,
+          1.0
+        ],
+        "texture_rms": [
+          0.005,
+          1.07
+        ],
+        "texture_slope": [
+          1.25,
+          3.5
+        ]
+      },
+      "own": {
+        "psf_sigma": 1.505,
+        "photons": 39000.0,
+        "flat_field": 0.026,
+        "flat_field_cutoff": 0.192,
+        "phase_per_pixel": 0.047841596538733946,
+        "fiber_diameter": [
+          0.08,
+          0.25
+        ],
+        "texture_rms": 0.3,
+        "background_texture_rms": 0.03,
+        "texture_slope": 1.75
+      },
+      "inside": {
+        "psf_sigma": true,
+        "photons": true,
+        "flat_field": true,
+        "phase_per_pixel": true,
+        "fiber_diameter": true,
+        "texture_rms": true,
+        "background_texture_rms": true,
+        "texture_slope": true
+      }
+    },
+    "magnesium_wire": {
+      "ranges": {
+        "sample": "magnesium_wire",
+        "others": [
+          "spider_hair",
+          "tooth",
+          "cactus_needle"
+        ],
+        "psf_sigma": [
+          1.2,
+          2.01
+        ],
+        "photons": [
+          17500.0,
+          136000.0
+        ],
+        "flat_field": [
+          0.0125,
+          0.078
+        ],
+        "flat_field_cutoff": 0.179,
+        "phase_per_pixel": [
+          0.0107,
+          0.0957
+        ],
+        "fiber_diameter": [
+          0.04,
+          1.0
+        ],
+        "texture_rms": [
+          0.005,
+          0.6
+        ],
+        "texture_slope": [
+          1.25,
+          3.5
+        ]
+      },
+      "own": {
+        "psf_sigma": null,
+        "photons": 31000.0,
+        "flat_field": null,
+        "flat_field_cutoff": null,
+        "phase_per_pixel": 0.03613260078616252,
+        "fiber_diameter": [
+          0.55,
+          0.85
+        ],
+        "texture_rms": 0.3,
+        "background_texture_rms": 0.533,
+        "texture_slope": 1.75
+      },
+      "inside": {
+        "photons": true,
+        "phase_per_pixel": true,
+        "fiber_diameter": true,
+        "texture_rms": true,
+        "background_texture_rms": true,
+        "texture_slope": true
+      }
+    }
+  },
+  "git_commit": "d0f8a89",
+  "torch_version": "2.14.1+cpu",
+  "threads": 1,
+  "host": "cursor",
+  "cpu_count": 4
+}
