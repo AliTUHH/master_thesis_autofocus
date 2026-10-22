@@ -132,6 +132,12 @@ STEP = {"spacing_um": 50.0, "jump_ppm": 50.0, "ratio": 3.0}
 ``spacing_um``, more than ``jump_ppm`` apart and a secant ``ratio`` times as steep as both
 neighbouring ones (a jump); or more than ``jump_ppm`` downhill away from the minimum (a
 reversal)."""
+FIRST_STAGE = "first-stage"
+"""Where the scans of the first stage of the plan go (``scan --stages 1``), under
+``results/stage9``; those with the library of before this stage under ``first-stage/BEFORE``."""
+SWITCH = 0.01
+"""A switch of the first stage: its loss at the lookahead changes by more than this share
+between neighbouring points."""
 WINDOWS_UM = (250.0, 500.0)
 """Half-widths of the windows about the minimum in which ``steps`` reports how densely the
 points lie (:func:`coverage`)."""
@@ -359,7 +365,7 @@ def mfe_points(measured: Path, stage9: Path) -> list[dict]:
     searches and the scans, with its MFE relative to the smallest of the probe and numerics."""
     rows = []
 
-    def add(sample, source, before, z01, mfe, seconds, env):
+    def add(sample, source, before, z01, mfe, seconds, env, scanned=None):
         rows.append(
             {
                 "sample": sample,
@@ -367,6 +373,8 @@ def mfe_points(measured: Path, stage9: Path) -> list[dict]:
                 "numerics": numerics(env["threads"], before),
                 "z01": z01,
                 "mfe": mfe,
+                "object_loss": scanned.get("object_loss") if scanned else None,
+                "first_stage_loss": scanned["stage_losses"][0] if scanned else None,
                 "seconds": seconds,
                 "threads": env["threads"],
                 "git_commit": env["git_commit"],
@@ -382,7 +390,7 @@ def mfe_points(measured: Path, stage9: Path) -> list[dict]:
                     add(record["sample"], name, before, e["z01"], e["mfe"], e["seconds"], record)
     for record, source, before in scan_records(stage9):
         for p in record["points"]:
-            add(record["sample"], source, before, p["z01"], p["mfe"], p["seconds"], p)
+            add(record["sample"], source, before, p["z01"], p["mfe"], p["seconds"], p, p)
     smallest = defaultdict(lambda: np.inf)
     for row in rows:
         key = row["sample"], row["numerics"]
@@ -618,15 +626,105 @@ def scan_objects(stage9: Path) -> dict:
     return out
 
 
+def object_difference(record: dict, a: dict, b: dict) -> dict:
+    """RMS differences between the objects of two scan points of the first stage: in the field
+    of view, and in the padded array outside it, where the object is mirrored from the field
+    of view and the rest is the momentum of the last update."""
+    paths = [REPO / p["arrays"] for p in (a, b)]
+    if not all(path.exists() for path in paths):
+        return {}
+    arrays = [np.load(path) for path in paths]
+    settings = record["settings"]
+    grid = stage_grid(
+        tuple(record["input_shape"]),
+        settings["stages"][-1]["down_sampling"],
+        settings["padding_factor"],
+    )
+    outside = np.ones(grid.shape, dtype=bool)
+    outside[grid.fov] = False
+    out = {}
+    for name in ("phase", "absorption"):
+        x, y = (arr[name].astype(np.float64) for arr in arrays)
+        out[f"{name}_rms_fov"] = float(np.sqrt(np.mean((x - y) ** 2)))
+        if f"{name}_padded" in arrays[0].files and f"{name}_padded" in arrays[1].files:
+            x, y = (arr[f"{name}_padded"].astype(np.float64)[outside] for arr in arrays)
+            out[f"{name}_rms_outside"] = float(np.sqrt(np.mean((x - y) ** 2)))
+    return out
+
+
+def first_stage(stage9: Path) -> dict:
+    """The scans of the first stage of the plan (:data:`FIRST_STAGE`), per probe and numerics:
+    its loss at the lookahead (``loss``, the ``mfe`` of the scan) and at the returned object
+    against ``z01``, and the switches between neighbouring points (:data:`SWITCH`) with the
+    objects on both sides against each other."""
+    out = defaultdict(dict)
+    for directory, before in ((stage9 / FIRST_STAGE, False), (stage9 / FIRST_STAGE / BEFORE, True)):
+        for path in sorted(directory.glob("scan-*.json")):
+            record = json.loads(path.read_text())
+            by_numerics = defaultdict(list)
+            for p in record["points"]:
+                by_numerics[numerics(p["threads"], before)].append(p)
+            for n, points in sorted(by_numerics.items()):
+                points.sort(key=lambda p: p["z01"])
+                switches = []
+                for a, b in zip(points, points[1:], strict=False):
+                    change = b["mfe"] / a["mfe"] - 1.0
+                    if abs(change) > SWITCH:
+                        switches.append(
+                            {
+                                "z01": [a["z01"], b["z01"]],
+                                "loss": [a["mfe"], b["mfe"]],
+                                "relative_change": change,
+                                "object_loss_relative_change": b["object_loss"] / a["object_loss"]
+                                - 1.0,
+                                **object_difference(record, a, b),
+                            }
+                        )
+                out[record["sample"]][str(n)] = {
+                    "n_points": len(points),
+                    "z01_range": [points[0]["z01"], points[-1]["z01"]],
+                    "points": [
+                        {"z01": p["z01"], "loss": p["mfe"], "object_loss": p["object_loss"]}
+                        for p in points
+                    ],
+                    "switches": switches,
+                }
+    return dict(out)
+
+
+def object_losses(rows: list[dict]) -> dict:
+    """The loss at the returned object of the full scans (:func:`object_loss`), per probe and
+    numerics, relative to its smallest and screened like the MFE."""
+    out = defaultdict(dict)
+    groups = defaultdict(list)
+    for row in rows:
+        if row["object_loss"] is not None:
+            groups[row["sample"], row["numerics"]].append(row)
+    for (sample, n), group in sorted(groups.items()):
+        points, _ = distinct(group)
+        smallest = min(p["object_loss"] for p in points)
+        points = [{**p, "ppm": (p["object_loss"] / smallest - 1.0) * 1e6} for p in points]
+        best = min(points, key=lambda p: p["object_loss"])
+        out[sample][str(n)] = {
+            "n_points": len(points),
+            "minimum": {"z01": best["z01"], "object_loss": best["object_loss"]},
+            **screen(points),
+        }
+    return dict(out)
+
+
 def cmd_steps(args) -> None:
     """Part 1 of Laborbuch 09: the MFE of the measured holograms as a function of ``z01``.
 
-    ``mfe-points.csv``: every reconstruction (searches and scans) with its numerics.
+    ``mfe-points.csv``: every reconstruction (searches and scans) with its numerics, for the
+    scans also the loss at the returned object and at the end of the first stage.
     ``steps.json``: per probe and numerics the smallest MFE, repeated points and the screening
-    for steps; the reconstructions at the same ``z01`` with the same numerics (``repeats``) and
-    with both numerics (``same_z01``); the loss histories of the scans; the
-    Stage 3 search on synthetic samples again (``repeat``). ``steps-objects.json``: the objects
-    of the scans against each other (only where their npz are present).
+    for steps; the same screening of the loss at the object (``object_loss``); the scans of the
+    first stage and their switches (``first_stage``); the reconstructions at the same ``z01``
+    with the same numerics (``repeats``) and with both numerics (``same_z01``); the loss
+    histories of the scans; the Stage 3 search on synthetic samples again (``repeat``).
+    ``steps-objects.json``: the objects of the scans against each other (only where their npz
+    are present).
     """
     args.out.mkdir(parents=True, exist_ok=True)
     rows = mfe_points(args.measured, args.stage9)
@@ -667,6 +765,9 @@ def cmd_steps(args) -> None:
         "step_screening": STEP,
         "loss_split": LOSS_SPLIT,
         "probes": probes,
+        "object_loss": object_losses(rows),
+        "first_stage_switch": SWITCH,
+        "first_stage": first_stage(args.stage9),
         "repeats": repeats(rows),
         "same_z01": across_numerics(rows),
         "scans": scan_pairs(args.stage9, minima),
@@ -685,6 +786,23 @@ def cmd_steps(args) -> None:
                 f"{sample} [{n}]: {summary['n_points']} points, {share:.0%} of "
                 f"+-{WINDOWS_UM[0]:g} um covered, {len(summary['jumps'])} jumps, "
                 f"{len(summary['reversals'])} reversals"
+            )
+    for sample, by_numerics in record["object_loss"].items():
+        for n, summary in by_numerics.items():
+            print(
+                f"{sample} [{n}] at the object: {summary['n_points']} points, minimum at "
+                f"{summary['minimum']['z01'] * 1e3:.4f} mm, {len(summary['jumps'])} jumps, "
+                f"{len(summary['reversals'])} reversals"
+            )
+    for sample, by_numerics in record["first_stage"].items():
+        for n, summary in by_numerics.items():
+            where = ", ".join(
+                f"{s['z01'][0] * 1e3:.3f}-{s['z01'][1] * 1e3:.3f} mm ({s['relative_change']:+.1%})"
+                for s in summary["switches"]
+            )
+            print(
+                f"{sample} [{n}] first stage: {summary['n_points']} points, "
+                f"{len(summary['switches'])} switches{': ' + where if where else ''}"
             )
 
 
