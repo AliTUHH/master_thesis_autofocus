@@ -609,9 +609,15 @@ def sbi_checks(
     rank of ``t`` and the rank of ``log q(t | x)`` (expected coverage with the HPD regions of
     ``q``), and all of them together the TARP coverage (sbi's ``run_sbc`` and ``run_tarp``
     without holding the samples of every input in one sampling call).
+
+    sbi's C2ST of the ranks (``c2st_ranks``) sets the integer ranks against continuous uniform
+    samples, and its classifier tells the two apart even for exactly uniform ranks (accuracy
+    0.70 with 1000 posterior samples and 2000 inputs). ``c2st_ranks_jittered`` spreads each
+    rank ``r`` uniformly to ``(r + u) L / (L + 1)``, ``u ~ U(0, 1)``, which is uniform on
+    ``[0, L]`` for a calibrated posterior; on these, an accuracy of 0.5 means uniform ranks.
     """
     from sbi.diagnostics import check_sbc, check_tarp
-    from sbi.diagnostics.sbc import _run_sbc
+    from sbi.diagnostics.sbc import _run_sbc, check_uniformity_c2st
     from sbi.diagnostics.tarp import _run_tarp, get_tarp_references
     from sbi.inference import DirectPosterior
     from sbi.utils import BoxUniform
@@ -660,6 +666,9 @@ def sbi_checks(
         bins = max(1, len(truth) // 10)
         ecp, alpha = _run_tarp(samples, truth, get_tarp_references(truth), l2, bins, True)
         atc, tarp_p = check_tarp(ecp, alpha)
+        spread = ranks[:, :1].double() + torch.rand(len(ranks), 1, dtype=torch.float64)
+        spread = spread * num_posterior_samples / (num_posterior_samples + 1)
+        c2st_jittered = check_uniformity_c2st(spread.float(), num_posterior_samples)
     rank = ranks[:, 0].double().numpy() / num_posterior_samples
     hpd = 1.0 - ranks[:, 1].double().numpy() / num_posterior_samples
     return {
@@ -668,6 +677,7 @@ def sbi_checks(
         "sbc": {
             "ks_p_value": float(checks["ks_pvals"][0]),
             "c2st_ranks": float(checks["c2st_ranks"][0]),
+            "c2st_ranks_jittered": float(c2st_jittered[0]),
             "c2st_dap": float(np.asarray(checks["c2st_dap"]).ravel()[0]),
         },
         "calibration": calibration_summary(rank, hpd),
@@ -710,7 +720,8 @@ def check_npe_split(
         sbc, hpd_cov = result["sbc"], result["calibration"]["hpd"]["coverage"]
         log(
             f"sbi checks on {len(split)} samples of {data}: SBC KS p {sbc['ks_p_value']:.3f}, "
-            f"C2ST ranks {sbc['c2st_ranks']:.3f}, expected coverage 68/95 % "
+            f"C2ST ranks {sbc['c2st_ranks_jittered']:.3f} (jittered; sbi {sbc['c2st_ranks']:.3f}), "
+            f"expected coverage 68/95 % "
             f"{hpd_cov['68']:.3f}/{hpd_cov['95']:.3f}, TARP ATC {result['tarp']['atc']:+.3f} "
             f"({result['seconds']:.0f} s)"
         )

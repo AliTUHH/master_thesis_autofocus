@@ -163,6 +163,7 @@ def test_train_predict_ensemble_and_checks(splits, tmp_path):
         )
     assert checks["n"] == 6 and checks["num_posterior_samples"] == 100
     assert 0 <= checks["sbc"]["ks_p_value"] <= 1 and -1 <= checks["tarp"]["atc"] <= 1
+    assert 0 <= checks["sbc"]["c2st_ranks_jittered"] <= 1
     ranks = (tmp_path / "check" / "sbi-ranks.csv").read_text().splitlines()
     assert ranks[0] == "index,rank,hpd_level" and len(ranks) == 7
     assert json.loads((tmp_path / "check" / "sbi-checks.json").read_text())["n"] == 6
