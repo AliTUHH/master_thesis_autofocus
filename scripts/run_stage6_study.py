@@ -21,7 +21,9 @@
   holograms, against [2] and the padding-4 search (``results/measured/cnn-loo/<sample>.json``).
 * ``compare``: leave-one-out CNN, Stage 5 CNN, [2] and padding 4 side by side, with the test
   errors of the runs that made the estimates (``model`` of each estimate record) on both test
-  splits (``results/objectmodel/comparison.{csv,json}``).
+  splits and the spread of the estimates over the training seeds, if the same CNNs were trained
+  with other seeds (``results/objectmodel/seeds/seed-<k>``;
+  ``results/objectmodel/comparison.{csv,json}``).
 
 Usage::
 
@@ -30,6 +32,8 @@ Usage::
     python scripts/run_stage6_study.py configs
     python scripts/run_stage6_study.py spectra --holograms DIR
     python scripts/run_stage6_study.py --threads 1 measured --holograms DIR
+    python scripts/run_stage6_study.py --threads 1 measured --holograms DIR \
+        --learned results/objectmodel/seeds/seed-1 --out results/objectmodel/seeds/seed-1/measured
     python scripts/run_stage6_study.py compare
 
 ``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365.
@@ -597,6 +601,50 @@ def _test_columns(prefix: str, summary: dict | None) -> dict:
     }
 
 
+def _seed_runs(loo_path: Path, seeds: Path, name: str) -> list[dict]:
+    """The estimates of the leave-one-out CNN of ``name`` and of the same CNN trained with other
+    seeds (``<seeds>/seed-<k>/measured/<name>.json``), each with its run's seed, best epoch and
+    test MAE."""
+    entries = []
+    for path in [loo_path, *sorted(seeds.glob(f"seed-*/measured/{name}.json"))]:
+        estimate = json.loads(path.read_text())
+        run = REPO / estimate["model"]
+        test = _summary(run / "test" / "summary.json")
+        entry = {
+            "estimate": repo_relative(path),
+            "run": repo_relative(run),
+            "seed": yaml.safe_load((run / "run.yaml").read_text())["config"]["training"]["seed"],
+            "best_epoch": json.loads((run / "summary.json").read_text())["best_epoch"],
+            "z01_est_mm": estimate["z01_est"] * 1e3,
+            "sigma_um": estimate["sigma"] * 1e6,
+            "test_mae_um": None if test is None else test["error_um"]["mae"],
+        }
+        for key, ref in (("paper2", "paper2_nm"), ("b1_p4", "baseline_b1_p4")):
+            r = estimate["references"].get(ref)
+            if r is not None:
+                entry[f"minus_{key}_um"] = r["distance_um"]
+                entry[f"{key}_in68"] = r["inside"]["68"]
+        entries.append(entry)
+    return entries
+
+
+def _seed_columns(entries: list[dict]) -> dict:
+    """Spread of the estimates over the training seeds and how many 68 % intervals contain [2]
+    and the padding-4 search."""
+    if len(entries) < 2:
+        return {}
+    z = np.array([e["z01_est_mm"] for e in entries])
+    row = {
+        "loo_seeds": len(entries),
+        "loo_seed_std_um": float(z.std(ddof=1) * 1e3),
+        "loo_seed_range_um": float(np.ptp(z) * 1e3),
+    }
+    for key in ("paper2", "b1_p4"):
+        if all(f"{key}_in68" in e for e in entries):
+            row[f"loo_seeds_{key}_in68"] = sum(e[f"{key}_in68"] for e in entries)
+    return row
+
+
 def cmd_compare(args) -> None:
     rows, details = [], {}
     for name in args.samples:
@@ -606,6 +654,7 @@ def cmd_compare(args) -> None:
             print(f"{name}: no estimate of the leave-one-out CNN, skipped")
             continue
         loo = json.loads(loo_path.read_text())
+        seed_runs = _seed_runs(loo_path, args.seeds, name)
         stage5_path = args.measured / "cnn" / f"{name}.json"
         stage5 = json.loads(stage5_path.read_text())
         stage5_best = stage5["variants"][stage5["selected"]]
@@ -632,6 +681,7 @@ def cmd_compare(args) -> None:
             "loo_ms": 1e3 * loo["seconds_per_estimate"]["median"],
             "loo_threads": loo.get("threads"),
             "loo_phase_std_um": loo["binning_phases"]["std_um"],
+            **_seed_columns(seed_runs),
         }
         for key, path in tests.items():
             row.update(_test_columns(key, _summary(path / "summary.json")))
@@ -650,6 +700,7 @@ def cmd_compare(args) -> None:
             "loo_run": repo_relative(loo_run),
             "stage5_run": repo_relative(stage5_run),
             "tests": {k: repo_relative(p) for k, p in tests.items()},
+            "seeds": seed_runs,
         }
         print(
             f"{name}: LOO CNN {row['loo_mm']:.3f} mm +- {row['loo_sigma_um']:.0f} um "
@@ -718,6 +769,12 @@ def main() -> None:
         type=Path,
         default=RESULTS / "objectmodel" / "matched-model",
         help="predictions of the Stage 5 CNNs on the leave-one-out test splits",
+    )
+    co.add_argument(
+        "--seeds",
+        type=Path,
+        default=RESULTS / "objectmodel" / "seeds",
+        help="estimates of the leave-one-out CNNs trained with other seeds (seed-<k>/measured)",
     )
     co.add_argument("--out", type=Path, default=RESULTS / "objectmodel")
     co.set_defaults(func=cmd_compare)
