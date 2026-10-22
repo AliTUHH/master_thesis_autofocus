@@ -19,6 +19,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.4", "ruff>=0.5", "scipy>=1.10"]
+# NPE of Stage 7; holofocus.learned.npe also uses sbi's internal rank and TARP functions.
+npe = ["sbi>=0.27,<0.28"]
 
 [project.scripts]
 holofocus-dataset = "holofocus.dataset.cli:main"
