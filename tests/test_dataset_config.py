@@ -130,6 +130,15 @@ def test_next_fast_len_is_smallest_7_smooth_number():
         ({"noise": {"flat_field_cutoff": 0.0}}, "flat_field_cutoff"),
         ({"phantoms": {"fiber_diameter_range": [0.0, 0.5]}}, "fiber_diameter_range"),
         ({"phantoms": {"types": {"fibre": 1}}}, "unknown phantom types"),
+        (
+            {"phantoms": {"types": {"fiber": 1}, "phase_per_pixel_range": [0.0, 0.1]}},
+            "phase_per_pixel_range",
+        ),
+        ({"phantoms": {"phase_per_pixel_range": [0.01, 0.1]}}, "fibers only"),
+        ({"phantoms": {"texture_rms_range": [0.0, 0.1]}}, "texture_rms_range"),
+        ({"phantoms": {"background_texture_rms_range": [0.2, 0.1]}}, "background_texture"),
+        ({"phantoms": {"texture_slope_range": [3.0, 2.0]}}, "texture_slope_range"),
+        ({"phantoms": {"texture_cutoff": 0.0}}, "texture_cutoff"),
         ({"splits": {"train": -1}}, "split sizes"),
     ],
 )
