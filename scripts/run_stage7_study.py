@@ -19,8 +19,8 @@
 * ``perturb``: the matched NPEs (``results/npe/matched-<sample>``) on the matched test split
   and on the perturbed test splits of Stage 5 (``data/sim2real/<sample>/<name>.h5``, generated
   if missing; predictions in ``results/npe/sim2real/<sample>/<name>/``); widths and coverage
-  against the matched CNN on the same sets, paired per sample
-  (``results/npe/sim2real/<sample>.{json,csv}``).
+  against the matched CNN on the same sets, paired per sample, and the paired differences to
+  the CNN with bootstrap intervals (``results/npe/sim2real/<sample>.{json,csv}``).
 * ``measured``: the matched NPEs on the four measured holograms, binned 4x as in Stages 3 and
   5, with the 16 phases of the binning grid; reported for completeness, nothing is tuned on
   them (``results/npe/measured/<sample>.json``).
@@ -670,6 +670,12 @@ def widening(reference: dict, perturbed: dict) -> dict:
     }
 
 
+def paired_common(a: dict[str, np.ndarray], b: dict[str, np.ndarray]) -> dict:
+    """:func:`paired` on the samples that both tables hold."""
+    common = np.intersect1d(a["index"], b["index"])
+    return paired(restrict(a, common), restrict(b, common))
+
+
 def robustness_row(sample: str, pert: str, method: str, m: dict, w: dict | None) -> dict:
     row = {
         "sample": sample,
@@ -711,6 +717,7 @@ def cmd_perturb(args) -> None:
             "cnn_sim2real": repo_relative(args.cnn_sim2real),
             "reference": {MAIN: table_metrics(reference), "cnn": table_metrics(cnn_reference)},
             "perturbations": {},
+            "paired_vs_cnn": {"none": paired_common(reference, cnn_reference)},
             **environment(),
         }
         rows = [
@@ -747,6 +754,7 @@ def cmd_perturb(args) -> None:
                     **table_metrics(cnn_pert),
                     "widening": widening(cnn_reference, cnn_pert),
                 }
+                record["paired_vs_cnn"][pert] = paired_common(perturbed, cnn_pert)
                 rows.append(
                     robustness_row(name, pert, "cnn", entry["cnn"], entry["cnn"]["widening"])
                 )
