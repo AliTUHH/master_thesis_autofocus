@@ -14,12 +14,16 @@
 * ``configs``: the leave-one-out dataset configs ``configs/dataset/loo-<sample>.yaml``
   (:func:`holofocus.learned.objectmodel.loo_changes`) and ``loo-<sample>-large.yaml`` with
   more training samples for GPU runs.
+* ``spectra``: the spectral check without training. Percentiles of the features of each
+  measured hologram in the Stage 5 test split, in the fit sets without and with the fitted
+  texture and in the leave-one-out test split (``results/objectmodel/spectra-<sample>.json``).
 
 Usage::
 
     python scripts/run_stage6_study.py regions --holograms DIR
     python scripts/run_stage6_study.py --threads 2 fit --holograms DIR --samples spider_hair
     python scripts/run_stage6_study.py configs
+    python scripts/run_stage6_study.py spectra --holograms DIR
 
 ``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365.
 ``regions`` reads the phase files ``<sample>-phase.npy`` of the Stage 3 run
@@ -37,12 +41,13 @@ import textwrap
 import time
 from pathlib import Path
 
+import h5py
 import numpy as np
 import torch
 import yaml
 
 from holofocus.baseline.runner import file_sha256
-from holofocus.dataset import DatasetConfig, HologramGenerator
+from holofocus.dataset import DatasetConfig, HologramGenerator, read_labels
 from holofocus.learned.objectmodel import (
     BINNING,
     DETECTOR_FITS,
@@ -64,8 +69,11 @@ from holofocus.learned.objectmodel import (
     texture_grid,
 )
 from holofocus.learned.sim2real import (
+    FEATURE_NAMES,
     MEASURED_MODELS,
     RadialPower,
+    feature_distribution,
+    percentile_rank,
     perturbed_config,
     spectral_features,
 )
@@ -367,6 +375,131 @@ def cmd_fit(args) -> None:
         fit_sample(name, args.holograms, args.n, args.out)
 
 
+PROFILE_F2_MAX = 0.125
+"""The example spectra of ``spectra`` reach to the upper end of the band of the spectrum CNN."""
+
+
+def distribution(features: list[dict], measured: dict) -> dict:
+    """5/50/95 % of every feature over a set and the percentile of the measured hologram."""
+    bands = np.array([f["ctf_bands"] for f in features], dtype=float)
+    measured_bands = measured["ctf_bands"]
+    return {
+        "n": len(features),
+        "features": feature_distribution(features),
+        "measured_percentile": {
+            k: percentile_rank([f[k] for f in features], measured[k]) for k in FEATURE_NAMES
+        },
+        "ctf_bands": {
+            "median": np.nanmedian(bands, axis=0).tolist(),
+            "p05": np.nanpercentile(bands, 5, axis=0).tolist(),
+            "p95": np.nanpercentile(bands, 95, axis=0).tolist(),
+        },
+        "ctf_bands_percentile": [
+            percentile_rank(bands[:, k], v) for k, v in enumerate(measured_bands)
+        ],
+    }
+
+
+def _profile(radial: RadialPower, hologram: np.ndarray) -> list[float]:
+    keep = radial.f2 < PROFILE_F2_MAX
+    return [round(float(v), 4) for v in radial(hologram)[keep]]
+
+
+def typical_index(features: list[dict]) -> int:
+    """The sample whose CTF correlation lies closest to the median of its set."""
+    ctf = np.array([f["ctf"] for f in features], dtype=float)
+    return int(np.nanargmin(np.abs(ctf - np.nanmedian(ctf))))
+
+
+def stored_features(path: Path, radial: RadialPower, limit: int | None) -> tuple[list, dict]:
+    """Features of the holograms of a split file and the spectrum of its typical sample."""
+    labels = read_labels(path)
+    n = len(labels["dz01"]) if limit is None else min(limit, len(labels["dz01"]))
+    features, profiles = [], []
+    with h5py.File(path, "r") as fh:
+        for i in range(n):
+            hologram = np.asarray(fh["hologram"][i])
+            fr = float(labels["fresnel_number"][i])
+            features.append(spectral_features(radial, hologram, fr))
+            profiles.append(_profile(radial, hologram))
+    i = typical_index(features)
+    example = {
+        "index": i,
+        "fresnel_number": float(labels["fresnel_number"][i]),
+        "log_power": profiles[i],
+    }
+    return features, example
+
+
+def generated_example(config: DatasetConfig, radial: RadialPower, index: int) -> dict:
+    sample = HologramGenerator(config, device="cpu").sample(SPLIT, index)
+    return {
+        "index": index,
+        "fresnel_number": sample.labels["fresnel_number"],
+        "log_power": _profile(radial, sample.hologram),
+    }
+
+
+def cmd_spectra(args) -> None:
+    for name in args.samples:
+        sample = MEASURED_SAMPLES[name]
+        hologram = load_measured(args.holograms, sample, BINNING).numpy()
+        radial, measured = measured_features(args.holograms, name)
+        fit = json.loads((args.out / f"fit-{name}.json").read_text())
+        untextured = next(e for e in fit["settings"] if Texture(**e["texture"]).amplitude == 0)
+        best = next(e for e in fit["settings"] if e["texture"] == fit["best"]["texture"])
+        record = {
+            "sample": name,
+            "fresnel_number_paper2_nm": fit["fresnel_number_paper2_nm"],
+            "f2": [float(v) for v in radial.f2[radial.f2 < PROFILE_F2_MAX]],
+            "measured": measured,
+            "measured_log_power": _profile(radial, hologram),
+            "fit_texture": fit["best"]["texture"],
+            "loo_ranges": dataclasses.asdict(loo_ranges(name)),
+            "sets": {},
+        }
+        base = matched_config(name)
+        sets = {
+            "matched": ("Stage 5 test split: compact objects, no texture", None),
+            "untextured": ("own detector and bulk object, no texture (fit)", untextured),
+            "fit": ("own detector and bulk object, fitted texture (fit)", best),
+            "loo": ("leave-one-out test split: ranges from the other three", None),
+        }
+        paths = {
+            "matched": args.data_root / f"matched-{name}" / "test.h5",
+            "loo": args.data_root / f"loo-{name}" / "test.h5",
+        }
+        for set_name, (description, entry) in sets.items():
+            if entry is not None:
+                features = entry["features"]
+                texture = Texture(**entry["texture"])
+                config = perturbed_config(base, fit_changes(name, texture), f"fit-{name}")
+                example = generated_example(config, radial, typical_index(features))
+                source = repo_relative(args.out / f"fit-{name}.json")
+            elif paths[set_name].exists():
+                features, example = stored_features(paths[set_name], radial, args.limit)
+                source = repo_relative(paths[set_name])
+            else:
+                print(f"{name} {set_name}: {paths[set_name]} missing, skipped")
+                continue
+            record["sets"][set_name] = {
+                "description": description,
+                "source": source,
+                **distribution(features, measured),
+                "example": example,
+            }
+            ranks = record["sets"][set_name]["measured_percentile"]
+            bands = record["sets"][set_name]["ctf_bands"]["median"]
+            print(
+                f"{name} {set_name}: "
+                + ", ".join(f"{f} {ranks[f]:.0f} %" for f in FEATURE_NAMES)
+                + f"; median bands {[round(b, 2) for b in bands]}"
+            )
+        print(f"{name} measured: bands {[round(b, 2) for b in measured['ctf_bands']]}")
+        record.update(environment())
+        write_json(args.out / f"spectra-{name}.json", record)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--threads", type=int, help="torch CPU threads")
@@ -392,6 +525,14 @@ def main() -> None:
     cf.add_argument("--out", type=Path, default=CONFIGS)
     cf.add_argument("--results", type=Path, default=RESULTS / "objectmodel")
     cf.set_defaults(func=cmd_configs)
+
+    sp = sub.add_parser("spectra", help="spectral features, measured against simulated")
+    sp.add_argument("--holograms", type=Path, required=True)
+    sp.add_argument("--samples", **samples)
+    sp.add_argument("--limit", type=int, help="only the first N samples of the stored splits")
+    sp.add_argument("--data-root", type=Path, default=REPO / "data")
+    sp.add_argument("--out", type=Path, default=RESULTS / "objectmodel")
+    sp.set_defaults(func=cmd_spectra)
 
     args = parser.parse_args()
     if args.threads:
