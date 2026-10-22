@@ -19,10 +19,10 @@
   texture and in the leave-one-out test split (``results/objectmodel/spectra-<sample>.json``).
 * ``measured``: the leave-one-out CNNs ``results/learned/loo-<sample>`` on the measured
   holograms, against [2] and the padding-4 search (``results/measured/cnn-loo/<sample>.json``).
-* ``compare``: leave-one-out CNN, Stage 5 CNN, [2] and padding 4 side by side, with the test
-  errors of the runs that made the estimates (``model`` of each estimate record) on both test
-  splits and the spread of the estimates over the training seeds, if the same CNNs were trained
-  with other seeds (``results/objectmodel/seeds/seed-<k>``;
+* ``compare``: leave-one-out CNN, Stage 5 CNN, [2], padding 4 and the guess side by side, with
+  the test errors of the runs that made the estimates (``model`` of each estimate record) on
+  both test splits and the spread of the estimates over the training seeds, if the same CNNs
+  were trained with other seeds (``results/objectmodel/seeds/seed-<k>``;
   ``results/objectmodel/comparison.{csv,json}``).
 
 Usage::
@@ -675,6 +675,9 @@ def cmd_compare(args) -> None:
             "paper2_nm_mm": sample.z01_nm * 1e3,
             "b1_p4_mm": b1_p4["z01"] * 1e3,
             "b1_p4_minus_paper2_um": (b1_p4["z01"] - sample.z01_nm) * 1e6,
+            "z01_guess_mm": sample.z01_guess * 1e3,
+            "guess_minus_paper2_um": (sample.z01_guess - sample.z01_nm) * 1e6,
+            "guess_minus_b1_p4_um": (sample.z01_guess - b1_p4["z01"]) * 1e6,
             "stage5_run": stage5["selected"],
             **_estimate_columns("stage5", stage5_best),
             **_estimate_columns("loo", loo),
