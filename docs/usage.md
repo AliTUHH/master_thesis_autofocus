@@ -517,6 +517,89 @@ results/sim2real/spectra-<sample>.json   spectral features, measured against sim
 results/sim2real/noise.json              noise spectra of the background corners and fits
 ```
 
+## Neural posterior estimation (Stage 7)
+
+`holofocus.learned.npe` estimates the whole posterior of `dz01` given a hologram with sbi
+(neural posterior estimation, [6]) instead of a Gaussian mean and standard deviation. The
+spectrum representation of Stage 4 goes through the convolution stack of `SpectrumCNN` and an
+MLP to a 32-dimensional embedding; a conditional density estimator of sbi on it gives
+`q(dz01 | x)` on the prior box (uniform, the `dz01` range of the training data). Training keeps
+the epoch with the lowest validation loss `-log q(dz01_true | x)`. The posterior is evaluated
+on a grid of 2001 points: the median is the point estimate, with central and HPD intervals and,
+for calibration, the PIT (posterior CDF at the truth, the SBC rank) and the HPD level of the
+truth (expected coverage). Several runs form an ensemble whose densities are averaged.
+
+| Config | Density estimator | Notes |
+|---|---|---|
+| `configs/learned/npe-nsf.yaml` | neural spline flow (5 transforms, 10 bins) | 482k parameters, 100 epochs, batch 32 |
+| `configs/learned/npe-mdn.yaml` | mixture density network (10 Gaussians) | variant |
+| `configs/learned/npe-ci.yaml` | small flow, 128 bins | 3 epochs (CI) |
+
+The NPE needs the extra `npe` (sbi 0.27; `holofocus.learned.npe` uses internal functions of
+it). `holofocus.learned.posterior` (grid posterior and calibration statistics) does not.
+
+```bash
+pip install -e ".[dev,npe]"
+```
+
+```python
+from holofocus.learned.npe import NPEAutofocus
+
+autofocus = NPEAutofocus.load("results/npe/npe-nsf")  # or a list of runs: the ensemble
+post = autofocus.posterior(holograms)  # GridPosterior of t = dz01 / 5 mm
+est = autofocus.estimate(holograms)  # dz01 (median), dz01_mean, sigma, lower_68, upper_95, ...
+```
+
+```bash
+# calibration split: 2000 prior draws with the physics of cpu-4x (16 min with 3 threads, 1.4 GB)
+holofocus-dataset generate configs/dataset/cpu-4x-calibration.yaml --out data/cpu-4x-calibration
+# the NPE on the 10000 training samples of Stage 4, four more seeds and the MDN variant
+train="--train data/cpu-4x/train.h5 data/cpu-4x-extra/train.h5 --val data/cpu-4x/val.h5"
+holofocus-learn npe-train configs/learned/npe-nsf.yaml $train --out results/npe/npe-nsf --threads 1
+for k in 1 2 3 4; do
+    holofocus-learn npe-train configs/learned/npe-nsf.yaml $train --seed $k \
+        --out results/npe/npe-nsf-seed$k --threads 3
+done
+holofocus-learn npe-train configs/learned/npe-mdn.yaml $train --out results/npe/npe-mdn --threads 3
+# one NPE per measured setup, on the matched data of Stage 5
+for s in spider_hair tooth cactus_needle magnesium_wire; do
+    holofocus-learn npe-train configs/learned/npe-nsf.yaml --train data/matched-$s/train.h5 \
+        --val data/matched-$s/val.h5 --out results/npe/matched-$s --threads 3
+done
+# single commands: posterior summaries of a split (several runs: the ensemble) and sbi's SBC,
+# expected coverage and TARP from posterior samples
+holofocus-learn npe-predict results/npe/npe-nsf --data data/cpu-4x/test.h5 --out /tmp/npe-test
+holofocus-learn npe-check results/npe/npe-nsf --data data/cpu-4x-calibration/calibration.h5 \
+    --out /tmp/npe-check
+# the study of Laborbuch 07 and its figures
+python scripts/run_stage7_study.py --threads 3 predict    # all runs, the ensemble, CNN on calibration
+python scripts/run_stage7_study.py --threads 3 sbc --runs npe-nsf npe-mdn
+python scripts/run_stage7_study.py compare               # test, 48 baseline samples, calibration
+python scripts/run_stage7_study.py --threads 1 timing
+python scripts/run_stage7_study.py examples
+python scripts/run_stage7_study.py --threads 3 perturb    # perturbed test splits of Stage 5
+python scripts/run_stage7_study.py --threads 1 measured --holograms $H
+python scripts/make_stage7_figures.py
+```
+
+The study takes other runs and data unchanged (the object model of Stage 6, Maxwell runs,
+[maxwell-gpu.md](maxwell-gpu.md) 8.1): `--npe` (the outputs go below it), `--cnn` and the split
+options of each command. The results:
+
+```
+results/npe/<run>/                       model.pt, config.yaml, history.csv, summary.json, run.yaml
+results/npe/<run>/{val,test,calibration}/  posterior summaries per sample (predictions.csv)
+results/npe/<run>/calibration/sbi-*      sbi's ranks, SBC, expected coverage and TARP
+results/npe/npe-nsf-ensemble/            the five seeds as one posterior (test, calibration)
+results/npe/comparison/                  NPE against the CNN: test, 48 baseline samples, calibration;
+                                         posteriors.json: the posteriors of a few test samples
+results/npe/timing.json                  time per estimate, CNN against NPE, same threads
+results/npe/sim2real/<sample>.{json,csv}  matched NPE and CNN on the perturbed test splits
+results/npe/measured/<sample>.json       the matched NPEs on the four measured holograms
+results/learned/spectrum-cnn-wide/calibration/  the Stage 4 CNN on the calibration split
+results/datasets/cpu-4x-calibration-calibration.csv  fingerprint of the calibration split
+```
+
 ## GPU runs on DESY Maxwell
 
 `cluster/maxwell/` is a SLURM kit for the A100 nodes of DESY Maxwell; [maxwell-gpu.md](maxwell-gpu.md)
