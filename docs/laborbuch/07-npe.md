@@ -917,7 +917,9 @@ auf Maxwell (`docs/maxwell-gpu.md`, 8.2).
 Die zwölf Läufe liegen unter `results/npe-loo/`, mit den Namen der passenden NPEs von
 `results/npe/` und des Maxwell-Jobs `npe.sh` (`<name>-seed<k>`). Sie liefen aus einem Worktree
 mit dem Stand `ab44194`; Training, Vorhersage und Config sind dieselben wie in 3.2 (`7f7cc8e`,
-seither hat sich nur die Prüfung mit sbi geändert, E10).
+seither hat sich nur die Prüfung mit sbi geändert, E10). Die Datensätze nennen in den Läufen als
+`generator_commit` Commits von Etappe 6 vor ihrem Rebase, `d0f8a89` beim Spinnenhaar und sonst
+`9fd4155`; in `main` sind das `731b6b9` und `242c3e4` (Laborbuch 06, E10).
 
 `scripts/run_stage7_loo_study.py` nutzt die Funktionen von `run_stage7_study.py` (3.5):
 
