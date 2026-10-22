@@ -276,7 +276,8 @@ Mischung aus zwei Gliedern gegen Median, Standardabweichung, Quantile, Dichte, H
 alle Abbildungen aus den versionierten Ergebnissen.
 
 363 Tests bestehen, einer wird übersprungen (nur CUDA); `ruff` ist sauber. In `main`
-(`7fcaafe`) waren es 352; ein Test in `tests/test_autofocus.py` läuft mit vier Fällen.
+(`7fcaafe`) bestanden 351; dazu kommen die neun Tests, einer davon in `tests/test_autofocus.py`
+mit vier Fällen.
 
 ## 4 Entscheidungen und Begründung
 
@@ -513,10 +514,9 @@ beim Fehler mit 95-%-Bootstrap-Intervall:
    CNN-Ensemble auch (Fehler +0,50 bis +0,65). Die Nachbarschaft in der Eingabe sagt weniger,
    beim Zahn fast nichts (Fehler +0,23, Streuung +0,26). Der Abstand zu den 10 nächsten
    Trainings-Samples geht mit dem Fehler nur schwach zusammen (−0,20 bis +0,45, erste
-   Tabelle). Was ein Hologramm erwarten lässt,
-   steht also in seiner Nachbarschaft in der Einbettung, nicht in seinem Abstand vom
-   Trainingssatz. Das gilt für simulierte Hologramme; ob es auch für ein Hologramm gilt, das
-   der Simulator falsch beschreibt, prüft 5.3.
+   Tabelle). Was ein Hologramm erwarten lässt, steht also in seiner Nachbarschaft in der
+   Einbettung, nicht in seinem Abstand vom Trainingssatz. Das gilt für simulierte Hologramme;
+   ob es auch für ein Hologramm gilt, das der Simulator falsch beschreibt, prüft 5.3.
 5. **Kaktusnadel: Das Spektrum sagt wenig, das Hologramm ist nicht falsch.** Ihr Hologramm ist in
    beiden Räumen gewöhnlich, und dass die Schätzung beim Schätzwert bleibt (Anteil des Weges 0,06,
    CNN −0,32), tun auch die simulierten Hologramme in seiner Nähe: Unter den 25 Nachbarn in der
@@ -611,10 +611,9 @@ Breite 95 % / Verschiebung vom Schätzwert, und zum Vergleich der Fehler mit dem
    über allen (2,3 und 4,9 mm gegen eine MAE der Nachbarn von 0,33 und 0,91 mm); mit dem
    Objektmodell beim 24.–52. Passte das Hologramm zu seinen Nachbarn, läge es mit der
    Wahrscheinlichkeit 1/26 über allen 25. In der Eingabe trennt die Nachbarschaft weniger
-   (56.–100. gegen 16.–84.). Breite und
-   Verschiebung, die keine Wahrheit brauchen, liegen auch mit Etappe 5 im Bereich der Nachbarn
-   (60.–88. und 44.–92. Perzentil); was den falschen Simulator verrät, ist der Fehler, und der
-   braucht Padding 4.
+   (56.–100. gegen 16.–84.). Breite und Verschiebung, die keine Wahrheit brauchen, liegen auch
+   mit Etappe 5 im Bereich der Nachbarn (60.–88. und 44.–92. Perzentil); was den falschen
+   Simulator verrät, ist der Fehler, und der braucht Padding 4.
 6. **Das falsche NPE legt das Hologramm zu Samples mit der falschen Wahrheit.** Beim Zahn liegt
    Padding 4 2,27 mm unter dem Schätzwert, seine Nachbarn in der Einbettung von Etappe 5 liegen
    im Median 59 µm darüber, und die Schätzung bleibt beim Schätzwert (Anteil des Weges −0,02)
@@ -836,8 +835,9 @@ Und gestartet mit ±0,5 mm um eine Schätzung, die $d$ neben dem Minimum liegt, 
    467,4 mm, wo die volle Suche und die im Intervall des CNN-Ensembles beginnen, 4,2 ppm. Beim
    Zahn aber liegt die MFE bei 80,6926 mm mit drei Threads 675 ppm über der mit einem: Dort
    endet die flache Senke mit einer Stufe (Punkt 1; 7, Punkt 1), mit einem Thread erst hinter
-   diesem Punkt (dort 2 ppm über der kleinsten MFE), mit drei Threads davor (80,678 mm 29 ppm,
-   80,6926 mm 677 ppm, 80,696 mm 706 ppm). Welche Seite der Stufe die Rekonstruktion trifft,
+   diesem Punkt (dort 3,6 ppm über dem Ergebnis derselben Suche bei 80,636 mm), mit drei Threads
+   davor (über der kleinsten MFE mit drei Threads, bei 80,663 mm: 80,678 mm 29 ppm, 80,6926 mm
+   677 ppm, 80,696 mm 706 ppm). Welche Seite der Stufe die Rekonstruktion trifft,
    entscheiden dort Rundungsunterschiede. Für die Suchen heißt das: Innerhalb einer Suche
    haben alle Punkte dieselbe Threadzahl, und alle Ergebnisse liegen in der Senke; dasselbe
    Ergebnis (Punkt 1) gilt deshalb unabhängig davon. Die MFE der Suche im Intervall des
@@ -866,7 +866,7 @@ dauerten bis zu 20 % länger.
 | `warmstart` | 1 | 3 s |
 | Abbildungen | 1 | 6 s |
 | Testsuite (364 Tests) | 1, die Cluster-Tests 4 | 59 s |
-| Schritt der CI für diese Etappe, lokal | 2 | ⟨…⟩ |
+| Schritt der CI für diese Etappe, lokal | 2 | 36 s (alle Schritte der CI zusammen 3,3 min); `ensembles` und `warmstart` erzeugen `comparison.csv`, `measured.csv` und `warmstart.csv` bytegleich |
 
 Zusammen sind das etwa 28 Kernstunden (Threads mal Wandzeit): 26,6 für die 16 Suchen, davon
 6,4 für die Suche mit einem Thread, gut eine für `misspec` und die Prüfungen der Threads; alles
@@ -941,15 +941,14 @@ andere kostet Sekunden. Eine volle Suche kostet mit 3 Threads im Mittel 42 min p
    Kaktusnadel und Mg-Draht wie eine Parabel (Exponent 1,93–2,03), beim Zahn fast linear (1,16
    auf beiden Seiten), beim Spinnenhaar dazwischen (1,69 unten, 1,11 oben; `curves`, aus den
    Punkten aller Suchen einer Probe mit 3 Threads). Auf solchen Kurven bräuchte Brents
-   Verfahren in $\Omega_z$ etwa
-   6 statt 12–13 Rekonstruktionen bei Kaktusnadel und Mg-Draht und 9 statt 11 beim Zahn, ohne
-   gelernte Schätzung. Zu prüfen auf der echten MFE, zuerst auf den vier Messhologrammen (etwa
-   30 Rekonstruktionen, knapp 2 h mit 3 Threads), dann auf den simulierten Test-Splits, wo die
-   Wahrheit bekannt ist, mit dem Vorbehalt der schmalen Senken der MFE (Laborbuch 04, 9,
-   Punkt 1). Beim Zahn liegen die Punkte zwischen 80,634 und 80,678 mm innerhalb von 45 ppm;
-   bei 80,693 mm liegt die MFE mit 3 Threads 680 ppm darüber, mit einem Thread noch in der
-   Senke (5.6, Punkt 9). Die Senke endet also mit einer Stufe, und an ihr kann eine Parabel
-   durch drei Punkte weit danebenliegen.
+   Verfahren in $\Omega_z$ etwa 6 statt 12–13 Rekonstruktionen bei Kaktusnadel und Mg-Draht und
+   9 statt 11 beim Zahn, ohne gelernte Schätzung. Zu prüfen auf der echten MFE, zuerst auf den
+   vier Messhologrammen (etwa 30 Rekonstruktionen, knapp 2 h mit 3 Threads), dann auf den
+   simulierten Test-Splits, wo die Wahrheit bekannt ist, mit dem Vorbehalt der schmalen Senken
+   der MFE (Laborbuch 04, 9, Punkt 1). Beim Zahn liegen die Punkte zwischen 80,634 und
+   80,678 mm innerhalb von 45 ppm; bei 80,693 mm liegt die MFE mit 3 Threads etwa 680 ppm
+   darüber, mit einem Thread noch in der Senke (5.6, Punkt 9). Die Senke endet also mit einer
+   Stufe, und an ihr kann eine Parabel durch drei Punkte weit danebenliegen.
 2. **Maxwell** (Laborbuch 07, 9.10, Punkt 1): die großen Läufe, dann dieselben Befehle wie
    hier. Daran zeigt sich, ob mehr Trainingsdaten die NPE-Seeds beim Zahn einig machen und die
    Intervalle bei Kaktusnadel und Mg-Draht schmaler; erst dann spart die Suche im Intervall auch
