@@ -840,7 +840,7 @@ Verschiebung, weil er dieselbe Zielfunktion mit Padding 2 minimiert.
 4. **GPU** (wie Laborbuch 03, Punkt 6.4): Bild-CNN mit mehr Daten, Ensembles, Padding 4 auf
    mehr Samples, Datensätze für die Messgeometrien.
 5. **Schwere Ränder.** Die 95-%-Intervalle decken auf dem Test-Split nur 91 %. Braucht die
-   Arbeit verlässliche 95-%-Intervalle? Dann NPE (nächste Etappe), eine Verteilung mit
+   Arbeit verlässliche 95-%-Intervalle? Dann NPE (Etappe 7), eine Verteilung mit
    schwereren Rändern oder konforme Intervalle.
 6. **Padding der Baseline (Entscheidung 2).** Bei zwei von drei geprüften Zellen nimmt
    Padding 4 den größten Teil der Verschiebung weg (Abschnitt 7). Mit dem Padding von [2]
@@ -865,7 +865,7 @@ Verschiebung, weil er dieselbe Zielfunktion mit Padding 2 minimiert.
    Iterationen, liegt es an der festen Iterationszahl der Rekonstruktion; dann wäre eine
    glattere Zielfunktion der Hebel (mehr Iterationen oder ein Mittel über benachbarte
    $z_{01}$), nicht der Simplex.
-2. **NPE mit sbi** (Plan, nächste Etappe): eine Posterior-Verteilung von $\Delta z_{01}$ statt
+2. **NPE mit sbi** (Plan, Etappe 7): eine Posterior-Verteilung von $\Delta z_{01}$ statt
    einer Gaußverteilung, mit dem Spektrum-CNN als Einbettung, und derselbe Vergleich wie hier
    (Kalibrierung wie in 5.4, dieselben 48 Samples).
 3. **Ensembles** aus 3–5 Seeds. Bei 2000 Samples senkte das Mittel aus drei Seeds den Val-MAE
