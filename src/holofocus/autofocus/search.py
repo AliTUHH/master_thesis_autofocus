@@ -7,10 +7,13 @@ point ``z01_hat`` is a full ASRM reconstruction (:func:`holofocus.asrm.asrm_reco
 * ``Omega_z = [z01_guess - confidence, z01_guess + confidence]`` ([2] Eq. (17), 5 mm),
 * the initial simplex is the pair of interval ends (10 mm apart); a warm start (Stage 4) passes
   a shorter pair inside ``Omega_z`` instead, e.g. a learned estimate +- a half width,
-* trial points are clipped to ``Omega_z`` (projection),
+* trial points are clipped to ``Omega_z`` (projection); ``bounds`` replaces ``Omega_z`` by
+  another interval, e.g. a learned 95 % interval (Stage 8),
 * a point that was evaluated before returns ``sys.float_info.max`` instead of a second
   reconstruction (the reference's guard against reflections that are clipped back onto a
-  bound), so the optimizer contracts instead,
+  bound), so the optimizer contracts instead. The reference compares bit for bit; a simplex
+  that does not start on the interval ends can reach a point twice on paths that differ in
+  the last bit, which ``revisit_tolerance`` catches,
 * the search stops when the simplex is shorter than ``xatol = 100 um``; ``fatol = 1e6``
   effectively disables the tolerance on the function values,
 * the simplex lives in millimetres. Revisited points are then bit-identical to the first
@@ -99,22 +102,38 @@ def find_focus(
     fatol: float = 1e6,
     max_evaluations: int | None = None,
     initial_simplex: tuple[float, float] | None = None,
+    bounds: tuple[float, float] | None = None,
+    revisit_tolerance: float = 0.0,
     log: Callable[[str], None] | None = None,
 ) -> FocusSearchResult:
     """Estimate ``z01`` of ``hologram`` starting from the guess ``geometry.z01``.
 
     ``geometry`` describes the (binned) detector the hologram was recorded with; only its
-    ``z01`` is varied (``z02`` is known, [2] Sec. 2). ``initial_simplex`` replaces the
-    interval ends as the two starting points; both must lie in ``Omega_z``, which still
-    bounds the search. Lengths in metres.
+    ``z01`` is varied (``z02`` is known, [2] Sec. 2). The search interval is
+    ``Omega_z = guess +- confidence`` unless ``bounds`` gives another ``(lower, upper)``.
+    ``initial_simplex`` replaces the interval ends as the two starting points; both must lie
+    in the search interval, which still bounds the search. A probing point within
+    ``revisit_tolerance`` of an earlier one counts as repeated (0: bit-identical only, as in
+    the reference). Lengths in metres.
     """
     settings = ASRMSettings() if settings is None else settings
     z01_guess = geometry.z01
-    lower, upper = z01_guess - confidence, z01_guess + confidence
+    if bounds is None:
+        lower, upper = z01_guess - confidence, z01_guess + confidence
+    else:
+        lower, upper = (float(b) for b in bounds)
     if not 0 < lower < upper < geometry.z02:
-        raise ValueError(f"Omega_z = [{lower}, {upper}] m must lie between focus and detector")
-    guess_mm, confidence_mm = z01_guess * MM_PER_M, confidence * MM_PER_M
-    lower_mm, upper_mm = guess_mm - confidence_mm, guess_mm + confidence_mm
+        raise ValueError(
+            f"search interval [{lower}, {upper}] m must lie between focus and detector"
+        )
+    if revisit_tolerance < 0:
+        raise ValueError("revisit_tolerance must not be negative")
+    if bounds is None:
+        guess_mm, confidence_mm = z01_guess * MM_PER_M, confidence * MM_PER_M
+        lower_mm, upper_mm = guess_mm - confidence_mm, guess_mm + confidence_mm
+    else:
+        lower_mm, upper_mm = lower * MM_PER_M, upper * MM_PER_M
+    tolerance_mm = revisit_tolerance * MM_PER_M
     if initial_simplex is None:
         start_mm = (lower_mm, upper_mm)
     else:
@@ -127,19 +146,20 @@ def find_focus(
             or np.abs(given - clipped).max() > 1e-6
         ):
             raise ValueError(
-                f"initial simplex {initial_simplex} m must be an increasing pair in Omega_z"
+                f"initial simplex {initial_simplex} m must be an increasing pair in the search "
+                "interval"
             )
     evaluations: list[FocusEvaluation] = []
-    seen: set[float] = set()
+    seen: list[float] = []
     best: list[ASRMResult] = []
 
     def objective(x: np.ndarray) -> float:
         z01_mm = float(x[0])
         z01 = z01_mm / MM_PER_M
-        if z01_mm in seen:
+        if any(abs(z01_mm - s) <= tolerance_mm for s in seen):
             evaluations.append(FocusEvaluation(z01, PENALTY, 0.0, False))
             return PENALTY
-        seen.add(z01_mm)
+        seen.append(z01_mm)
         start = time.perf_counter()
         result = asrm_reconstruct(hologram, geometry.with_z01(z01).fresnel_number, settings)
         seconds = time.perf_counter() - start
