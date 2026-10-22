@@ -1,0 +1,62 @@
+models:
+- results/npe-loo/matched-spider_hair-seed1
+model_sha256:
+- ae3f86224fac40898e847108c1cf1c09ae9ad6e92fdeae772e74a8d877683d81
+ensemble_size: 1
+config:
+  name: npe-nsf
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  embedding:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    features: 32
+  density:
+    estimator: nsf
+    hidden_features: 50
+    num_transforms: 5
+    num_bins: 10
+    num_components: 10
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    clip_max_norm: 5.0
+    limit: null
+    patience: null
+    seed: 1
+  grid_points: 2001
+  device: auto
+prior:
+- -1.0
+- 1.0
+dataset:
+  path: data/loo-spider_hair/val.h5
+  sha256: 77dd2feb173cf88fdbf10995ab476bd85f39d4e8a0db33706a38f0448cd69c03
+  split: val
+  n_samples: 250
+  seed: 20261061
+  generator_commit: d0f8a89
+  created_utc: '2026-10-22T01:52:45+00:00'
+holofocus_version: 0.1.0
+git_commit: 5eeecd1
+torch_version: 2.14.1+cpu
+sbi_version: 0.27.0
+device: cpu
+threads: 3
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-22T10:46:36+00:00'

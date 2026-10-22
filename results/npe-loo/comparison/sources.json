@@ -1,0 +1,40 @@
+{
+  "samples": {
+    "spider_hair": {
+      "cnn": "results/learned/loo-spider_hair/test/predictions.csv",
+      "cnn-seed1": "results/objectmodel/seeds/seed-1/loo-spider_hair/test/predictions.csv",
+      "cnn-seed2": "results/objectmodel/seeds/seed-2/loo-spider_hair/test/predictions.csv",
+      "npe": "results/npe-loo/matched-spider_hair/test/predictions.csv",
+      "npe-seed1": "results/npe-loo/matched-spider_hair-seed1/test/predictions.csv",
+      "npe-seed2": "results/npe-loo/matched-spider_hair-seed2/test/predictions.csv",
+      "ensemble": "results/npe-loo/matched-spider_hair-ensemble/test/predictions.csv"
+    },
+    "tooth": {
+      "cnn": "results/learned/loo-tooth/test/predictions.csv",
+      "cnn-seed1": "results/objectmodel/seeds/seed-1/loo-tooth/test/predictions.csv",
+      "cnn-seed2": "results/objectmodel/seeds/seed-2/loo-tooth/test/predictions.csv",
+      "npe": "results/npe-loo/matched-tooth/test/predictions.csv",
+      "npe-seed1": "results/npe-loo/matched-tooth-seed1/test/predictions.csv",
+      "npe-seed2": "results/npe-loo/matched-tooth-seed2/test/predictions.csv",
+      "ensemble": "results/npe-loo/matched-tooth-ensemble/test/predictions.csv"
+    },
+    "cactus_needle": {
+      "cnn": "results/learned/loo-cactus_needle/test/predictions.csv",
+      "cnn-seed1": "results/objectmodel/seeds/seed-1/loo-cactus_needle/test/predictions.csv",
+      "cnn-seed2": "results/objectmodel/seeds/seed-2/loo-cactus_needle/test/predictions.csv",
+      "npe": "results/npe-loo/matched-cactus_needle/test/predictions.csv",
+      "npe-seed1": "results/npe-loo/matched-cactus_needle-seed1/test/predictions.csv",
+      "npe-seed2": "results/npe-loo/matched-cactus_needle-seed2/test/predictions.csv",
+      "ensemble": "results/npe-loo/matched-cactus_needle-ensemble/test/predictions.csv"
+    },
+    "magnesium_wire": {
+      "cnn": "results/learned/loo-magnesium_wire/test/predictions.csv",
+      "cnn-seed1": "results/objectmodel/seeds/seed-1/loo-magnesium_wire/test/predictions.csv",
+      "cnn-seed2": "results/objectmodel/seeds/seed-2/loo-magnesium_wire/test/predictions.csv",
+      "npe": "results/npe-loo/matched-magnesium_wire/test/predictions.csv",
+      "npe-seed1": "results/npe-loo/matched-magnesium_wire-seed1/test/predictions.csv",
+      "npe-seed2": "results/npe-loo/matched-magnesium_wire-seed2/test/predictions.csv",
+      "ensemble": "results/npe-loo/matched-magnesium_wire-ensemble/test/predictions.csv"
+    }
+  }
+}

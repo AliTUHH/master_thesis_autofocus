@@ -7,6 +7,7 @@
 | Code | `src/holofocus/learned/npe.py` (NPE mit sbi), `posterior.py` (Posterior auf dem Gitter, Kalibrierung), `NPEConfig` in `config.py`, `holofocus-learn npe-train`/`npe-predict`/`npe-check` in `cli.py`; `configs/learned/npe-{nsf,mdn,ci}.yaml`, `configs/dataset/cpu-4x-calibration.yaml`; `scripts/run_stage7_study.py`, `scripts/make_stage7_figures.py`; `cluster/maxwell/jobs/npe.sh`; `tests/test_npe.py`, `tests/test_posterior.py` |
 | Ergebnisse | `results/npe/` (Modelle, Vorhersagen pro Sample, sbi-Prüfungen, Vergleich, Zeiten, gestörte Splits, Messhologramme), `results/learned/spectrum-cnn-wide/calibration/` (CNN von Etappe 4 auf dem Kalibrier-Split), `results/datasets/cpu-4x-calibration-calibration.csv` |
 | Abbildungen | `docs/laborbuch/figures/stage7-*.png`, Zahlen in `stage7-metrics.json` |
+| Nachtrag | Abschnitt 9: das NPE auf dem Objektmodell von Etappe 6 (Branch `cursor/stage7-npe-1091`; `scripts/run_stage7_loo_study.py`, `scripts/make_stage7_loo_figures.py`; `results/npe-loo/`; `figures/stage7-loo-*.png`, Zahlen in `stage7-loo-metrics.json`) |
 | Quellen | [2] Dora et al., Opt. Express 33(4), 6641 (2025); [6] M. Deistler et al., „Simulation-based inference: A practical guide“, arXiv:2508.12939 (2025) |
 
 ## 1 Ziel
@@ -827,7 +828,7 @@ Standardabweichung (Spannweite) der 16 Mediane in µm; Zeit pro Schätzung mit 1
 1. **Objektmodell von Etappe 6:** dieselben Befehle mit den neuen Datensätzen (`--npe`,
    `--cnn` und die Split-Optionen; E11, `docs/usage.md`). Daran zeigt sich, ob ein
    realistischerer Simulator die Posterior unter den Störungen und auf den Messhologrammen
-   ehrlicher macht.
+   ehrlicher macht. Auf den Leave-one-out-Sätzen gerechnet in Abschnitt 9.
 2. **Maxwell** (`docs/maxwell-gpu.md`, 8.1): 60 000 Samples mit Ensemble und MDN, die vier
    Proben auf 56 000 Samples, ausgewertet mit denselben Befehlen auf der VM.
 3. **Fehlspezifikation prüfen** (6, Punkt 1), bevor eine Posterior auf Messhologrammen
@@ -853,3 +854,479 @@ Standardabweichung (Spannweite) der 16 Mediane in µm; Zeit pro Schätzung mit 1
   lokal kalibriert (5.3, Punkt 7).
 - **Quellen:** [6] Sec. 3.2–3.4, A1.1, A1.2, A3, A5 und Fig. 10; [2] Table 1 für die
   Messhologramme.
+
+## 9 NPE auf dem Objektmodell von Etappe 6
+
+Nachtrag vom 22.10.2026 auf `main` mit Etappe 6 (Merge-Commit `ab44194`,
+[PR #14](https://github.com/AliTUHH/master_thesis_autofocus/pull/14)), Branch
+`cursor/stage7-npe-1091`.
+
+Kurz: Auf den Leave-one-out-Test-Splits ist das Ensemble der drei NPEs mindestens so genau wie
+das Leave-one-out-CNN (MAE 931, 736, 1212 und 1547 µm bei Spinnenhaar, Zahn, Kaktusnadel und
+Mg-Draht gegen 982, 880, 1296 und 1567 µm; gepaart −20 bis −144 µm, gesichert nur beim Zahn)
+und deckt nominal (68-%-Intervalle 64,8–72,0 %, 95-%-Intervalle 93,6–96,4 %), mit 16–33 %
+schmaleren Intervallen (beim Mg-Draht gleich breit) und einer um 0,18–0,42 nat kleineren NLL.
+Einzelne NPEs sind wie auf `cpu-4x` leicht überkonfident (68-%-Intervalle im Mittel 62,8 %).
+Vom Schätzwert allein (MAE 2,3–2,6 mm) sind alle Modelle weit entfernt (9.5, 9.6). Auf den
+Messhologrammen löst sich die Posterior nicht, wo das CNN es nicht tut: Bei der Kaktusnadel
+bleibt sie beim Schätzwert (−68 µm) und ist so breit wie das CNN (68 %: 3,8 mm). Beim
+Spinnenhaar und beim Mg-Draht rückt sie wie das CNN ab, etwas weniger weit (−0,37 und
+−2,13 mm gegen −0,63 und −2,37 mm), und liegt damit näher an [2] und an Padding 4 als das CNN
+und als der Schätzwert: beim Spinnenhaar zwischen beiden (+29 und −59 µm), beim Mg-Draht gegen
+Padding 4 nur knapp (960 gegen 1172 µm beim Schätzwert). Dort ist sie breit, mit einem zweiten
+Gipfel nahe dem unteren Rand des Priors, und ihr zentrales 68-%-Intervall enthält den Schätzwert.
+Beim Zahn rückt sie weniger weit ab als das CNN und landet über beiden Referenzen (+359 und
++624 µm, CNN −167 und +99 µm); die Mediane der drei Seeds liegen dort 1,3 mm auseinander.
+Welche Referenzen in den Intervallen liegen, ist bei allen vier Proben dasselbe wie beim CNN
+(9.7). Mit dem Simulator von Etappe 5 lag das passende NPE 0,29–5,64 mm über [2] (5.7), jetzt
+liegt das Ensemble zwischen 0,53 mm darunter und 1,83 mm darüber. Eine Schätzung kostet mit
+einem Thread 11–13 ms, mit dem Ensemble 29–31 ms, mit dem CNN 2,5–4,1 ms (9.8). Die Eingabe des
+NPE ist die des CNN, bitgleich; über das Band des CNN reicht sie nicht (E14).
+
+### 9.1 Ziel
+
+Das NPE dieser Etappe unverändert auf den Leave-one-out-Sätzen von Etappe 6 (Laborbuch 06,
+3.4; hier 7, Punkt 1): Code und `configs/learned/npe-nsf.yaml` wie in 3.2, pro Probe ein NPE
+auf `data/loo-<probe>` mit jedem der drei Seeds der Leave-one-out-CNNs (0, 1 und 2, Laborbuch
+06, 5.5, Punkt 5) und das Ensemble der drei. Gefragt ist:
+
+- **simuliert:** MAE und Überdeckung der 68- und 95-%-Intervalle auf den
+  Leave-one-out-Test-Splits, gegen das Leave-one-out-CNN und gegen den Schätzwert allein;
+- **gemessen:** auf den vier Messhologrammen die Schätzung mit 68- und 95-%-Intervall, ob die
+  Intervalle [2] Table 1 und unsere Suche mit Padding 4 enthalten, wie weit die Posterior vom
+  Schätzwert abrückt und ob sie mehrere Gipfel hat, neben dem Leave-one-out-CNN
+  (`results/measured/cnn-loo`). Die Hauptfrage: Löst sich die Posterior vom Schätzwert, wo das
+  CNN es nicht tut? Bei der Kaktusnadel blieb das CNN beim Schätzwert, bei Spinnenhaar und
+  Mg-Draht war es gegen Padding 4 nicht besser als er (Laborbuch 06, 5.6, Punkt 3, und 5.7,
+  Punkt 2);
+- **Zeit** pro Schätzung mit einem Thread;
+- ob die Eingabe des NPE über das Band des CNN reicht, wo die Textur zu viel Leistung hat
+  (Laborbuch 06, 6, Punkt 3).
+
+Die großen Sätze (`loo-<probe>-large`, 50 000 weitere Trainings-Samples) rechnet der Nutzer
+auf Maxwell (`docs/maxwell-gpu.md`, 8.2).
+
+### 9.2 Vorgehen
+
+| Lauf | Training | Val | Seed | Threads |
+|---|---|---|---|---|
+| `matched-<probe>` | `loo-<probe>` (6000) | `loo-<probe>` (250) | 0 (der Config) | 3 |
+| `matched-<probe>-seed1` | dieselben | dieselben | 1 | 3 |
+| `matched-<probe>-seed2` | dieselben | dieselben | 2 | 1, neben dem Lauf mit 3 |
+
+Die zwölf Läufe liegen unter `results/npe-loo/`, mit den Namen der passenden NPEs von
+`results/npe/` und des Maxwell-Jobs `npe.sh` (`<name>-seed<k>`). Sie liefen aus einem Worktree
+mit dem Stand `ab44194`; Training, Vorhersage und Config sind dieselben wie in 3.2 (`7f7cc8e`,
+seither hat sich nur die Prüfung mit sbi geändert, E10). Die Datensätze nennen in den Läufen als
+`generator_commit` Commits von Etappe 6 vor ihrem Rebase, `d0f8a89` beim Spinnenhaar und sonst
+`9fd4155`; in `main` sind das `731b6b9` und `242c3e4` (Laborbuch 06, E10).
+
+`scripts/run_stage7_loo_study.py` nutzt die Funktionen von `run_stage7_study.py` (3.5):
+
+- `predict`: jeder Lauf auf Val und Test seines Satzes, das Ensemble der drei Seeds (Mittel der
+  Dichten, E7) auf Test.
+- `compare`: auf den Leave-one-out-Test-Splits die drei Seeds, das Ensemble, die drei
+  Leave-one-out-CNNs (`results/learned/loo-<probe>`, Seeds 1 und 2 aus
+  `results/objectmodel/seeds/`) und der Schätzwert (E13), mit denselben Größen wie in 5.2 und
+  gepaarten Differenzen mit Bootstrap-Intervallen (`results/npe-loo/comparison/`).
+- `measured`: die drei Seeds und das Ensemble auf den Messhologrammen wie in 5.7 (E15)
+  (`results/npe-loo/measured/<probe>.json`).
+- `timing`: CNN, ein NPE und das Ensemble abwechselnd auf je 20 Test-Hologrammen jeder Probe,
+  dreimal, 1 Thread, Batch 1 (E9; `results/npe-loo/timing.json`).
+
+`scripts/make_stage7_loo_figures.py` zeichnet Abb. 7–10 und schreibt
+`stage7-loo-metrics.json`. Die CI rechnet `predict`, `compare` und `timing` auf dem
+Demo-Datensatz mit zwei NPEs aus `npe-ci.yaml` und dem CI-Modell als CNN, die Abbildungen im
+Schnellmodus, dazu `compare` und die Abbildungen aus den versionierten Ergebnissen.
+
+### 9.3 Entscheidungen
+
+**E12 – Drei Seeds wie beim CNN, ihr Ensemble als Schätzung.** Dieselben Seeds wie bei den
+Leave-one-out-CNNs (Laborbuch 06, E9), damit die Streuung über Seeds bei beiden Modellen
+dieselbe Bedeutung hat. Das Ensemble ist das Mittel der drei Dichten wie in E7, mit drei statt
+fünf Seeds; die zwölf Trainings kosten so etwa 7 Kernstunden statt 12 (9.9).
+
+**E13 – Der Schätzwert als Bezug, mit den Intervallen des Priors.** Wie in Laborbuch 06, 5.6
+und 5.7: ein Verfahren, das nur den Schätzwert ausgibt ($\Delta z_{01} = 0$, der Median des
+Priors), mit den zentralen Intervallen des gleichverteilten Priors um ihn ($\pm 3{,}4$ mm für
+68 %, $\pm 4{,}75$ mm für 95 %). Es weiß, was man ohne Hologramm weiß: Auf den Test-Splits, deren
+$\Delta z_{01}$ gleichverteilt ist, ist es kalibriert, und sein MAE ist der mittlere Betrag von
+$\Delta z_{01}$, etwa 2,5 mm. Ein Modell, das etwas lernt, muss bei derselben Überdeckung
+schmaler sein und näher liegen.
+
+**E14 – Dieselbe Eingabe wie das CNN.** `npe-nsf.yaml` hat dieselbe Repräsentation wie
+`spectrum-cnn-wide.yaml`: das radiale Leistungsspektrum nach 2×-Binning, 1024 Intervalle bis
+$f^2 = 0{,}125$. Auf je acht Test-Hologrammen jeder Probe sind die Eingaben von NPE und CNN
+bitgleich. Die zu hohe Leistung der Textur über diesem Band (Laborbuch 06, 5.2, Punkt 6)
+erreicht das NPE also so wenig wie das CNN. Eine Variante bis $f^2 = 0{,}25$ wie `-hf` in
+Etappe 5 hätte die Config geändert und gerade den Teil des Spektrums gezeigt, den das
+Objektmodell falsch hat.
+
+**E15 – Messhologramme wie in 5.7.** 4× gebinnt, die 16 Phasen des Binning-Gitters, an den
+Hologrammen nichts eingestellt. Als Gipfel zählt ein lokales Maximum der Dichte, dessen
+Prominenz mindestens 10 % der höchsten Dichte ist; außerhalb des Prior-Kastens ist die Dichte
+null, ein Anstieg bis an den Rand zählt also als Gipfel dort. Dazu die Masse innerhalb 0,5 mm
+von jedem Rand des Kastens.
+
+### 9.4 Training
+
+![Training auf den Leave-one-out-Sätzen](figures/stage7-loo-training.png)
+
+*Abb. 7 – Val-NLL pro Epoche auf den vier Leave-one-out-Sätzen (6000 Trainings-Samples) für die
+NPEs (rot; Seed 0 kräftig, Seeds 1 und 2 blass) und die Leave-one-out-CNNs von Etappe 6 (blau);
+Kreise: ausgewählte Epoche. Beim CNN die NLL seines rohen $\hat\sigma$, vor der
+Nachkalibrierung.*
+
+`results/npe-loo/<lauf>/summary.json` und `history.csv`, für die CNNs
+`results/learned/loo-<probe>/` und `results/objectmodel/seeds/`. Val-NLL in nat mit der Dichte
+pro µm (Val-Loss + ln 5000), Werte der Seeds 0/1/2; das CNN wählt seine Epoche nach dem Val-MAE
+(Laborbuch 06, 5.5):
+
+| Probe | NPE: beste Epoche | Val-NLL beste / letzte Epoche | Val-MAE | Überdeckung 68 % (Val) | CNN: beste Epoche | CNN: Val-MAE |
+|---|---|---|---|---|---|---|
+| Spinnenhaar | 26 / 25 / 21 | 8,16–8,19 / 11,0–11,8 | 1032 / 1042 / 1053 µm | 63,6 / 64,8 / 64,8 % | 19 / 15 / 11 | 993 / 1012 / 1085 µm |
+| Zahn | 17 / 18 / 16 | 7,74–7,76 / 10,2–10,8 | 663 / 663 / 691 µm | 66,0 / 58,8 / 60,0 % | 8 / 55 / 7 | 777 / 764 / 759 µm |
+| Kaktusnadel | 28 / 22 / 19 | 8,38–8,42 / 11,3–12,5 | 1132 / 1207 / 1160 µm | 71,2 / 75,2 / 69,2 % | 6 / 9 / 66 | 1195 / 1149 / 1206 µm |
+| Mg-Draht | 27 / 32 / 29 | 8,67–8,70 / 10,5–12,3 | 1506 / 1443 / 1418 µm | 61,2 / 68,8 / 70,0 % | 7 / 12 / 10 | 1449 / 1460 / 1485 µm |
+
+1. **Überangepasst nach 16–32 Epochen, wie auf `cpu-4x`** (5.1, Punkt 1). Bis Epoche 100
+   steigt die Val-NLL um 1,9–4,1 nat, und die 68-%-Intervalle auf dem Val-Split decken zuletzt
+   nur 7–22 %; die Auswahl nach dem Val-Loss (E5) nimmt die Epoche davor. Mit 6000 Samples kommt
+   das Minimum etwas früher als auf `cpu-4x` mit 10 000 (21–36) und als bei den passenden NPEs
+   mit dem Simulator von Etappe 5 (26–38, 5.1, Punkt 3).
+2. **Dieselbe Val-NLL, verschiedene Breiten.** Pro Probe liegen die drei Seeds in ihrer besten
+   Epoche höchstens 0,03 nat auseinander, ihre Überdeckung auf dem Val-Split aber bis zu 8,8
+   Prozentpunkte (Mg-Draht 61,2–70,0 %), wie in 5.1, Punkt 4.
+3. **Die beste Epoche ist stabiler als beim CNN:** beim NPE 16–32, pro Probe höchstens 9
+   Epochen Spannweite, beim CNN 6–66, bis 60 Epochen. Die Val-NLL des NPE hat ein deutliches
+   Minimum, der Val-MAE des CNN ist danach flach (Laborbuch 06, 5.5, Punkt 4). Die rohe Val-NLL
+   des CNN steigt nach wenigen Epochen steil, bis Epoche 100 auf 15–30 nat (Abb. 7): Sein
+   $\hat\sigma$ schrumpft, und erst die Nachkalibrierung auf dem Val-Split gleicht das in der
+   ausgewählten Epoche aus.
+4. **Val-MAE:** beim Zahn ist das NPE genauer als das CNN (663–691 gegen 759–777 µm), bei den
+   anderen drei Proben liegt es innerhalb ±67 µm des CNN mit demselben Seed.
+
+### 9.5 Leave-one-out-Test-Splits
+
+![Leave-one-out-Test-Splits](figures/stage7-loo-test.png)
+
+*Abb. 8 – Auf den vier Leave-one-out-Test-Splits (je 250 Samples): MAE, Überdeckung der
+zentralen 68- und 95-%-Intervalle und Median der 68-%-Breite (logarithmisch), für die
+Leave-one-out-CNNs (blau, Seed 0 groß), die NPEs (rot, Seed 0 groß), ihr Ensemble (Raute) und
+den Schätzwert mit den Intervallen des Priors (Kreuz); grau: 95-%-Band für 250 Samples um die
+nominale Überdeckung.*
+
+`results/npe-loo/comparison/` (`comparison.csv`, pro Probe `<probe>.{json,csv}`). CNN ist das
+Leave-one-out-CNN mit Seed 0 (`results/learned/loo-<probe>`), NPE das NPE mit Seed 0, Ensemble
+das Mittel der Dichten der Seeds 0–2, Schätzwert wie in E13; in den Zeilen „Seeds 0–2“ die
+Spannweite über die drei Seeds. Fehler und Breiten (Median über die Samples) in µm, zentrale
+Intervalle, NLL in nat mit der Dichte pro µm:
+
+| Probe | Methode | MAE | Median | Bias | Überdeckung 68/95 % | Breite 68/95 % | NLL |
+|---|---|---|---|---|---|---|---|
+| Spinnenhaar | CNN | 982 | 583 | −242 | 72,0 / 91,2 % | 2074 / 4088 | 8,44 |
+| | CNN, Seeds 0–2 | 982–1013 | 562–660 | −242 bis −166 | 68,4–75,2 / 91,2–94,4 % | 2040–2146 / 4020–4230 | 8,35–8,44 |
+| | NPE | 1066 | 538 | −151 | 57,2 / 92,0 % | 1231 / 2625 | 8,16 |
+| | NPE, Seeds 0–2 | 937–1066 | 364–538 | −151 bis −12 | 57,2–68,8 / 92,0–92,8 % | 1231–1365 / 2625–3088 | 8,05–8,16 |
+| | **Ensemble** | **931** | 419 | −90 | **72,0 / 96,0 %** | 1418 / 3107 | 8,02 |
+| | Schätzwert | 2349 | 2251 | −175 | 71,6 / 97,2 % | 6800 / 9500 | 9,21 |
+| Zahn | CNN | 880 | 554 | +20 | 70,8 / 94,0 % | 1810 / 3567 | 8,22 |
+| | CNN, Seeds 0–2 | 814–908 | 418–565 | +20 bis +93 | 62,8–77,6 / 92,4–94,0 % | 1615–2311 / 3184–4556 | 8,22–8,39 |
+| | NPE | 749 | 396 | +268 | 62,4 / 92,0 % | 1105 / 2594 | 7,96 |
+| | NPE, Seeds 0–2 | 749–781 | 338–407 | +165 bis +282 | 59,2–62,4 / 89,6–92,0 % | 1017–1167 / 2170–2594 | 7,91–7,96 |
+| | **Ensemble** | **736** | 355 | +242 | **65,2 / 93,6 %** | 1167 / 2611 | 7,82 |
+| | Schätzwert | 2599 | 2577 | +1 | 62,4 / 94,0 % | 6800 / 9500 | 9,21 |
+| Kaktusnadel | CNN | 1296 | 855 | −439 | 66,8 / 94,0 % | 2593 / 5111 | 8,65 |
+| | CNN, Seeds 0–2 | 1211–1327 | 768–960 | −439 bis −145 | 66,8–72,4 / 92,4–95,2 % | 2260–3365 / 4454–6633 | 8,58–8,85 |
+| | NPE | 1259 | 807 | −166 | 62,4 / 89,6 % | 2041 / 3950 | 8,56 |
+| | NPE, Seeds 0–2 | 1225–1259 | 744–807 | −166 bis −51 | 62,4–70,0 / 89,6–94,4 % | 2041–2422 / 3905–4663 | 8,45–8,56 |
+| | **Ensemble** | **1212** | 738 | −109 | **64,8 / 94,8 %** | 2234 / 4291 | 8,42 |
+| | Schätzwert | 2584 | 2460 | −279 | 64,8 / 93,6 % | 6800 / 9500 | 9,21 |
+| Mg-Draht | CNN | 1567 | 1177 | −328 | 62,4 / 95,2 % | 3399 / 6699 | 8,84 |
+| | CNN, Seeds 0–2 | 1567–1614 | 1177–1199 | −328 bis −282 | 62,0–65,6 / 94,8–95,6 % | 3182–3399 / 6272–6699 | 8,84–8,88 |
+| | NPE | 1623 | 1093 | −624 | 59,2 / 92,0 % | 2720 / 5806 | 8,74 |
+| | NPE, Seeds 0–2 | 1475–1623 | 926–1093 | −624 bis −306 | 59,2–65,6 / 92,0–96,4 % | 2720–3238 / 5806–6733 | 8,63–8,74 |
+| | **Ensemble** | **1547** | 1039 | −493 | **65,2 / 96,4 %** | 3131 / 6471 | 8,65 |
+| | Schätzwert | 2535 | 2581 | +118 | 68,4 / 96,4 % | 6800 / 9500 | 9,21 |
+
+Gepaart, Methode minus CNN mit demselben Seed (Ensemble minus CNN mit Seed 0), in eckigen
+Klammern das 95-%-Bootstrap-Intervall; Überdeckung in Prozentpunkten; Median des Verhältnisses
+der 68-%-Breiten pro Sample; Rangkorrelation (Spearman) zwischen 68-%-Breite und Fehlerbetrag,
+Methode gegen CNN:
+
+| Probe | Paar | MAE | Überdeckung 68 % | Überdeckung 95 % | NLL | Breite 68 % / CNN | Rangkorrelation |
+|---|---|---|---|---|---|---|---|
+| Spinnenhaar | NPE − CNN, Seed 0 | +83 [−29, +203] µm | −14,8 [−22,0, −7,6] | +0,8 [−3,2, +4,4] | −0,27 [−0,41, −0,15] | 0,63 | 0,74 gegen 0,54: +0,20 [+0,10, +0,30] |
+| | Seed 1 | −13 [−118, +96] µm | −13,2 [−20,0, −6,8] | 0 [−3,2, +3,2] | −0,26 [−0,38, −0,15] | 0,68 | 0,66 gegen 0,65: +0,01 [−0,09, +0,10] |
+| | Seed 2 | −76 [−174, +25] µm | +0,4 [−6,0, +6,8] | −1,6 [−4,4, +1,2] | −0,30 [−0,41, −0,19] | 0,69 | 0,64 gegen 0,65: −0,02 [−0,13, +0,09] |
+| | **Ensemble − CNN** | **−52 [−154, +54] µm** | 0 [−6,0, +6,0] | +4,8 [+1,2, +8,4] | −0,42 [−0,54, −0,31] | 0,76 | 0,70 gegen 0,54: +0,16 [+0,05, +0,28] |
+| Zahn | NPE − CNN, Seed 0 | −130 [−225, −37] µm | −8,4 [−14,4, −2,0] | −2,0 [−6,0, +2,0] | −0,26 [−0,39, −0,14] | 0,67 | 0,63 gegen 0,58: +0,05 [−0,06, +0,16] |
+| | Seed 1 | −33 [−141, +75] µm | −18,4 [−24,8, −12,0] | −2,8 [−6,8, +1,2] | −0,48 [−0,63, −0,34] | 0,46 | 0,61 gegen 0,40: +0,22 [+0,09, +0,34] |
+| | Seed 2 | −128 [−208, −49] µm | −2,8 [−8,8, +3,2] | −4,0 [−8,0, 0] | −0,31 [−0,44, −0,19] | 0,71 | 0,68 gegen 0,59: +0,09 [0, +0,18] |
+| | **Ensemble − CNN** | **−144 [−225, −63] µm** | −5,6 [−12,0, +0,4] | −0,4 [−3,6, +2,8] | −0,40 [−0,50, −0,30] | 0,67 | 0,67 gegen 0,58: +0,10 [+0,01, +0,19] |
+| Kaktusnadel | NPE − CNN, Seed 0 | −37 [−146, +71] µm | −4,4 [−10,0, +1,2] | −4,4 [−8,0, −0,8] | −0,08 [−0,19, +0,04] | 0,77 | 0,63 gegen 0,63: 0 [−0,07, +0,08] |
+| | Seed 1 | +14 [−66, +95] µm | +3,2 [−2,4, +8,8] | −0,8 [−3,6, +2,0] | −0,13 [−0,21, −0,06] | 1,02 | 0,64 gegen 0,58: +0,06 [−0,02, +0,15] |
+| | Seed 2 | −99 [−188, −11] µm | −10,0 [−16,0, −4,0] | −0,4 [−4,0, +3,2] | −0,39 [−0,49, −0,28] | 0,67 | 0,63 gegen 0,41: +0,21 [+0,09, +0,33] |
+| | **Ensemble − CNN** | **−84 [−175, +7] µm** | −2,0 [−7,2, +3,6] | +0,8 [−2,4, +4,0] | −0,22 [−0,30, −0,15] | 0,84 | 0,64 gegen 0,63: +0,01 [−0,06, +0,09] |
+| Mg-Draht | NPE − CNN, Seed 0 | +57 [−33, +146] µm | −3,2 [−8,0, +2,0] | −3,2 [−6,8, +0,4] | −0,09 [−0,17, −0,02] | 0,90 | 0,58 gegen 0,55: +0,03 [−0,05, +0,11] |
+| | Seed 1 | −4 [−91, +79] µm | −0,8 [−6,0, +4,8] | +0,4 [−2,4, +3,2] | −0,18 [−0,26, −0,10] | 0,95 | 0,59 gegen 0,57: +0,02 [−0,06, +0,09] |
+| | Seed 2 | −118 [−193, −43] µm | +3,6 [−1,6, +8,8] | +0,8 [−2,4, +4,0] | −0,23 [−0,30, −0,16] | 1,00 | 0,59 gegen 0,56: +0,03 [−0,04, +0,10] |
+| | **Ensemble − CNN** | **−20 [−91, +51] µm** | +2,8 [−2,0, +7,6] | +1,2 [−1,6, +4,4] | −0,18 [−0,25, −0,12] | 1,01 | 0,60 gegen 0,55: +0,05 [−0,01, +0,12] |
+
+Gegen den Schätzwert (gepaart, MAE): Ensemble −1419 [−1613, −1220], −1862 [−2071, −1654],
+−1372 [−1598, −1139] und −989 [−1200, −776] µm; CNN −1367, −1719, −1288 und −969 µm, alle
+Intervalle weit von null.
+
+1. **Das Ensemble ist mindestens so genau wie das CNN.** Sein MAE ist 20–144 µm kleiner,
+   gesichert nur beim Zahn (−144 µm [−225, −63]), bei der Kaktusnadel knapp nicht (−84 µm
+   [−175, +7]). Seed gegen Seed ist das NPE in 4 der 12 Paare gesichert genauer (Zahn Seeds 0
+   und 2, Kaktusnadel und Mg-Draht Seed 2), in keinem gesichert ungenauer; im Mittel der 12
+   Paare um 40 µm. Das Ensemble ist 22–64 µm genauer als der Mittelwert seiner drei Seeds. Ein
+   Ensemble der drei CNNs habe ich nicht gerechnet; ein Teil seines Vorsprungs kann also vom
+   Mitteln kommen und stünde dem CNN genauso offen (9.10, Punkt 2).
+2. **Das Ensemble deckt nominal, einzelne NPEs zu wenig.** Die 68-%-Intervalle des Ensembles
+   decken 64,8–72,0 %, die 95-%-Intervalle 93,6–96,4 %, alle im 95-%-Band für 250 Samples
+   (62,2–73,8 % bzw. 92,3–97,7 %). Die zwölf einzelnen NPEs decken im Mittel 62,8 und 92,4 %,
+   fünf von ihnen bei 68 % unter dem Band; die CNN-Seeds 68,6 und 93,8 %. Wie in [6], Fig. 10,
+   und in 5.3, Punkt 6: Das Mittel der Dichten verbreitert die Intervalle (beim Spinnenhaar
+   1418 µm gegen 1231–1365 µm der Seeds), mit drei Seeds hier bis ans Nominale, mit fünf auf
+   `cpu-4x` darüber (78,3/97,6 %).
+3. **Schmaler bei derselben Überdeckung, kleinere NLL.** Die 68-%-Intervalle des Ensembles
+   sind im Median 24, 33 und 16 % schmaler als die des CNN (Spinnenhaar, Zahn, Kaktusnadel),
+   beim Mg-Draht gleich breit (1,01). Seine NLL ist um 0,18–0,42 nat kleiner; auch jedes
+   einzelne NPE hat eine kleinere NLL als das CNN mit demselben Seed (−0,08 bis −0,48 nat, in
+   11 von 12 Paaren gesichert).
+4. **Die Breite ordnet die Fehler, beim Spinnenhaar und beim Zahn besser als beim CNN**
+   (Rangkorrelation 0,70 gegen 0,54 und 0,67 gegen 0,58), bei Kaktusnadel und Mg-Draht gleich
+   gut (0,60–0,64 gegen 0,55–0,63). Auf `cpu-4x` war der Unterschied größer (0,45 gegen 0,26,
+   5.2, Punkt 3); hier ordnet schon die Breite des CNN die Fehler gut.
+5. **Biases beim Zahn und beim Mg-Draht.** Alle drei NPEs schätzen den Zahn zu hoch (+165 bis
+   +282 µm, Ensemble +242 µm; CNN +20 bis +93 µm) und den Mg-Draht zu tief (−306 bis −624 µm,
+   Ensemble −493 µm; CNN −282 bis −328 µm); beim Spinnenhaar und bei der Kaktusnadel ist ihr
+   Bias kleiner als der des CNN (−12 bis −166 gegen −145 bis −439 µm). Der Median des Fehlers
+   ist bei jedem NPE kleiner als beim CNN mit demselben Seed, beim Ensemble 355–1039 gegen
+   554–1177 µm, um mehr als der MAE: Das NPE liegt öfter nah am wahren Wert, seine großen Fehler
+   sind dafür größer.
+6. **Gegen den Schätzwert:** Das Ensemble hat 28–61 % seines MAE (das CNN 34–62 %), mit 17–46 %
+   seiner 68-%-Breite bei ähnlicher Überdeckung. Am meisten sagt das Spektrum über den Zahn
+   (28 %), am wenigsten über den Mg-Draht (61 %).
+
+### 9.6 Kalibrierung
+
+![Kalibrierung auf den Leave-one-out-Test-Splits](figures/stage7-loo-calibration.png)
+
+*Abb. 9 – Beobachtete minus nominale Überdeckung der zentralen Intervalle auf den
+Leave-one-out-Test-Splits über alle Niveaus: Leave-one-out-CNN (Seed 0, blau), NPE (Seed 0
+rot, Seeds 1 und 2 blass) und Ensemble (gestrichelt); grau: 95-%-Band für 250 Samples.*
+
+Abweichung der zentralen Intervalle von der nominalen Überdeckung, gemittelt über die Niveaus
+0,01–0,99 und ihr größter Betrag, in Prozentpunkten (`stage7-loo-metrics.json`, `calibration`);
+Überdeckung der 68-%-HPD-Regionen des Ensembles; Anteil der wahren Werte unter dem 2,5- und über
+dem 97,5-%-Quantil (PIT) und p-Wert des Kolmogorow-Smirnow-Tests auf Gleichverteilung des PIT:
+
+| Probe | CNN | NPE Seed 0 / 1 / 2 | Ensemble | Ensemble: HPD 68 % | Ensemble: PIT < 2,5 % / > 97,5 % | KS-p Ensemble / CNN |
+|---|---|---|---|---|---|---|
+| Spinnenhaar | +2,7 / 6,4 | −7,2 / 12,2; −3,7 / 6,2; +0,3 / 2,4 | +1,5 / 6,0 | 74,8 % | 1,6 / 2,4 % | 0,62 / 0,004 |
+| Zahn | +0,5 / 3,4 | −4,2 / 8,6; −5,1 / 12,2; −5,6 / 11,2 | −0,3 / 5,0 | 71,2 % | 5,6 / 0,8 % | 0,009 / 0,37 |
+| Kaktusnadel | +0,5 / 3,6 | −3,7 / 9,8; −0,4 / 3,0; −3,9 / 7,6 | −1,2 / 3,6 | 66,0 % | 2,4 / 2,8 % | 0,49 / 0,007 |
+| Mg-Draht | −3,3 / 7,6 | −4,5 / 10,0; −2,4 / 6,8; +0,1 / 3,0 | −0,9 / 3,4 | 60,8 % | 0,4 / 3,2 % | 0,002 / 0,012 |
+
+1. **Das Ensemble ist über alle Niveaus nominal**: im Mittel −1,2 bis +1,5 Prozentpunkte,
+   höchstens 6,0 daneben, so viel wie die halbe Breite des 95-%-Bands bei mittleren Niveaus.
+2. **Die einzelnen NPEs decken zu wenig**: im Mittel 3,4 Prozentpunkte, bei 10 der 12 Läufe
+   unter null (−0,4 bis −7,2), bis 12,2 Prozentpunkte bei einzelnen Niveaus; nur Spinnenhaar
+   und Mg-Draht mit Seed 2 liegen auf dem Nominalen. Das CNN mit Seed 0 liegt im Mittel −3,3 bis
+   +2,7 Prozentpunkte daneben.
+3. **Die Biases sieht der PIT.** Beim Zahn liegt der wahre Wert bei 7,2–8,4 % der Samples unter
+   dem 2,5-%-Quantil eines einzelnen NPE, beim Ensemble bei 5,6 %; beim Mg-Draht ist der
+   PIT-Mittelwert des Ensembles 0,56. Der KS-Test verwirft die Gleichverteilung beim Ensemble
+   für Zahn und Mg-Draht, beim CNN für Spinnenhaar, Kaktusnadel und Mg-Draht. Im Mittel über den
+   Prior kalibriert, in Teilen verschoben, wie in 5.3, Punkt 7.
+4. **HPD-Regionen beim Mg-Draht:** Die 68-%-HPD-Regionen des Ensembles decken dort nur 60,8 %
+   (zentrale Intervalle 65,2 %), über alle Niveaus höchstens 7,2 Prozentpunkte daneben
+   (zentrale 3,4). Bei symmetrischen Posteriors mit einem Gipfel wären beide gleich; der
+   Unterschied kommt von schiefen oder mehrgipfligen Posteriors.
+5. **Vorbehalt:** Einen Kalibrier-Split wie in 3.1 gibt es für die Leave-one-out-Sätze nicht.
+   Auf 250 Samples ist das 95-%-Band bei 68 % etwa ±5,8 Prozentpunkte breit (E6); eine
+   Abweichung von 3 Prozentpunkten wie in 5.3 sähe man hier nicht.
+
+### 9.7 Messhologramme
+
+![Messhologramme mit dem Objektmodell](figures/stage7-loo-measured.png)
+
+*Abb. 10 – Posterior auf den vier Messhologrammen über dem Prior-Kasten $\Omega_z$: Ensemble
+(violett gestrichelt, 68- und 95-%-Intervall schattiert), die drei NPEs (rot, Seed 0 kräftig),
+die Gauß-Dichte des Leave-one-out-CNN (Seed 0, blau) und die Posterior des passenden NPE mit dem
+Simulator von Etappe 5 (grau gepunktet, 5.7); [2] Table 1 (Nelder-Mead und visuell), unsere
+Suche mit Padding 4, der Schätzwert (grün) und die Mediane des Ensembles für die 16
+Binning-Phasen (Striche unten).*
+
+`results/npe-loo/measured/<probe>.json` (E15). Die Posterior des Ensembles, in mm; Abstand
+Median minus Schätzwert in µm, in Klammern das HPD-Niveau des Schätzwerts (über 0,68: außerhalb
+der 68-%-HPD-Region); Breite 68 % in µm, in Klammern das Verhältnis zum Median auf dem
+Test-Split; die Mediane der drei Seeds mit ihrer Standardabweichung in µm:
+
+| Probe | Schätzwert | Median | − Schätzwert | 68-%-Intervall | 95-%-Intervall | Breite 68 % | Gipfel | Masse am Rand | Seeds |
+|---|---|---|---|---|---|---|---|---|---|
+| Spinnenhaar | 79,800 | 79,429 | −371 (0,74) | 79,125–79,773 | 78,781–80,184 | 647 (0,46) | einer | 0 | 79,439 / 79,664 / 79,246 (209) |
+| Zahn | 82,900 | 81,259 | −1641 (0,98) | 80,006–81,856 | 78,595–82,634 | 1851 (1,59) | einer (Seed 0: zwei) | 1,6 % unten | 80,299 / 81,439 / 81,580 (703) |
+| Kaktusnadel | 286,100 | 286,032 | −68 (0,03) | 284,258–288,021 | 282,251–290,122 | 3763 (1,68) | einer | 0,9 % unten, 1,2 % oben | 285,942 / 285,810 / 286,310 (259) |
+| Mg-Draht | 472,400 | 470,268 | −2132 (0,90) | 468,568–472,665 | 467,636–475,433 | 4098 (1,31) | zwei: 469,65 und 467,65 | 6,2 % unten | 470,751 / 469,696 / 470,305 (530) |
+
+Abstände zu den Referenzen, Schätzung minus Referenz in µm, fett der kleinste Betrag unter
+Ensemble, CNN und Schätzwert; „ja/nein“: [2] bzw. Padding 4 im zentralen 68-%-Intervall. Das CNN
+ist `results/measured/cnn-loo` (Seed 0, Laborbuch 06, 5.6), „Etappe 5“ das passende NPE mit dem
+Simulator von Etappe 5 (5.7):
+
+| Probe | [2] | Padding 4 | Ensemble − [2] | − Padding 4 | 68 % | CNN − [2] | − Padding 4 | 68 % | Schätzwert − [2] | − Padding 4 | Etappe 5 − [2] |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Spinnenhaar | 79,400 | 79,488 | **+29** | **−59** | ja/ja | −231 | −319 | ja/ja | +400 | +312 | +290 |
+| Zahn | 80,900 | 80,634 | +359 | +624 | ja/ja | **−167** | **+99** | ja/ja | +2000 | +2266 | +2050 |
+| Kaktusnadel | 284,200 | 284,928 | **+1832** | **+1104** | nein/ja | +2049 | +1321 | nein/ja | +1900 | +1172 | +5644 |
+| Mg-Draht | 470,800 | 471,228 | **−532** | **−960** | ja/ja | −771 | −1200 | ja/ja | +1600 | +1172 | +3721 |
+
+1. **Kaktusnadel: Die Posterior löst sich nicht vom Schätzwert.** Der Median liegt 68 µm
+   darunter, die drei Seeds zwischen −290 und +210 µm (die CNN-Seeds +149 bis +609 µm); der
+   Schätzwert liegt neben dem Gipfel (286,03 mm, HPD-Niveau 0,03). Die Posterior ist glatt, mit
+   einem Gipfel und höchstens 1,2 % Masse an jedem Rand, und ihr 68-%-Intervall ist 3,76 mm
+   breit, das 1,68-Fache ihres Medians auf dem Test-Split und so breit wie das des CNN
+   (3,73 mm). Das Spektrum sagt dem NPE über die Kaktusnadel so wenig wie dem CNN. [2] liegt
+   knapp außerhalb des zentralen 68-%-Intervalls (PIT 0,15), aber in der 68-%-HPD-Region
+   (Niveau 0,66), Padding 4 im 68-%-Intervall; beides, weil die Posterior breit um den
+   Schätzwert liegt. Die Gipfel bis an den oberen Rand, die das NPE mit dem Simulator von
+   Etappe 5 hier hatte (5.7, Punkt 3), sind verschwunden.
+2. **Spinnenhaar: abgerückt, zwischen die Referenzen.** Der Median liegt 371 µm unter dem
+   Schätzwert (CNN 631 µm), der Schätzwert außerhalb des 68-%-Intervalls (HPD-Niveau 0,74). Das
+   Ensemble landet 29 µm über [2] und 59 µm unter Padding 4, beide im 68-%-Intervall
+   (HPD-Niveau 0,20 und 0,31); die Posterior ist schmal und hat einen Gipfel (68 %: 647 µm, das
+   0,46-Fache des Medians auf dem Test-Split, beim CNN 0,53). Ein Teil davon ist das Mitteln:
+   Die drei Seeds liegen +39, +264 und −154 µm von [2], die drei CNN-Seeds −231, +38 und
+   −229 µm. Gegen Padding 4 liegt aber jedes der drei NPEs näher als der Schätzwert (49, 176
+   und 242 gegen 312 µm), von den CNNs nur Seed 1 (50 µm; Seeds 0 und 2: 319 und 316 µm). Wo das
+   CNN gegen Padding 4 nicht besser war als der Schätzwert (Laborbuch 06, 5.7, Punkt 2), ist es
+   das NPE.
+3. **Mg-Draht: abgerückt wie das CNN, etwas weniger weit, breit und mit zwei Gipfeln.** Der
+   Median liegt 2,13 mm unter dem Schätzwert (CNN-Seeds 2,37–2,73 mm), damit 532 µm unter [2]
+   und 960 µm unter Padding 4 (CNN 771 und 1200 µm, Schätzwert 1600 und 1172 µm darüber). Gegen
+   Padding 4 ist das nur knapp besser als der Schätzwert: Die Seeds liegen 477, 1533 und 923 µm
+   darunter (einer weiter weg als der Schätzwert), die drei CNNs 1200–1557 µm (alle weiter weg).
+   Die Posterior ist breit (68 %: 4,10 mm, die HPD-Region 3,75 mm) und hat einen zweiten
+   Gipfel bei 467,65 mm, 0,25 mm über dem unteren Rand von $\Omega_z$ (Höhe 0,68 des
+   Hauptgipfels bei 469,65 mm); 6,2 % ihrer Masse liegen innerhalb 0,5 mm vom unteren Rand, bei
+   Seed 1 9,3 %. Den Schätzwert
+   enthält ihr zentrales 68-%-Intervall (bis 472,665 mm), die 68-%-HPD-Region nicht (Niveau
+   0,90); das 68-%-Intervall des CNN schließt ihn aus. Das NPE ist hier breiter als das CNN
+   (4,10 gegen 3,38 mm) und zeigt mit dem zweiten Gipfel, wohin seine Unsicherheit reicht.
+4. **Zahn: abgerückt, aber weniger weit als das CNN.** Der Median liegt 1,64 mm unter dem
+   Schätzwert (CNN-Seeds 2,17–2,29 mm), damit 359 µm über [2] und 624 µm über Padding 4; beide
+   liegen im 68-%-Intervall, der Schätzwert außerhalb des 95-%-Intervalls (HPD-Niveau 0,98). Das
+   CNN lag näher (−167 und +99 µm); der Zahn ist die einzige Probe, bei der das NPE deutlich
+   weiter von den Referenzen liegt als das CNN. Dort sind sich die Seeds nicht einig: Mediane
+   80,30, 81,44 und 81,58 mm (Standardabweichung 703 µm, bei den CNNs 67 µm); Seed 0 hat zwei
+   Gipfel (80,81 und 79,47 mm) und 4,4 % seiner Masse am unteren Rand. Auf dem Test-Split sind
+   dieselben drei NPEs gleich genau (MAE 749–781 µm, 9.5). Das 68-%-Intervall des Ensembles
+   (1,85 mm, das 1,59-Fache des Medians auf dem Test-Split) umfasst die Streuung; die einzelnen
+   NPEs geben 1,1–2,1 mm an.
+5. **Welche Referenzen in den 68-%-Intervallen liegen, ist dasselbe wie beim CNN:** [2] und
+   Padding 4 bei Spinnenhaar, Zahn und Mg-Draht, bei der Kaktusnadel nur Padding 4 ([2] im
+   95-%-Intervall). Bei den einzelnen Seeds weicht das beim Zahn ab (Seed 1: Padding 4 erst im
+   95-%-Intervall, Seed 2: beide erst dort) und bei der Kaktusnadel (Seed 1 enthält auch [2]).
+6. **Gegen den Simulator von Etappe 5:** Das passende NPE lag dort 0,29, 2,05, 5,64 und
+   3,72 mm über [2], mit [2] bei HPD-Niveaus von 0,89–0,99; das Ensemble liegt jetzt +0,03,
+   +0,36, +1,83 und −0,53 mm von [2], mit HPD-Niveaus 0,20, 0,52, 0,66 und 0,36. Das
+   Objektmodell verschiebt das NPE wie das CNN (Laborbuch 06, 5.5, Punkt 2).
+7. **Abtastung, Masse und Zeit:** Die 16 Binning-Phasen verschieben den Median des Ensembles um
+   4, 30, 175 und 108 µm (Standardabweichung), höchstens 5 % seiner 68-%-Breite (CNN 10, 17,
+   172 und 61 µm). Masse im Prior-Kasten 0,993–0,997. Eine Schätzung auf einem Messhologramm
+   dauert mit einem Thread 10,8–12,7 ms für ein NPE und 28,2–30,4 ms für das Ensemble.
+
+### 9.8 Zeit pro Schätzung
+
+`results/npe-loo/timing.json`: je 20 Test-Hologramme pro Probe, dreimal, CNN, NPE (Seed 0) und
+Ensemble abwechselnd, 1 Thread, Batch 1, sonst lief nichts (E9); vom Hologramm im Speicher bis
+zu Punktschätzung und Intervallen. Median, in Klammern 10–90 %:
+
+| Probe | Pixel | CNN | NPE | Ensemble (drei Flüsse) | NPE / CNN | Ensemble / CNN |
+|---|---|---|---|---|---|---|
+| Spinnenhaar | 512² | 3,52 ms (3,48–3,62) | 12,22 ms (12,10–12,32) | 29,83 ms (29,66–30,18) | 3,5 | 8,5 |
+| Zahn | 472² | 4,13 ms (4,11–4,19) | 12,61 ms (12,52–12,74) | 30,63 ms (30,45–30,85) | 3,1 | 7,4 |
+| Kaktusnadel | 512² | 2,47 ms (2,44–2,54) | 10,92 ms (10,84–11,05) | 28,81 ms (28,66–29,07) | 4,4 | 11,7 |
+| Mg-Draht | 512² | 2,46 ms (2,43–2,54) | 10,93 ms (10,83–11,10) | 28,82 ms (28,67–29,09) | 4,4 | 11,7 |
+
+1. **Wie in 5.5 kostet das Gitter am meisten.** Vom NPE sind 1,7–3,4 ms die Repräsentation,
+   0,7–0,8 ms die Einbettung, 8,0 ms die Dichte des Flusses auf den 2001 Gitterpunkten und
+   0,35 ms Quantile und HPD-Regionen. Das Ensemble rechnet die Repräsentation einmal, Einbettung
+   und Fluss dreimal; mit fünf Flüssen waren es in 5.5 47,5 ms.
+2. **Die Spanne zwischen den Proben ist fast ganz die Repräsentation**, und die hängt nicht nur
+   an der Probe: Dieselben zehn Hologramme der Kaktusnadel brauchen je nach Lage im Speicher
+   1,7 oder 2,6–3,0 ms (nachgemessen mit Kopien an verschiedenen Adressen, Skript nicht
+   versioniert), die des Spinnenhaars 1,8 oder 2,7–3,1 ms. Der Wert des Spinnenhaars (2,62 ms
+   bei 512² Pixeln) ist dieser Effekt; beim Zahn kommt die FFT auf 472² Pixeln dazu (3,40 ms,
+   Laborbuch 05, 5.2). Ohne die Repräsentation braucht das CNN 0,7–0,9 ms, ein NPE 9,2–9,6 ms
+   und das Ensemble 27,1–27,2 ms.
+3. Gegen die 331 s der Baseline [2] (Etappe 3, 3 Threads) sind alle drei vernachlässigbar.
+
+### 9.9 Laufzeiten
+
+Auf der VM (4 Kerne), mit der Uhr der Programme. Die beiden Trainings-Lanes liefen von 08:54 bis
+10:56 Uhr nebeneinander; ihre Wandzeiten enthalten eine Pause der VM von etwa 7,6 min, die in
+beiden Lanes je einen Lauf verlängert hat.
+
+| Schritt | Threads | Zeit |
+|---|---|---|
+| 8 NPEs (Seeds 0 und 1), nacheinander | 3 | je 11,9–12,3 min (7,0–7,2 s pro Epoche), dazu 30–39 s Laden |
+| 4 NPEs (Seed 2), nacheinander, daneben | 1 | je 27,0–28,0 min (16,1–16,5 s pro Epoche), dazu 52–56 s Laden |
+| `predict`: 12 Läufe auf Val und Test, 4 Ensembles auf Test | 3 | 1,6 min |
+| Prüfung der Eingabe (E14), 4 × 8 Hologramme | 1 | 3 s |
+| `compare` | 1 | 13 s; erneut gerechnet, dieselben Dateien |
+| `measured` | 1 | 14 s |
+| `timing` | 1 | 17 s |
+| Abbildungen | 1 | 3 s |
+| Testsuite (352 Tests, unverändert) | 1, die Cluster-Tests 4 | 50 s |
+| Schritt der CI für diesen Abschnitt, lokal | 2 | 31 s |
+
+Zusammen kosten die zwölf Trainings etwa 7 Kernstunden (Threads mal Zeit, mit Laden): 5,0 für
+die acht Läufe mit 3 Threads, 1,9 für die vier mit einem; die Auswertung kostet Minuten.
+
+### 9.10 Offene Punkte und nächste Schritte
+
+1. **Maxwell** (`docs/maxwell-gpu.md`, 8.2): dieselben drei Seeds auf `loo-<probe>-large` mit
+   50 000 weiteren Trainings-Samples, ausgewertet mit denselben Befehlen auf der VM. Daran zeigt
+   sich, ob mehr Daten die Posterior bei Kaktusnadel und Mg-Draht schmaler machen, die
+   Kaktusnadel vom Schätzwert lösen und die Seeds beim Zahn einig machen.
+2. **Ein Ensemble der CNNs.** Für einen fairen Vergleich des Ensembles fehlt die Mischung der
+   drei Gauß-Dichten der CNN-Seeds (9.5, Punkt 1). Die Vorhersagen liegen vor; es wäre eine
+   Variante von `compare`.
+3. **Der Zahn auf dem Messhologramm.** Drei NPEs, die auf dem Test-Split übereinstimmen, liegen
+   auf dem Messhologramm 1,3 mm auseinander, die CNNs nicht (9.7, Punkt 4). Das spricht dafür,
+   dass das Messhologramm des Zahns dort liegt, wo die Trainingsdaten den Fluss nicht festlegen.
+   Die Prüfung auf Fehlspezifikation (6, Punkt 1; Abstand der Einbettung zu denen der
+   Trainings-Samples) ist weiter offen und hier am dringendsten.
+4. **Kalibrierung auf mehr Samples.** Für die Leave-one-out-Sätze gibt es keinen Kalibrier-Split;
+   die Biases bei Zahn und Mg-Draht (9.5, Punkt 5) und die HPD-Regionen beim Mg-Draht (9.6,
+   Punkt 4) wären auf 2000 Prior-Ziehungen wie in 3.1 zu prüfen. Nach den Zeiten der
+   Leave-one-out-Sätze (Laborbuch 06, 5.8) kostet das etwa 3,4 Kernstunden beim Spinnenhaar,
+   1 h beim Zahn und je etwa 12 min bei Kaktusnadel und Mg-Draht.
+5. → Daniel: unverändert die Frage nach dem Einstellen an den Testhologrammen (Laborbuch 06, 6,
+   Punkt 1).
+
+### 9.11 Bezug zur Masterarbeit
+
+- **Posterior auf dem realistischeren Simulator:** Auf dem Objektmodell ist das NPE mindestens
+  so genau wie das CNN, das Ensemble aus drei Seeds kalibriert (9.5, 9.6). Das Zusatzkapitel aus
+  8 trägt damit auch auf dem Simulator von Etappe 6.
+- **Hauptaussage aus 8 bestätigt:** Mit dem Objektmodell liegt das Ensemble auf den
+  Messhologrammen 0,26–3,81 mm näher an [2] als das passende NPE mit dem Simulator von Etappe 5
+  (9.7, Punkt 6). Die Lücke lag im Simulator, nicht im Schätzer: Den Schätzer zu wechseln (NPE
+  statt CNN, beide mit Seed 0 auf dem Objektmodell) verschiebt die Schätzungen auf den
+  Messhologrammen um 0,27–0,72 mm, den Simulator zu wechseln (NPE mit Seed 0) beim Spinnenhaar
+  um 0,25 mm und bei den anderen drei Proben um 2,65–3,90 mm.
+- **Was die Posterior dazugibt:** Wo das Spektrum wenig sagt (Kaktusnadel), bleibt sie breit um
+  den Schätzwert, wie das CNN; wo die Sätze nicht ausreichen (Mg-Draht, Zahn), zeigt sie es als
+  zweiten Gipfel, Masse am Rand oder Streuung über Seeds, was ein Gauß-Kopf nicht kann
+  (9.7, Punkte 3 und 4).
+- **Methodik:** Seed gegen Seed vergleichen (9.5, Punkt 1); der Schätzwert mit den Intervallen
+  des Priors als Bezug (E13); ein einzelnes NPE ist leicht überkonfident, ein Ensemble aus drei
+  kalibriert (9.6).
+
+Reproduktion: `docs/usage.md`, Abschnitt „Stage 7 on the object model“.

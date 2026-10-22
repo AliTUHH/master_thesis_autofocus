@@ -1,0 +1,155 @@
+{
+  "per_sample": 20,
+  "repeats": 3,
+  "device": "cpu",
+  "what": "one estimate from the hologram in memory, batch of one: representation, network, for the NPE the density on the grid, median and intervals",
+  "samples": {
+    "spider_hair": {
+      "data": "data/loo-spider_hair/test.h5",
+      "fov_shape": [
+        512,
+        512
+      ],
+      "ensemble_size": 3,
+      "methods": {
+        "cnn": {
+          "median": 0.003518812998663634,
+          "p10": 0.0034838869003579022,
+          "p90": 0.003624872793443501,
+          "ratio_to_cnn": 1.0
+        },
+        "npe": {
+          "median": 0.012221580516779795,
+          "p10": 0.012099683520500549,
+          "p90": 0.012317465621163138,
+          "ratio_to_cnn": 3.473211142911339
+        },
+        "ensemble": {
+          "median": 0.029832622007234022,
+          "p10": 0.029664823107304984,
+          "p90": 0.03018135371094104,
+          "ratio_to_cnn": 8.478035638314335
+        }
+      },
+      "npe_parts_median": {
+        "representation": 0.002615796009195037,
+        "embedding": 0.0008423329854849726,
+        "density_on_grid": 0.008100930499495007,
+        "summaries": 0.00035243199090473354
+      }
+    },
+    "tooth": {
+      "data": "data/loo-tooth/test.h5",
+      "fov_shape": [
+        472,
+        472
+      ],
+      "ensemble_size": 3,
+      "methods": {
+        "cnn": {
+          "median": 0.0041286869964096695,
+          "p10": 0.004107478505466134,
+          "p90": 0.0041940241935662925,
+          "ratio_to_cnn": 1.0
+        },
+        "npe": {
+          "median": 0.012607855009264313,
+          "p10": 0.012517713004490361,
+          "p90": 0.012740830119582824,
+          "ratio_to_cnn": 3.0537202312086573
+        },
+        "ensemble": {
+          "median": 0.030627569489297457,
+          "p10": 0.030446717102313413,
+          "p90": 0.03085334150237031,
+          "ratio_to_cnn": 7.4182347840684875
+        }
+      },
+      "npe_parts_median": {
+        "representation": 0.003401288005989045,
+        "embedding": 0.00071722648863215,
+        "density_on_grid": 0.008000494999578223,
+        "summaries": 0.00035201550053898245
+      }
+    },
+    "cactus_needle": {
+      "data": "data/loo-cactus_needle/test.h5",
+      "fov_shape": [
+        512,
+        512
+      ],
+      "ensemble_size": 3,
+      "methods": {
+        "cnn": {
+          "median": 0.0024697754997760057,
+          "p10": 0.0024435505911242217,
+          "p90": 0.002542401006212458,
+          "ratio_to_cnn": 1.0
+        },
+        "npe": {
+          "median": 0.010923998008365743,
+          "p10": 0.010835333506111055,
+          "p90": 0.011046781213372015,
+          "ratio_to_cnn": 4.423073275022967
+        },
+        "ensemble": {
+          "median": 0.02881482898374088,
+          "p10": 0.02865660670795478,
+          "p90": 0.029070890811271965,
+          "ratio_to_cnn": 11.666983086662823
+        }
+      },
+      "npe_parts_median": {
+        "representation": 0.001684696486336179,
+        "embedding": 0.0007091615116223693,
+        "density_on_grid": 0.00796334350889083,
+        "summaries": 0.0003474904951872304
+      }
+    },
+    "magnesium_wire": {
+      "data": "data/loo-magnesium_wire/test.h5",
+      "fov_shape": [
+        512,
+        512
+      ],
+      "ensemble_size": 3,
+      "methods": {
+        "cnn": {
+          "median": 0.002461216499796137,
+          "p10": 0.0024309518979862333,
+          "p90": 0.0025445561128435656,
+          "ratio_to_cnn": 1.0
+        },
+        "npe": {
+          "median": 0.010929871496045962,
+          "p10": 0.010828255803789943,
+          "p90": 0.011095988695160486,
+          "ratio_to_cnn": 4.440841143780437
+        },
+        "ensemble": {
+          "median": 0.0288212375016883,
+          "p10": 0.028667198491166345,
+          "p90": 0.029093844996532427,
+          "ratio_to_cnn": 11.710159388284438
+        }
+      },
+      "npe_parts_median": {
+        "representation": 0.001673149992711842,
+        "embedding": 0.0007110354927135631,
+        "density_on_grid": 0.007991376987774856,
+        "summaries": 0.000351663984474726
+      }
+    }
+  },
+  "load_average": [
+    0.80126953125,
+    1.09716796875,
+    2.1806640625
+  ],
+  "git_commit": "5eeecd1",
+  "torch_version": "2.14.1+cpu",
+  "sbi_version": "0.27.0",
+  "threads": 1,
+  "host": "cursor",
+  "cpu_count": 4
+}
