@@ -17,6 +17,11 @@
 * ``spectra``: the spectral check without training. Percentiles of the features of each
   measured hologram in the Stage 5 test split, in the fit sets without and with the fitted
   texture and in the leave-one-out test split (``results/objectmodel/spectra-<sample>.json``).
+* ``measured``: the leave-one-out CNNs ``results/learned/loo-<sample>`` on the measured
+  holograms, against [2] and the padding-4 search (``results/measured/cnn-loo/<sample>.json``).
+* ``compare``: leave-one-out CNN, Stage 5 CNN, [2] and padding 4 side by side, with the test
+  errors of the runs that made the estimates (``model`` of each estimate record) on both test
+  splits (``results/objectmodel/comparison.{csv,json}``).
 
 Usage::
 
@@ -24,12 +29,15 @@ Usage::
     python scripts/run_stage6_study.py --threads 2 fit --holograms DIR --samples spider_hair
     python scripts/run_stage6_study.py configs
     python scripts/run_stage6_study.py spectra --holograms DIR
+    python scripts/run_stage6_study.py --threads 1 measured --holograms DIR
+    python scripts/run_stage6_study.py compare
 
 ``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365.
 ``regions`` reads the phase files ``<sample>-phase.npy`` of the Stage 3 run
 ``results/measured/b1-p4`` (not tracked; ``scripts/run_stage3_experiments.py``). ``fit``
 continues a record of the same sample, setup and number of samples and writes it after every
-texture.
+texture. Datasets, training and predictions between ``configs`` and ``measured`` are in
+``docs/usage.md``.
 """
 
 from __future__ import annotations
@@ -48,6 +56,7 @@ import yaml
 
 from holofocus.baseline.runner import file_sha256
 from holofocus.dataset import DatasetConfig, HologramGenerator, read_labels
+from holofocus.learned import LearnedAutofocus, read_predictions
 from holofocus.learned.objectmodel import (
     BINNING,
     DETECTOR_FITS,
@@ -72,13 +81,22 @@ from holofocus.learned.sim2real import (
     FEATURE_NAMES,
     MEASURED_MODELS,
     RadialPower,
+    binning_phases,
     feature_distribution,
+    measured_estimate,
     percentile_rank,
     perturbed_config,
     spectral_features,
 )
 from holofocus.measured import MEASURED_SAMPLES, load_measured
-from run_stage5_study import environment, repo_relative, write_csv, write_json
+from run_stage5_study import (
+    baseline_estimates,
+    environment,
+    repo_relative,
+    validation_mae,
+    write_csv,
+    write_json,
+)
 
 REPO = Path(__file__).resolve().parents[1]
 RESULTS = REPO / "results"
@@ -500,6 +518,153 @@ def cmd_spectra(args) -> None:
         write_json(args.out / f"spectra-{name}.json", record)
 
 
+def cmd_measured(args) -> None:
+    for name in args.samples:
+        sample = MEASURED_SAMPLES[name]
+        run = args.learned / f"loo-{name}"
+        start = time.perf_counter()
+        hologram = load_measured(args.holograms, sample, BINNING)
+        load_seconds = time.perf_counter() - start
+        phases = binning_phases(load_measured(args.holograms, sample, 1).numpy(), BINNING)
+        references = {
+            "paper2_nm": sample.z01_nm,
+            "paper2_visual": sample.z01_visual,
+            "paper1_example": sample.z01_example,
+            **baseline_estimates(args.measured, name),
+        }
+        autofocus = LearnedAutofocus.load(run, args.device)
+        estimate = measured_estimate(autofocus, hologram, sample, references, args.repeats, phases)
+        record = {
+            "sample": name,
+            "label": sample.label,
+            "binning": BINNING,
+            "input_shape": list(hologram.shape),
+            "model": repo_relative(run),
+            "model_sha256": file_sha256(run / "model.pt"),
+            "config_name": autofocus.config.name,
+            "validation_mae_um": validation_mae(run),
+            "load_seconds": load_seconds,
+            **estimate,
+            **environment(),
+        }
+        write_json(args.out / f"{name}.json", record)
+        ref = estimate["references"]
+        print(
+            f"{name}: z01 = {estimate['z01_est'] * 1e3:.3f} mm, sigma "
+            f"{estimate['sigma'] * 1e6:.0f} um; minus [2] {ref['paper2_nm']['distance_um']:+.0f} um"
+            + (
+                f", minus b1-p4 {ref['baseline_b1_p4']['distance_um']:+.0f} um"
+                if "baseline_b1_p4" in ref
+                else ""
+            )
+            + f"; {1e3 * estimate['seconds_per_estimate']['median']:.1f} ms"
+        )
+
+
+def _summary(path: Path) -> dict | None:
+    return json.loads(path.read_text()) if path.exists() else None
+
+
+def _estimate_columns(prefix: str, estimate: dict) -> dict:
+    """Estimate, interval and distances to [2] and to the padding-4 search of one model."""
+    row = {
+        f"{prefix}_mm": estimate["z01_est"] * 1e3,
+        f"{prefix}_sigma_um": estimate["sigma"] * 1e6,
+        f"{prefix}_width68_um": estimate["intervals"]["68"]["width_um"],
+    }
+    for key, ref in (("paper2", "paper2_nm"), ("b1_p4", "baseline_b1_p4")):
+        r = estimate["references"].get(ref)
+        if r is None:
+            continue
+        row[f"{prefix}_minus_{key}_um"] = r["distance_um"]
+        row[f"{prefix}_z_{key}"] = r["z_score"]
+        row[f"{prefix}_{key}_in68"] = r["inside"]["68"]
+        row[f"{prefix}_{key}_in95"] = r["inside"]["95"]
+    return row
+
+
+def _test_columns(prefix: str, summary: dict | None) -> dict:
+    if summary is None:
+        return {}
+    err, interval = summary["error_um"], summary["interval"]
+    return {
+        f"{prefix}_mae_um": err["mae"],
+        f"{prefix}_bias_um": err["bias"],
+        f"{prefix}_within_100": err["within"]["100"],
+        f"{prefix}_coverage_68": interval["coverage"]["68"],
+        f"{prefix}_coverage_95": interval["coverage"]["95"],
+        f"{prefix}_sigma_median_um": interval["sigma_median"],
+    }
+
+
+def cmd_compare(args) -> None:
+    rows, details = [], {}
+    for name in args.samples:
+        sample = MEASURED_SAMPLES[name]
+        loo_path = args.cnn / f"{name}.json"
+        if not loo_path.exists():
+            print(f"{name}: no estimate of the leave-one-out CNN, skipped")
+            continue
+        loo = json.loads(loo_path.read_text())
+        stage5_path = args.measured / "cnn" / f"{name}.json"
+        stage5 = json.loads(stage5_path.read_text())
+        stage5_best = stage5["variants"][stage5["selected"]]
+        b1_p4 = json.loads((args.measured / "b1-p4" / f"{name}.json").read_text())["result"]
+        # the runs that made the estimates, so the test errors belong to the same models
+        loo_run, stage5_run = REPO / loo["model"], REPO / stage5_best["model"]
+        tests = {
+            "loo_test": loo_run / "test",
+            "loo_on_matched_test": loo_run / "matched-test",
+            "stage5_on_loo_test": args.matched_model / name,
+            "stage5_test": stage5_run / "test",
+        }
+        tests = {k: p for k, p in tests.items() if (p / "predictions.csv").exists()}
+        test_rows = read_predictions(tests["loo_test"] / "predictions.csv")
+        abs_test = np.array([abs(r["error_um"]) for r in test_rows])
+        row = {
+            "sample": name,
+            "paper2_nm_mm": sample.z01_nm * 1e3,
+            "b1_p4_mm": b1_p4["z01"] * 1e3,
+            "b1_p4_minus_paper2_um": (b1_p4["z01"] - sample.z01_nm) * 1e6,
+            "stage5_run": stage5["selected"],
+            **_estimate_columns("stage5", stage5_best),
+            **_estimate_columns("loo", loo),
+            "loo_ms": 1e3 * loo["seconds_per_estimate"]["median"],
+            "loo_threads": loo.get("threads"),
+            "loo_phase_std_um": loo["binning_phases"]["std_um"],
+        }
+        for key, path in tests.items():
+            row.update(_test_columns(key, _summary(path / "summary.json")))
+        row["disagreement_paper2_percentile"] = percentile_rank(
+            abs_test, abs(loo["references"]["paper2_nm"]["distance_um"])
+        )
+        if "baseline_b1_p4" in loo["references"]:
+            row["disagreement_b1_p4_percentile"] = percentile_rank(
+                abs_test, abs(loo["references"]["baseline_b1_p4"]["distance_um"])
+            )
+        rows.append(row)
+        details[name] = {
+            "row": row,
+            "loo": repo_relative(loo_path),
+            "stage5": repo_relative(stage5_path),
+            "loo_run": repo_relative(loo_run),
+            "stage5_run": repo_relative(stage5_run),
+            "tests": {k: repo_relative(p) for k, p in tests.items()},
+        }
+        print(
+            f"{name}: LOO CNN {row['loo_mm']:.3f} mm +- {row['loo_sigma_um']:.0f} um "
+            f"({row['loo_minus_paper2_um']:+.0f} um from [2], in 68 %: {row['loo_paper2_in68']}; "
+            f"{row.get('loo_minus_b1_p4_um', float('nan')):+.0f} um from b1-p4), Stage 5 "
+            f"{row['stage5_minus_paper2_um']:+.0f} um from [2]; LOO test MAE "
+            f"{row.get('loo_test_mae_um', float('nan')):.0f} um"
+        )
+    if not rows:
+        raise SystemExit("no sample with an estimate of the leave-one-out CNN")
+    fields = list(dict.fromkeys(k for r in rows for k in r))
+    write_csv(args.out / "comparison.csv", [{k: r.get(k, "") for k in fields} for r in rows])
+    write_json(args.out / "comparison.json", {"samples": details, **environment()})
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--threads", type=int, help="torch CPU threads")
@@ -533,6 +698,29 @@ def main() -> None:
     sp.add_argument("--data-root", type=Path, default=REPO / "data")
     sp.add_argument("--out", type=Path, default=RESULTS / "objectmodel")
     sp.set_defaults(func=cmd_spectra)
+
+    me = sub.add_parser("measured", help="the leave-one-out CNNs on the measured holograms")
+    me.add_argument("--holograms", type=Path, required=True)
+    me.add_argument("--samples", **samples)
+    me.add_argument("--repeats", type=int, default=20, help="timed estimates")
+    me.add_argument("--device", default="cpu", help="cpu, cuda or auto")
+    me.add_argument("--learned", type=Path, default=RESULTS / "learned")
+    me.add_argument("--measured", type=Path, default=RESULTS / "measured")
+    me.add_argument("--out", type=Path, default=RESULTS / "measured" / "cnn-loo")
+    me.set_defaults(func=cmd_measured)
+
+    co = sub.add_parser("compare", help="leave-one-out CNN, Stage 5 CNN, [2] and padding 4")
+    co.add_argument("--samples", **samples)
+    co.add_argument("--cnn", type=Path, default=RESULTS / "measured" / "cnn-loo")
+    co.add_argument("--measured", type=Path, default=RESULTS / "measured")
+    co.add_argument(
+        "--matched-model",
+        type=Path,
+        default=RESULTS / "objectmodel" / "matched-model",
+        help="predictions of the Stage 5 CNNs on the leave-one-out test splits",
+    )
+    co.add_argument("--out", type=Path, default=RESULTS / "objectmodel")
+    co.set_defaults(func=cmd_compare)
 
     args = parser.parse_args()
     if args.threads:
