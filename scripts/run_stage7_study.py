@@ -36,7 +36,8 @@ Usage (the commands of Laborbuch 07)::
 
 ``DIR`` is ``Examples/data/holograms`` of the Zenodo record 10.5281/zenodo.8349365. Other data
 (the object model of Stage 6, runs of docs/maxwell-gpu.md): ``--npe``, ``--cnn`` and the split
-options of each command. Predictions that still match model and data are reused.
+options of each command; the outputs go below ``--npe`` unless ``--out`` is given. Predictions
+that still match model and data are reused.
 """
 
 from __future__ import annotations
@@ -605,6 +606,11 @@ def cmd_examples(args) -> None:
 # --- perturb -------------------------------------------------------------------------------
 
 
+def _run_info(directory: Path) -> dict:
+    path = directory / "run.yaml"
+    return yaml.safe_load(path.read_text()) if path.exists() else {}
+
+
 def set_is_current(path: Path, config: DatasetConfig, n: int) -> bool:
     return (
         path.exists()
@@ -666,6 +672,7 @@ def cmd_perturb(args) -> None:
         cnn_reference = cnn_table(
             [r for r in read_predictions(cnn_reference_path) if r["index"] < n]
         )
+        cnn_model = _run_info(cnn_reference_path.parent).get("model_sha256")
         record = {
             "sample": name,
             "model": repo_relative(model),
@@ -699,12 +706,9 @@ def cmd_perturb(args) -> None:
             }
             rows.append(robustness_row(name, pert, "npe", entry[MAIN], entry[MAIN]["widening"]))
             cnn_out = args.cnn_sim2real / name / pert
-            cnn_info = (
-                yaml.safe_load((cnn_out / "run.yaml").read_text())
-                if (cnn_out / "run.yaml").exists()
-                else {}
-            )
-            if (cnn_info.get("dataset") or {}).get("sha256") == entry["data_sha256"]:
+            cnn_info = _run_info(cnn_out)
+            same_data = (cnn_info.get("dataset") or {}).get("sha256") == entry["data_sha256"]
+            if same_data and cnn_info.get("model_sha256") == cnn_model:
                 cnn_rows = [
                     r for r in read_predictions(cnn_out / "predictions.csv") if r["index"] < n
                 ]
@@ -718,7 +722,10 @@ def cmd_perturb(args) -> None:
                 )
             else:
                 entry["cnn"] = None
-                print(f"{name} {pert}: no CNN predictions on this set in {repo_relative(cnn_out)}")
+                print(
+                    f"{name} {pert}: no predictions of the reference CNN on this set in "
+                    f"{repo_relative(cnn_out)}"
+                )
             record["perturbations"][pert] = entry
             parts = []
             for method in (MAIN, "cnn"):
@@ -872,23 +879,27 @@ def main() -> None:
     splits(sb, "calibration")
     sb.set_defaults(func=cmd_sbc)
 
+    def output(p, default: str):
+        p.add_argument("--out", type=Path, help=f"default: <npe>/{default}")
+        p.set_defaults(out_default=default)
+
     co = sub.add_parser("compare", help="NPE against the CNN (and the baseline on its samples)")
     co.add_argument("--baseline", type=Path, default=BASELINE_COMPARISON, help="Stage 4 comparison")
-    co.add_argument("--out", type=Path, default=RESULTS / "npe" / "comparison")
+    output(co, "comparison")
     splits(co, "test", "calibration")
     co.set_defaults(func=cmd_compare)
 
     ti = sub.add_parser("timing", help="time per estimate, CNN against NPE")
     ti.add_argument("--samples", type=int, default=50, help="test holograms")
     ti.add_argument("--repeats", type=int, default=4)
-    ti.add_argument("--out", type=Path, default=RESULTS / "npe" / "timing.json")
+    output(ti, "timing.json")
     splits(ti, "test")
     ti.set_defaults(func=cmd_timing)
 
     ex = sub.add_parser("examples", help="posterior densities of a few test samples")
     ex.add_argument("--indices", type=int, nargs="+", default=[0, 1, 2, 3, 4, 5])
     ex.add_argument("--worst", type=int, default=2, help="plus the N largest NPE errors")
-    ex.add_argument("--out", type=Path, default=RESULTS / "npe" / "comparison" / "posteriors.json")
+    output(ex, "comparison/posteriors.json")
     splits(ex, "test")
     ex.set_defaults(func=cmd_examples)
 
@@ -904,7 +915,7 @@ def main() -> None:
     pe.add_argument(
         "--cnn-sim2real", type=Path, default=RESULTS / "sim2real", help="CNN on the sets"
     )
-    pe.add_argument("--out", type=Path, default=RESULTS / "npe" / "sim2real")
+    output(pe, "sim2real")
     pe.set_defaults(func=cmd_perturb)
 
     me = sub.add_parser("measured", help="matched NPEs on the measured holograms")
@@ -912,10 +923,12 @@ def main() -> None:
     me.add_argument("--samples", **samples)
     me.add_argument("--repeats", type=int, default=20, help="timed estimates")
     me.add_argument("--measured", type=Path, default=RESULTS / "measured", help="Stage 3/5 records")
-    me.add_argument("--out", type=Path, default=RESULTS / "npe" / "measured")
+    output(me, "measured")
     me.set_defaults(func=cmd_measured)
 
     args = parser.parse_args()
+    if getattr(args, "out_default", None) and args.out is None:
+        args.out = args.npe / args.out_default
     if args.threads:
         torch.set_num_threads(args.threads)
     args.func(args)
