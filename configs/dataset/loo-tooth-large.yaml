@@ -1,0 +1,44 @@
+# Large leave-one-out training data for the measured tooth (Stage 6).
+#
+# loo-tooth.yaml with 50000 training samples and another seed, for GPU runs (docs/maxwell-
+# gpu.md).
+name: loo-tooth-large
+seed: 20261072
+geometry:
+  energy_kev: 17.0
+  z02: 19.652
+  z01_guess: 0.0829
+  z01_guess_range: null
+  detector_pixel_size: 6.5e-06
+  detector_shape: [1888, 1888]
+  binning: 4
+sampling:
+  dz01_range: [-0.005, 0.005]
+simulation:
+  padding_margin: 1.0
+  oversample: 2
+  a0_range: [1.0, 1.0]
+  psf_sigma_range: [1.2, 2.01]
+  device: auto
+  precision: single
+phantoms:
+  types: {fiber: 1.0}
+  delta_beta: 65.0
+  phase_shift_range: [0.5, 2.0]
+  size_range: [0.15, 0.6]
+  margin: 0.05
+  supersample: 4
+  fiber_diameter_range: [0.04, 1.0]
+  phase_per_pixel_range: [0.0107, 0.0957]
+  texture_rms_range: [0.005, 1.07]
+  background_texture_rms_range: [0.005, 1.07]
+  texture_slope_range: [1.25, 3.5]
+  texture_cutoff: 0.01
+noise:
+  model: poisson_gaussian
+  photons_range: [15500.0, 136000.0]
+  read_noise: 2.0
+  flat_field_range: [0.0125, 0.052]
+  flat_field_cutoff: 0.185
+storage: {store_phase: false, store_clean: false, compression: gzip, compression_level: 4}
+splits: {train: 50000}
