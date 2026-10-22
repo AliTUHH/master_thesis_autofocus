@@ -6,6 +6,7 @@ from scipy import special, stats
 
 from holofocus.learned.posterior import (
     NPE_PREDICTION_FIELDS,
+    GaussianMixture,
     GridPosterior,
     calibration_summary,
     coverage_curve,
@@ -14,6 +15,7 @@ from holofocus.learned.posterior import (
     kolmogorov_sf,
     ks_uniform,
     log_density_um,
+    mixture_summaries,
     pit_histogram,
     posterior_metrics,
     posterior_summaries,
@@ -207,3 +209,50 @@ def test_posterior_metrics_and_prediction_rows():
         "upper_95",
         "hpd_width_95",
     }
+
+
+def test_gaussian_mixture_of_one_member_is_the_gaussian():
+    means, sigmas = np.array([[0.3], [-1.2]]), np.array([[0.5], [2.0]])
+    mix = GaussianMixture(means, sigmas)
+    truth = np.array([0.8, 0.4])
+    errors, s = means[:, 0] - truth, sigmas[:, 0]
+    np.testing.assert_allclose(mix.median(), means[:, 0], atol=1e-12)
+    np.testing.assert_allclose(mix.std(), s)
+    for level in (0.68, 0.95):
+        lower, upper = mix.interval(level)
+        half = stats.norm.ppf(0.5 * (1 + level)) * s
+        np.testing.assert_allclose(lower, means[:, 0] - half, atol=1e-10)
+        np.testing.assert_allclose(upper, means[:, 0] + half, atol=1e-10)
+        np.testing.assert_allclose(mix.hpd_width(level), 2 * half, rtol=2e-3)
+    np.testing.assert_allclose(mix.pit(truth), gaussian_pit(errors, s), atol=1e-12)
+    np.testing.assert_allclose(mix.hpd_level(truth), gaussian_hpd_level(errors, s), atol=2e-3)
+    np.testing.assert_allclose(mix.log_density(truth), stats.norm.logpdf(truth, means[:, 0], s))
+
+
+def test_gaussian_mixture_of_two_members():
+    means, sigmas = np.array([[-1.0, 1.0], [0.0, 0.5]]), np.array([[0.3, 0.3], [1.0, 0.2]])
+    mix = GaussianMixture(means, sigmas)
+    np.testing.assert_allclose(mix.median()[0], 0.0, atol=1e-12)
+    np.testing.assert_allclose(mix.std()[0], math.sqrt(1.0 + 0.09))
+    for q in (0.025, 0.16, 0.5, 0.84, 0.975):
+        np.testing.assert_allclose(mix.cdf(mix.quantile(q)), q, atol=1e-12)
+    x = np.array([0.0, 0.5])
+    expected = 0.5 * (stats.norm.pdf(x[:, None], means, sigmas)).sum(axis=1)
+    np.testing.assert_allclose(mix.density(x), expected)
+    # between two separated peaks the density is low: nearly all mass lies above it
+    assert mix.hpd_level(np.array([0.0, 0.5]))[0] > 0.99
+    assert mix.hpd_width(0.95)[0] < mix.interval(0.95)[1][0] - mix.interval(0.95)[0][0]
+    on_grid = mix.on_grid(np.linspace(-2.0, 2.0, 2001))
+    np.testing.assert_allclose(
+        on_grid.prior_mass, mix.cdf(np.full(2, 2.0)) - mix.cdf(np.full(2, -2.0))
+    )
+    np.testing.assert_allclose(on_grid.median(), mix.median(), atol=5e-3)
+    summary = mixture_summaries(mix)
+    assert set(summary) >= {"dz01", "dz01_mean", "sigma", "lower_68", "upper_95", "hpd_width_68"}
+    same = GaussianMixture(np.array([[0.2, 0.2, 0.2]]), np.array([[0.4, 0.4, 0.4]]))
+    np.testing.assert_allclose(same.interval(0.68)[1], 0.2 + stats.norm.ppf(0.84) * 0.4)
+    for bad_means, bad_sigmas in (([[0.0, 1.0]], [[1.0]]), ([[0.0]], [[0.0]])):
+        with pytest.raises(ValueError):
+            GaussianMixture(np.array(bad_means), np.array(bad_sigmas))
+    with pytest.raises(ValueError):
+        mix.quantile(1.0)

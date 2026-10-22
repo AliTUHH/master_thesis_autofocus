@@ -5,7 +5,10 @@
   ``<sample>.json`` and the phase at the estimate (``<sample>-phase.npy``, not tracked). With
   ``--warm-start DIR`` the search starts from ``z01_est +- half width`` of ``DIR/<sample>.json``
   (e.g. the learned estimates of ``scripts/run_stage5_study.py measured``) instead of the ends
-  of ``Omega_z``.
+  of ``Omega_z``. With ``--box DIR`` the central interval ``intervals[<level>]`` of
+  ``DIR/<sample>.json`` (cut to ``Omega_z``) replaces ``Omega_z``, and the search starts from
+  its ends, or with ``--warm-start`` from the estimate moved inside it (Stage 8,
+  ``scripts/run_stage8_study.py sources``).
 * ``curves``: focus curves with one ASRM reconstruction per sampling point ([2] Fig. 8), for
   samples of a synthetic split (``synthetic-<index>.json``, with the phase error against the
   ground truth) or for measured holograms centred on the visually determined focus of [2]
@@ -21,6 +24,9 @@ All commands skip outputs that exist already. Usage::
         --samples spider_hair tooth --out results/measured/paper-padding
     python scripts/run_stage3_experiments.py --threads 3 measured --holograms DIR --binning 1 \\
         --padding 4 --warm-start results/measured/cnn --out results/measured/warm-b1-p4
+    python scripts/run_stage3_experiments.py --threads 3 measured --holograms DIR --binning 1 \\
+        --padding 4 --box results/measured/npe-loo-ensemble --revisit-tolerance 1e-9 \\
+        --out results/measured/box95-npe-loo-ensemble-b1-p4
     python scripts/run_stage3_experiments.py curves --data data/cpu-4x/test.h5 --indices 1 5 \\
         --out results/focus-curves
     python scripts/run_stage3_experiments.py curves --holograms DIR --samples spider_hair \\
@@ -153,6 +159,23 @@ def cmd_measured(args) -> None:
         print(
             f"{name}: {tuple(hologram.shape)} px, arrays {grids}, Fr {geometry.fresnel_number:.4e}"
         )
+        box, bounds = None, None
+        if args.box is not None:
+            source = args.box / f"{name}.json"
+            interval = json.loads(source.read_text())["intervals"][args.box_level]
+            lower, upper = sample.simplex
+            bounds = (max(float(interval["lower"]), lower), min(float(interval["upper"]), upper))
+            box = {
+                "source": str(source),
+                "sha256": file_sha256(source),
+                "level": args.box_level,
+                "interval": [float(interval["lower"]), float(interval["upper"])],
+                "bounds": list(bounds),
+            }
+            print(
+                f"  box: {args.box_level} % interval {bounds[0] * 1e3:.3f} / "
+                f"{bounds[1] * 1e3:.3f} mm"
+            )
         warm, initial = None, None
         if args.warm_start is not None:
             source = args.warm_start / f"{name}.json"
@@ -160,7 +183,7 @@ def cmd_measured(args) -> None:
             warm = WarmStart(
                 str(source), file_sha256(source), args.half_width, 0.0, {0: estimate}, {}
             )
-            initial = warm.simplex(0, *sample.simplex)
+            initial = warm.simplex(0, *(sample.simplex if bounds is None else bounds))
             print(
                 f"  warm start from {estimate * 1e3:.3f} mm: "
                 f"simplex {initial[0] * 1e3:.3f} / {initial[1] * 1e3:.3f} mm"
@@ -171,6 +194,8 @@ def cmd_measured(args) -> None:
             settings,
             confidence=sample.confidence,
             initial_simplex=initial,
+            bounds=bounds,
+            revisit_tolerance=args.revisit_tolerance,
             log=lambda msg: print(f"  {msg}", flush=True),
         )
         np.save(args.out / f"{name}-phase.npy", result.reconstruction.obj.real.numpy())
@@ -206,6 +231,10 @@ def cmd_measured(args) -> None:
                 "z01_est": warm.centers[0],
                 "initial_simplex": list(initial),
             }
+        if box is not None:
+            record["box"] = box
+        if args.revisit_tolerance:
+            record["revisit_tolerance"] = args.revisit_tolerance
         write_json(target, record)
         print(
             f"{name}: z01 = {result.z01 * 1e3:.3f} mm ([2]: {sample.z01_nm * 1e3:.1f} mm), "
@@ -417,6 +446,16 @@ def main() -> None:
     )
     measured.add_argument(
         "--half-width", type=float, default=5e-4, help="half width of the warm start (metres)"
+    )
+    measured.add_argument(
+        "--box", type=Path, help="directory with <sample>.json holding intervals (metres)"
+    )
+    measured.add_argument("--box-level", default="95", help="key of the interval in --box")
+    measured.add_argument(
+        "--revisit-tolerance",
+        type=float,
+        default=0.0,
+        help="probing points closer than this to an earlier one count as repeated (metres)",
     )
     measured.add_argument("--out", type=Path, required=True)
     measured.set_defaults(func=cmd_measured)

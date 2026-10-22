@@ -140,6 +140,21 @@ jobs:
           python scripts/run_stage7_loo_study.py compare --out ${{ runner.temp }}/npe-loo-compare
           python scripts/make_stage7_loo_figures.py --quick --out ${{ runner.temp }}/figures
 
+      - name: Stage 8 (misspecification and ensembles on the Stage 7 smoke runs; ensembles, warm start and figures from the committed results)
+        run: |
+          root=${{ runner.temp }}/npe-loo-ci
+          ln -s ${{ runner.temp }}/demo-dataset/train.h5 $root/data/loo-cactus_needle/train.h5
+          study="python scripts/run_stage8_study.py --threads 2"
+          pick="--seeds 0 1 --samples cactus_needle --npe $root/npe --cnn $root/learned"
+          pick="$pick --cnn-seeds $root/none --sources $root/none"
+          $study misspec $pick --data $root/data --resamples 50 --out $root/misspecification
+          $study ensembles $pick --out $root/ensembles
+          python scripts/make_stage8_figures.py --quick --misspec $root/misspecification \
+            --ensembles $root/ensembles --measured $root/none --out ${{ runner.temp }}/figures-stage8-ci
+          $study ensembles --out ${{ runner.temp }}/ensembles-ci
+          $study warmstart --out ${{ runner.temp }}/warmstart-ci
+          python scripts/make_stage8_figures.py --quick --out ${{ runner.temp }}/figures
+
       - name: Upload demo dataset
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4

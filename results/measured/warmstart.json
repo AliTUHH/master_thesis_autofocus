@@ -1,0 +1,1791 @@
+{
+  "xatol_um": 100.0,
+  "same_point_m": 1e-09,
+  "searches": {
+    "cold": {
+      "folder": "b1-p4",
+      "what": "Stage 3: Omega_z = guess +- 5 mm, simplex at its ends"
+    },
+    "warm-stage5": {
+      "folder": "warm-b1-p4",
+      "what": "Stage 5: from the matched CNN of Stage 5, simplex +- 0.5 mm"
+    },
+    "warm-cnn": {
+      "folder": "warm-cnn-loo-ensemble-b1-p4",
+      "what": "from the CNN ensemble, simplex +- 0.5 mm"
+    },
+    "warm-npe": {
+      "folder": "warm-npe-loo-ensemble-b1-p4",
+      "what": "from the NPE ensemble, simplex +- 0.5 mm"
+    },
+    "box95-cnn": {
+      "folder": "box95-cnn-loo-ensemble-b1-p4",
+      "what": "in the 95 % interval of the CNN ensemble"
+    },
+    "box95-npe": {
+      "folder": "box95-npe-loo-ensemble-b1-p4",
+      "what": "in the 95 % interval of the NPE ensemble"
+    }
+  },
+  "samples": {
+    "spider_hair": {
+      "cold": {
+        "record": "results/measured/b1-p4/spider_hair.json",
+        "sha256": "c839df5f46eeb798b58961b5ab40e0c6b55c965cf2e4b1bcb2d82eb9db631f0c",
+        "git_commit": "1dbdba8",
+        "threads": 3,
+        "z01": 0.07948750000000002,
+        "mfe": 0.0001382326299790293,
+        "converged": true,
+        "nm_iterations": 8,
+        "n_reconstructions": 13,
+        "n_evaluations": 16,
+        "distinct_points": 13,
+        "duplicates": 0,
+        "parabola_reconstructions": 13,
+        "parabola_same_points": false,
+        "seconds": 2717.1692843220007,
+        "seconds_per_reconstruction": 209.01097222792305,
+        "bounds": [
+          0.0748,
+          0.08480000000000001
+        ],
+        "initial_simplex": null,
+        "evaluated_range": [
+          0.0748,
+          0.08480000000000001
+        ],
+        "revisit_tolerance": 0.0,
+        "minus_paper2_um": 87.50000000001812,
+        "mfe_relative_to_best": 0.0
+      },
+      "warm-stage5": {
+        "record": "results/measured/warm-b1-p4/spider_hair.json",
+        "sha256": "3609535fa1ad4a7ffb4f9956c65d1798c7cdf8c0934cc61b07f3c163329a6199",
+        "git_commit": "3f7f87e",
+        "threads": 3,
+        "z01": 0.07950524976961316,
+        "mfe": 0.0001382376649416983,
+        "converged": true,
+        "nm_iterations": 5,
+        "n_reconstructions": 8,
+        "n_evaluations": 10,
+        "distinct_points": 8,
+        "duplicates": 0,
+        "parabola_reconstructions": 9,
+        "parabola_same_points": false,
+        "seconds": 1659.5636737970053,
+        "seconds_per_reconstruction": 207.44024735712082,
+        "bounds": [
+          0.0748,
+          0.08480000000000001
+        ],
+        "initial_simplex": [
+          0.07931774976961316,
+          0.08031774976961316
+        ],
+        "evaluated_range": [
+          0.07831774976961316,
+          0.08031774976961316
+        ],
+        "revisit_tolerance": 0.0,
+        "minus_paper2_um": 105.24976961316656,
+        "start": {
+          "source": "results/measured/cnn/spider_hair.json",
+          "sha256": "42eafc2593103d4ed30cb7ddfc3ae5e2dd159d740925a371e207e82fd0101018",
+          "z01_est": 0.07981774976961316
+        },
+        "minus_cold_um": 17.749769613148448,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 3.642383617941114e-05,
+        "reconstructions_to_cold": 0.6153846153846154,
+        "seconds_to_cold": 0.6107693338698647,
+        "seconds_at_cold_rate": 1672.104174967385,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": 330.2497696131418,
+        "mfe_relative_to_best": 3.642383617941114e-05
+      },
+      "warm-cnn": {
+        "record": "results/measured/warm-cnn-loo-ensemble-b1-p4/spider_hair.json",
+        "sha256": "9160dc7c083ae18ae656afa309e35e2c13a21edba48f7ffe6ad6f43d66712007",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.07949472758711738,
+        "mfe": 0.00013823321205563843,
+        "converged": true,
+        "nm_iterations": 5,
+        "n_reconstructions": 9,
+        "n_evaluations": 10,
+        "distinct_points": 9,
+        "duplicates": 0,
+        "parabola_reconstructions": 9,
+        "parabola_same_points": false,
+        "seconds": 1920.353369045013,
+        "seconds_per_reconstruction": 213.36631923222902,
+        "bounds": [
+          0.0748,
+          0.08480000000000001
+        ],
+        "initial_simplex": [
+          0.07874472758711738,
+          0.07974472758711738
+        ],
+        "evaluated_range": [
+          0.07874472758711738,
+          0.08074472758711738
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 94.72758711738527,
+        "start": {
+          "source": "results/measured/cnn-loo-ensemble/spider_hair.json",
+          "sha256": "b497573ea1aaf5cf5d58ad828619757eb73184625b5612e5d1e22dbb37942b01",
+          "z01_est": 0.07924472758711738
+        },
+        "minus_cold_um": 7.227587117367151,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 4.210848113306298e-06,
+        "reconstructions_to_cold": 0.6923076923076923,
+        "seconds_to_cold": 0.7067477834838647,
+        "seconds_at_cold_rate": 1881.1171968383082,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": -242.77241288263306,
+        "inside_bounds_of": {
+          "search": "box95-cnn",
+          "bounds": [
+            0.07782552683604936,
+            0.08077200580621623
+          ],
+          "inside": true
+        },
+        "mfe_relative_to_best": 4.210848113306298e-06
+      },
+      "warm-npe": {
+        "record": "results/measured/warm-npe-loo-ensemble-b1-p4/spider_hair.json",
+        "sha256": "9b11a6dbd4d66e8650ef12bcc27bb6c74941431e295ef2a6d78ceb5d383193d0",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.07949142930333503,
+        "mfe": 0.00013823277549818158,
+        "converged": true,
+        "nm_iterations": 6,
+        "n_reconstructions": 10,
+        "n_evaluations": 12,
+        "distinct_points": 10,
+        "duplicates": 0,
+        "parabola_reconstructions": 8,
+        "parabola_same_points": false,
+        "seconds": 2162.323553082999,
+        "seconds_per_reconstruction": 216.22760564880156,
+        "bounds": [
+          0.0748,
+          0.08480000000000001
+        ],
+        "initial_simplex": [
+          0.07892892930333502,
+          0.07992892930333502
+        ],
+        "evaluated_range": [
+          0.07892892930333502,
+          0.08092892930333502
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 91.42930333502774,
+        "start": {
+          "source": "results/measured/npe-loo-ensemble/spider_hair.json",
+          "sha256": "6fe33af92a9f9d5d6c022830b38ed712070e98d4e0df8f9940f130686ad58961",
+          "z01_est": 0.07942892930333502
+        },
+        "minus_cold_um": 3.9293033350096263,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 1.0527120282155522e-06,
+        "reconstructions_to_cold": 0.7692307692307693,
+        "seconds_to_cold": 0.7958000870831097,
+        "seconds_at_cold_rate": 2090.1302187092315,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": -58.57069666499737,
+        "inside_bounds_of": {
+          "search": "box95-npe",
+          "bounds": [
+            0.07878052166634594,
+            0.08018399060990855
+          ],
+          "inside": false
+        },
+        "mfe_relative_to_best": 1.0527120282155522e-06
+      },
+      "box95-cnn": {
+        "record": "results/measured/box95-cnn-loo-ensemble-b1-p4/spider_hair.json",
+        "sha256": "01eda8f38c4683797175b932cc27664380394207ed2fa0799ec4f6e4130dbb23",
+        "git_commit": "901c04e",
+        "threads": 1,
+        "z01": 0.07948292125676823,
+        "mfe": 0.00013823351764585823,
+        "converged": true,
+        "nm_iterations": 6,
+        "n_reconstructions": 8,
+        "n_evaluations": 12,
+        "distinct_points": 8,
+        "duplicates": 0,
+        "parabola_reconstructions": 9,
+        "parabola_same_points": false,
+        "seconds": 4484.341570961988,
+        "seconds_per_reconstruction": 560.5276396597474,
+        "bounds": [
+          0.07782552683604936,
+          0.08077200580621623
+        ],
+        "initial_simplex": [
+          0.07782552683604936,
+          0.08077200580621623
+        ],
+        "evaluated_range": [
+          0.07782552683604936,
+          0.08077200580621623
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 82.92125676823136,
+        "box": {
+          "source": "results/measured/cnn-loo-ensemble/spider_hair.json",
+          "sha256": "b497573ea1aaf5cf5d58ad828619757eb73184625b5612e5d1e22dbb37942b01",
+          "level": "95",
+          "interval": [
+            0.07782552683604936,
+            0.08077200580621623
+          ],
+          "bounds": [
+            0.07782552683604936,
+            0.08077200580621623
+          ]
+        },
+        "edge_distance_um": 1289.0845494479968,
+        "near_edge": false,
+        "minus_cold_um": -4.578743231786753,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 6.421543372603367e-06,
+        "reconstructions_to_cold": 0.6153846153846154,
+        "seconds_to_cold": 1.6503725391113933,
+        "seconds_at_cold_rate": 1672.104174967385,
+        "cold_inside_bounds": true,
+        "mfe_relative_to_best": 6.421543372603367e-06
+      },
+      "box95-npe": {
+        "record": "results/measured/box95-npe-loo-ensemble-b1-p4/spider_hair.json",
+        "sha256": "e0a51185a7b3800c3aab4a1b8f0e98f7df845a0847f558020c9b5c7e86bd676b",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.07948225613812725,
+        "mfe": 0.00013823338667862117,
+        "converged": true,
+        "nm_iterations": 5,
+        "n_reconstructions": 8,
+        "n_evaluations": 10,
+        "distinct_points": 8,
+        "duplicates": 0,
+        "parabola_reconstructions": 8,
+        "parabola_same_points": false,
+        "seconds": 1701.8364872029924,
+        "seconds_per_reconstruction": 212.7242888935034,
+        "bounds": [
+          0.07878052166634594,
+          0.08018399060990855
+        ],
+        "initial_simplex": [
+          0.07878052166634594,
+          0.08018399060990855
+        ],
+        "evaluated_range": [
+          0.07878052166634594,
+          0.08018399060990855
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 82.25613812724852,
+        "box": {
+          "source": "results/measured/npe-loo-ensemble/spider_hair.json",
+          "sha256": "6fe33af92a9f9d5d6c022830b38ed712070e98d4e0df8f9940f130686ad58961",
+          "level": "95",
+          "interval": [
+            0.07878052166634594,
+            0.08018399060990855
+          ],
+          "bounds": [
+            0.07878052166634594,
+            0.08018399060990855
+          ]
+        },
+        "edge_distance_um": 701.734471781304,
+        "near_edge": false,
+        "minus_cold_um": -5.243861872769595,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 5.4741025472537785e-06,
+        "reconstructions_to_cold": 0.6153846153846154,
+        "seconds_to_cold": 0.6263270003170383,
+        "seconds_at_cold_rate": 1672.104174967385,
+        "cold_inside_bounds": true,
+        "mfe_relative_to_best": 5.4741025472537785e-06
+      }
+    },
+    "tooth": {
+      "cold": {
+        "record": "results/measured/b1-p4/tooth.json",
+        "sha256": "f95a55c2e49ae43d75eddf9d40c4ae6d7f0a5a46a5f13d43a375bc585f914873",
+        "git_commit": "a5e3ec1",
+        "threads": 3,
+        "z01": 0.08063437500000001,
+        "mfe": 0.00031603986280970275,
+        "converged": true,
+        "nm_iterations": 9,
+        "n_reconstructions": 11,
+        "n_evaluations": 18,
+        "distinct_points": 11,
+        "duplicates": 0,
+        "parabola_reconstructions": 12,
+        "parabola_same_points": false,
+        "seconds": 2170.128857969001,
+        "seconds_per_reconstruction": 197.2812258064534,
+        "bounds": [
+          0.0779,
+          0.0879
+        ],
+        "initial_simplex": null,
+        "evaluated_range": [
+          0.07790000000000001,
+          0.0879
+        ],
+        "revisit_tolerance": 0.0,
+        "minus_paper2_um": -265.6249999999916,
+        "mfe_relative_to_best": 4.0889237777674836e-05
+      },
+      "warm-stage5": {
+        "record": "results/measured/warm-b1-p4/tooth.json",
+        "sha256": "db0377d85bef8cc0fa0285a9b32fc6c80651aaf151fc88a2c3d14c1352e79513",
+        "git_commit": "3f7f87e",
+        "threads": 3,
+        "z01": 0.08064330833554269,
+        "mfe": 0.00031603124807588756,
+        "converged": true,
+        "nm_iterations": 5,
+        "n_reconstructions": 10,
+        "n_evaluations": 10,
+        "distinct_points": 9,
+        "duplicates": 1,
+        "parabola_reconstructions": 10,
+        "parabola_same_points": false,
+        "seconds": 2194.2712055650045,
+        "seconds_per_reconstruction": 219.42446978509687,
+        "bounds": [
+          0.0779,
+          0.0879
+        ],
+        "initial_simplex": [
+          0.08114330833554267,
+          0.08214330833554268
+        ],
+        "evaluated_range": [
+          0.08014330833554267,
+          0.08214330833554268
+        ],
+        "revisit_tolerance": 0.0,
+        "minus_paper2_um": -256.69166445731196,
+        "start": {
+          "source": "results/measured/cnn/tooth.json",
+          "sha256": "57c000e1eea24903774f94a6670a40a18e49b2065473defa5e858f063b9c0a7c",
+          "z01_est": 0.08164330833554267
+        },
+        "minus_cold_um": 8.933335542679611,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": -2.72583772774615e-05,
+        "reconstructions_to_cold": 0.9090909090909091,
+        "seconds_to_cold": 1.0111248451940307,
+        "seconds_at_cold_rate": 1972.8444163354552,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": 1008.9333355426667,
+        "mfe_relative_to_best": 1.3629745925891612e-05
+      },
+      "warm-cnn": {
+        "record": "results/measured/warm-cnn-loo-ensemble-b1-p4/tooth.json",
+        "sha256": "dfd3737974f7250c1c2a23cffe684cbeaba4c69243e985994a4646cd545b6d59",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.0806632816804283,
+        "mfe": 0.0003160274645779282,
+        "converged": true,
+        "nm_iterations": 5,
+        "n_reconstructions": 9,
+        "n_evaluations": 10,
+        "distinct_points": 9,
+        "duplicates": 0,
+        "parabola_reconstructions": 9,
+        "parabola_same_points": false,
+        "seconds": 1747.7925826410064,
+        "seconds_per_reconstruction": 194.19765837167506,
+        "bounds": [
+          0.0779,
+          0.0879
+        ],
+        "initial_simplex": [
+          0.0801632816804283,
+          0.0811632816804283
+        ],
+        "evaluated_range": [
+          0.0801632816804283,
+          0.0821632816804283
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": -236.7183195716993,
+        "start": {
+          "source": "results/measured/cnn-loo-ensemble/tooth.json",
+          "sha256": "dca10526c62c427ed815c2ba3a528a7bdd46f3ec97a456e943280b53590ef827",
+          "z01_est": 0.0806632816804283
+        },
+        "minus_cold_um": 28.906680428292255,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": -3.92299618926506e-05,
+        "reconstructions_to_cold": 0.8181818181818182,
+        "seconds_to_cold": 0.8053865447772285,
+        "seconds_at_cold_rate": 1775.5599747019098,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": 28.906680428292255,
+        "inside_bounds_of": {
+          "search": "box95-cnn",
+          "bounds": [
+            0.0788336998988999,
+            0.0824387529140265
+          ],
+          "inside": true
+        },
+        "mfe_relative_to_best": 1.657671801824634e-06
+      },
+      "warm-npe": {
+        "record": "results/measured/warm-npe-loo-ensemble-b1-p4/tooth.json",
+        "sha256": "9a86e7ed290c3e0de9615bc85014acbf4b55d0ac3125dac4597b7afc05b12155",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.08063359233211943,
+        "mfe": 0.0003160417836625129,
+        "converged": true,
+        "nm_iterations": 5,
+        "n_reconstructions": 9,
+        "n_evaluations": 10,
+        "distinct_points": 9,
+        "duplicates": 0,
+        "parabola_reconstructions": 9,
+        "parabola_same_points": false,
+        "seconds": 1960.5811237159942,
+        "seconds_per_reconstruction": 217.84076297633712,
+        "bounds": [
+          0.0779,
+          0.0879
+        ],
+        "initial_simplex": [
+          0.08075859233211943,
+          0.08175859233211943
+        ],
+        "evaluated_range": [
+          0.07975859233211943,
+          0.08175859233211943
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": -266.4076678805666,
+        "start": {
+          "source": "results/measured/npe-loo-ensemble/tooth.json",
+          "sha256": "6d7c209740e28142848deb482ed72fc7994cefcf1b35a5a54f16e7a1c24e1ade",
+          "z01_est": 0.08125859233211943
+        },
+        "minus_cold_um": -0.7826678805750165,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 6.0778814199302644e-06,
+        "reconstructions_to_cold": 0.8181818181818182,
+        "seconds_to_cold": 0.9034399577317634,
+        "seconds_at_cold_rate": 1775.5599747019098,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": 624.2173321194256,
+        "inside_bounds_of": {
+          "search": "box95-npe",
+          "bounds": [
+            0.0785949184481544,
+            0.08263431519887915
+          ],
+          "inside": true
+        },
+        "mfe_relative_to_best": 4.696736771747645e-05
+      },
+      "box95-cnn": {
+        "record": "results/measured/box95-cnn-loo-ensemble-b1-p4/tooth.json",
+        "sha256": "31c0cf9016a80b5357db7bb505bdda4546847066383d21f75b76eb73e0958e73",
+        "git_commit": "901c04e",
+        "threads": 1,
+        "z01": 0.0806362264064632,
+        "mfe": 0.00031602694070897996,
+        "converged": true,
+        "nm_iterations": 7,
+        "n_reconstructions": 12,
+        "n_evaluations": 14,
+        "distinct_points": 12,
+        "duplicates": 0,
+        "parabola_reconstructions": 12,
+        "parabola_same_points": false,
+        "seconds": 7082.662174285011,
+        "seconds_per_reconstruction": 590.2168752931708,
+        "bounds": [
+          0.0788336998988999,
+          0.0824387529140265
+        ],
+        "initial_simplex": [
+          0.0788336998988999,
+          0.0824387529140265
+        ],
+        "evaluated_range": [
+          0.0788336998988999,
+          0.0824387529140265
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": -263.773593536798,
+        "box": {
+          "source": "results/measured/cnn-loo-ensemble/tooth.json",
+          "sha256": "dca10526c62c427ed815c2ba3a528a7bdd46f3ec97a456e943280b53590ef827",
+          "level": "95",
+          "interval": [
+            0.0788336998988999,
+            0.0824387529140265
+          ],
+          "bounds": [
+            0.0788336998988999,
+            0.0824387529140265
+          ]
+        },
+        "edge_distance_um": 1802.5265075632956,
+        "near_edge": false,
+        "minus_cold_um": 1.8514064631935945,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": -4.088756591624776e-05,
+        "reconstructions_to_cold": 1.0909090909090908,
+        "seconds_to_cold": 3.2637058155678345,
+        "seconds_at_cold_rate": 2367.4132996025464,
+        "cold_inside_bounds": true,
+        "mfe_relative_to_best": 0.0
+      },
+      "box95-npe": {
+        "record": "results/measured/box95-npe-loo-ensemble-b1-p4/tooth.json",
+        "sha256": "a75df931b4fdce9d7d9b1181da2fda25568894683abd3d7a0dc57c4eab165359",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.08067773239774684,
+        "mfe": 0.0003160365449730307,
+        "converged": true,
+        "nm_iterations": 7,
+        "n_reconstructions": 12,
+        "n_evaluations": 14,
+        "distinct_points": 12,
+        "duplicates": 0,
+        "parabola_reconstructions": 12,
+        "parabola_same_points": true,
+        "seconds": 2587.784925073007,
+        "seconds_per_reconstruction": 215.6423750202448,
+        "bounds": [
+          0.0785949184481544,
+          0.08263431519887915
+        ],
+        "initial_simplex": [
+          0.0785949184481544,
+          0.08263431519887915
+        ],
+        "evaluated_range": [
+          0.0785949184481544,
+          0.08263431519887915
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": -222.2676022531622,
+        "box": {
+          "source": "results/measured/npe-loo-ensemble/tooth.json",
+          "sha256": "6d7c209740e28142848deb482ed72fc7994cefcf1b35a5a54f16e7a1c24e1ade",
+          "level": "95",
+          "interval": [
+            0.0785949184481544,
+            0.08263431519887915
+          ],
+          "bounds": [
+            0.0785949184481544,
+            0.08263431519887915
+          ]
+        },
+        "edge_distance_um": 1956.5828011323117,
+        "near_edge": false,
+        "minus_cold_um": 43.35739774682934,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": -1.0498158816374392e-05,
+        "reconstructions_to_cold": 1.0909090909090908,
+        "seconds_to_cold": 1.1924568053045872,
+        "seconds_at_cold_rate": 2367.4132996025464,
+        "cold_inside_bounds": true,
+        "mfe_relative_to_best": 3.03906496996742e-05
+      }
+    },
+    "cactus_needle": {
+      "cold": {
+        "record": "results/measured/b1-p4/cactus_needle.json",
+        "sha256": "c442ce485027bc06ed71ed51f6e87093ffcca250d9999c2464619c281881d2a0",
+        "git_commit": "3f7f87e",
+        "threads": 3,
+        "z01": 0.28492812500000003,
+        "mfe": 0.00022955279564484954,
+        "converged": true,
+        "nm_iterations": 8,
+        "n_reconstructions": 13,
+        "n_evaluations": 16,
+        "distinct_points": 13,
+        "duplicates": 0,
+        "parabola_reconstructions": 13,
+        "parabola_same_points": true,
+        "seconds": 2725.3731902309955,
+        "seconds_per_reconstruction": 209.64099219046273,
+        "bounds": [
+          0.2811,
+          0.2911
+        ],
+        "initial_simplex": [
+          0.2811,
+          0.2911
+        ],
+        "evaluated_range": [
+          0.2811,
+          0.2911
+        ],
+        "revisit_tolerance": 0.0,
+        "minus_paper2_um": 728.1250000000239,
+        "mfe_relative_to_best": 1.9017740071625155e-07
+      },
+      "warm-stage5": {
+        "record": "results/measured/warm-b1-p4/cactus_needle.json",
+        "sha256": "b1181926014db407773b201dbfdf6f220c0bea7eb1695ef56f95e79353f4e28b",
+        "git_commit": "3f7f87e",
+        "threads": 3,
+        "z01": 0.28489002928733825,
+        "mfe": 0.00022955291206017137,
+        "converged": true,
+        "nm_iterations": 8,
+        "n_reconstructions": 14,
+        "n_evaluations": 16,
+        "distinct_points": 14,
+        "duplicates": 0,
+        "parabola_reconstructions": 13,
+        "parabola_same_points": false,
+        "seconds": 3200.7701708599925,
+        "seconds_per_reconstruction": 228.6237965447113,
+        "bounds": [
+          0.2811,
+          0.2911
+        ],
+        "initial_simplex": [
+          0.2884525292873383,
+          0.2894525292873383
+        ],
+        "evaluated_range": [
+          0.28245252928733827,
+          0.2894525292873383
+        ],
+        "revisit_tolerance": 0.0,
+        "minus_paper2_um": 690.0292873382452,
+        "start": {
+          "source": "results/measured/cnn/cactus_needle.json",
+          "sha256": "05051d26f727579ff54646a12f0d68e369227221b63933f678eed3fe50fa8ef0",
+          "z01_est": 0.2889525292873383
+        },
+        "minus_cold_um": -38.09571266177869,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 5.071396387279492e-07,
+        "reconstructions_to_cold": 1.0769230769230769,
+        "seconds_to_cold": 1.1744337187776854,
+        "seconds_at_cold_rate": 2935.017281787226,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": 4024.404287338246,
+        "mfe_relative_to_best": 6.973171358115593e-07
+      },
+      "warm-cnn": {
+        "record": "results/measured/warm-cnn-loo-ensemble-b1-p4/cactus_needle.json",
+        "sha256": "fa8e3b32d9b93585c481eb63b7d37f353c5cc430e6f7b8b8b8260dae9aa4c654",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.2849146746548812,
+        "mfe": 0.0002295529266120866,
+        "converged": true,
+        "nm_iterations": 6,
+        "n_reconstructions": 10,
+        "n_evaluations": 12,
+        "distinct_points": 10,
+        "duplicates": 0,
+        "parabola_reconstructions": 10,
+        "parabola_same_points": true,
+        "seconds": 2000.0743871220038,
+        "seconds_per_reconstruction": 200.0029286573903,
+        "bounds": [
+          0.2811,
+          0.2911
+        ],
+        "initial_simplex": [
+          0.2859771746548812,
+          0.2869771746548812
+        ],
+        "evaluated_range": [
+          0.2839771746548812,
+          0.2869771746548812
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 714.6746548811756,
+        "start": {
+          "source": "results/measured/cnn-loo-ensemble/cactus_needle.json",
+          "sha256": "482f32c880175f781071c62b9502809d217b7c5c9692d263dbff93af6f659a44",
+          "z01_est": 0.2864771746548812
+        },
+        "minus_cold_um": -13.45034511884835,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 5.705320933468983e-07,
+        "reconstructions_to_cold": 0.7692307692307693,
+        "seconds_to_cold": 0.7338717480201244,
+        "seconds_at_cold_rate": 2096.4409155623043,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": 1549.0496548811739,
+        "inside_bounds_of": {
+          "search": "box95-cnn",
+          "bounds": [
+            0.2829541684621778,
+            0.2899881026927104
+          ],
+          "inside": true
+        },
+        "mfe_relative_to_best": 7.607096026429616e-07
+      },
+      "warm-npe": {
+        "record": "results/measured/warm-npe-loo-ensemble-b1-p4/cactus_needle.json",
+        "sha256": "5192bdf448fc662bc9c9020e8f890d6f5c240d3e33f641c2cf180c5f93c446dd",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.2849068533853117,
+        "mfe": 0.00022955275198910385,
+        "converged": true,
+        "nm_iterations": 6,
+        "n_reconstructions": 9,
+        "n_evaluations": 12,
+        "distinct_points": 9,
+        "duplicates": 0,
+        "parabola_reconstructions": 8,
+        "parabola_same_points": false,
+        "seconds": 1747.3307188470208,
+        "seconds_per_reconstruction": 194.14689980933326,
+        "bounds": [
+          0.2811,
+          0.2911
+        ],
+        "initial_simplex": [
+          0.28553185338531173,
+          0.28653185338531173
+        ],
+        "evaluated_range": [
+          0.2835318533853117,
+          0.28653185338531173
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 706.8533853116787,
+        "start": {
+          "source": "results/measured/npe-loo-ensemble/cactus_needle.json",
+          "sha256": "9834c787bd8ba21ae3bf99d7dffcc781882ae03795cfbd5180c45e4228a3a679",
+          "z01_est": 0.28603185338531173
+        },
+        "minus_cold_um": -21.271614688345153,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": -1.9017736452298095e-07,
+        "reconstructions_to_cold": 0.6923076923076923,
+        "seconds_to_cold": 0.6411344784304279,
+        "seconds_at_cold_rate": 1886.7968240060738,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": 1103.7283853116974,
+        "inside_bounds_of": {
+          "search": "box95-npe",
+          "bounds": [
+            0.2822506099179333,
+            0.29012151401998226
+          ],
+          "inside": true
+        },
+        "mfe_relative_to_best": 0.0
+      },
+      "box95-cnn": {
+        "record": "results/measured/box95-cnn-loo-ensemble-b1-p4/cactus_needle.json",
+        "sha256": "1d31d931a6b6d602719d5eef56fc185765930e53905a8374edff95014848a625",
+        "git_commit": "901c04e",
+        "threads": 1,
+        "z01": 0.2849324624645151,
+        "mfe": 0.0002295547310495749,
+        "converged": true,
+        "nm_iterations": 8,
+        "n_reconstructions": 12,
+        "n_evaluations": 16,
+        "distinct_points": 12,
+        "duplicates": 0,
+        "parabola_reconstructions": 12,
+        "parabola_same_points": true,
+        "seconds": 6484.99278723498,
+        "seconds_per_reconstruction": 540.4097826004969,
+        "bounds": [
+          0.2829541684621778,
+          0.2899881026927104
+        ],
+        "initial_simplex": [
+          0.2829541684621778,
+          0.2899881026927104
+        ],
+        "evaluated_range": [
+          0.2829541684621778,
+          0.2899881026927104
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 732.4624645150824,
+        "box": {
+          "source": "results/measured/cnn-loo-ensemble/cactus_needle.json",
+          "sha256": "482f32c880175f781071c62b9502809d217b7c5c9692d263dbff93af6f659a44",
+          "level": "95",
+          "interval": [
+            0.2829541684621778,
+            0.2899881026927104
+          ],
+          "bounds": [
+            0.2829541684621778,
+            0.2899881026927104
+          ]
+        },
+        "edge_distance_um": 1978.2940023372885,
+        "near_edge": false,
+        "minus_cold_um": 4.337464515058453,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 8.431196492075799e-06,
+        "reconstructions_to_cold": 0.9230769230769231,
+        "seconds_to_cold": 2.3794879947011327,
+        "seconds_at_cold_rate": 2515.7290986747653,
+        "cold_inside_bounds": true,
+        "mfe_relative_to_best": 8.621375496176142e-06
+      },
+      "box95-npe": {
+        "record": "results/measured/box95-npe-loo-ensemble-b1-p4/cactus_needle.json",
+        "sha256": "7128b8f906702b5a6d0fc8a191f807610aa388285faaa24dd0faf35a0052ee22",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.2849562332030126,
+        "mfe": 0.00022955299937166274,
+        "converged": true,
+        "nm_iterations": 8,
+        "n_reconstructions": 10,
+        "n_evaluations": 16,
+        "distinct_points": 10,
+        "duplicates": 0,
+        "parabola_reconstructions": 10,
+        "parabola_same_points": true,
+        "seconds": 2108.512875854998,
+        "seconds_per_reconstruction": 210.84612147720472,
+        "bounds": [
+          0.2822506099179333,
+          0.29012151401998226
+        ],
+        "initial_simplex": [
+          0.2822506099179333,
+          0.29012151401998226
+        ],
+        "evaluated_range": [
+          0.2822506099179333,
+          0.29012151401998226
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 756.2332030126017,
+        "box": {
+          "source": "results/measured/npe-loo-ensemble/cactus_needle.json",
+          "sha256": "9834c787bd8ba21ae3bf99d7dffcc781882ae03795cfbd5180c45e4228a3a679",
+          "level": "95",
+          "interval": [
+            0.2822506099179333,
+            0.29012151401998226
+          ],
+          "bounds": [
+            0.2822506099179333,
+            0.29012151401998226
+          ]
+        },
+        "edge_distance_um": 2705.623285079284,
+        "near_edge": false,
+        "minus_cold_um": 28.10820301257788,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 8.874943675518665e-07,
+        "reconstructions_to_cold": 0.7692307692307693,
+        "seconds_to_cold": 0.7736602397840004,
+        "seconds_at_cold_rate": 2096.4409155623043,
+        "cold_inside_bounds": true,
+        "mfe_relative_to_best": 1.0776719370220178e-06
+      }
+    },
+    "magnesium_wire": {
+      "cold": {
+        "record": "results/measured/b1-p4/magnesium_wire.json",
+        "sha256": "6e068110dc3d66379046ed09dcb2439052896045fea0e60ed676e5eb5e005a5b",
+        "git_commit": "3f7f87e",
+        "threads": 3,
+        "z01": 0.471228125,
+        "mfe": 0.0011739188339561224,
+        "converged": true,
+        "nm_iterations": 8,
+        "n_reconstructions": 12,
+        "n_evaluations": 16,
+        "distinct_points": 12,
+        "duplicates": 0,
+        "parabola_reconstructions": 12,
+        "parabola_same_points": true,
+        "seconds": 2548.227050362999,
+        "seconds_per_reconstruction": 212.34926010016594,
+        "bounds": [
+          0.4674,
+          0.4774
+        ],
+        "initial_simplex": [
+          0.4674,
+          0.4774
+        ],
+        "evaluated_range": [
+          0.4674,
+          0.4774
+        ],
+        "revisit_tolerance": 0.0,
+        "minus_paper2_um": 428.1250000000014,
+        "mfe_relative_to_best": 2.97504443524943e-07
+      },
+      "warm-stage5": {
+        "record": "results/measured/warm-b1-p4/magnesium_wire.json",
+        "sha256": "10eaf4a9385c338191b250854b12c420888dd3e7e5858e815ba748bb8a3842e0",
+        "git_commit": "3f7f87e",
+        "threads": 3,
+        "z01": 0.4712383443355559,
+        "mfe": 0.0011739199981093407,
+        "converged": true,
+        "nm_iterations": 7,
+        "n_reconstructions": 12,
+        "n_evaluations": 14,
+        "distinct_points": 11,
+        "duplicates": 1,
+        "parabola_reconstructions": 13,
+        "parabola_same_points": false,
+        "seconds": 2520.512909087003,
+        "seconds_per_reconstruction": 210.03409615283454,
+        "bounds": [
+          0.4674,
+          0.4774
+        ],
+        "initial_simplex": [
+          0.473113344335556,
+          0.474113344335556
+        ],
+        "evaluated_range": [
+          0.4691133443355558,
+          0.474113344335556
+        ],
+        "revisit_tolerance": 0.0,
+        "minus_paper2_um": 438.3443355558958,
+        "start": {
+          "source": "results/measured/cnn/magnesium_wire.json",
+          "sha256": "68c8cba30d49225ee548c9f4dc2bfada12d8911aa9180280f18ed00627fd142f",
+          "z01_est": 0.473613344335556
+        },
+        "minus_cold_um": 10.219335555894382,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 9.91681183171167e-07,
+        "reconstructions_to_cold": 1.0,
+        "seconds_to_cold": 0.9891241476021347,
+        "seconds_at_cold_rate": 2548.227050362999,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": 2385.219335556021,
+        "mfe_relative_to_best": 1.2891859217933899e-06
+      },
+      "warm-cnn": {
+        "record": "results/measured/warm-cnn-loo-ensemble-b1-p4/magnesium_wire.json",
+        "sha256": "473de1c0532f9f1f77762310f8246603f8ae6a85dadddf5eee714c18e34eb3b1",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.4711974355175924,
+        "mfe": 0.0011739198816940188,
+        "converged": true,
+        "nm_iterations": 6,
+        "n_reconstructions": 10,
+        "n_evaluations": 12,
+        "distinct_points": 10,
+        "duplicates": 0,
+        "parabola_reconstructions": 10,
+        "parabola_same_points": true,
+        "seconds": 1985.7163621439831,
+        "seconds_per_reconstruction": 198.56912066260412,
+        "bounds": [
+          0.4674,
+          0.4774
+        ],
+        "initial_simplex": [
+          0.4693224355175924,
+          0.4703224355175924
+        ],
+        "evaluated_range": [
+          0.4693224355175924,
+          0.47232243551759245
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 397.4355175924149,
+        "start": {
+          "source": "results/measured/cnn-loo-ensemble/magnesium_wire.json",
+          "sha256": "b152ff46ebe35fdcc5b64e552a75137988ae2a7a2ef1bd78fdf61212d35dd352",
+          "z01_est": 0.4698224355175924
+        },
+        "minus_cold_um": -30.68948240758651,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 8.925130650094815e-07,
+        "reconstructions_to_cold": 0.8333333333333334,
+        "seconds_to_cold": 0.779254094277476,
+        "seconds_at_cold_rate": 2123.5225419691656,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": -1405.6894824076016,
+        "inside_bounds_of": {
+          "search": "box95-cnn",
+          "bounds": [
+            0.4674,
+            0.4732466888997023
+          ],
+          "inside": true
+        },
+        "mfe_relative_to_best": 1.1900177738777273e-06
+      },
+      "warm-npe": {
+        "record": "results/measured/warm-npe-loo-ensemble-b1-p4/magnesium_wire.json",
+        "sha256": "5a848fe322f434fd49e48593332e07d8a29925b878f958b3d880765b0852f9db",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.47120552457485326,
+        "mfe": 0.0011739196488633752,
+        "converged": true,
+        "nm_iterations": 5,
+        "n_reconstructions": 9,
+        "n_evaluations": 10,
+        "distinct_points": 9,
+        "duplicates": 0,
+        "parabola_reconstructions": 9,
+        "parabola_same_points": true,
+        "seconds": 1806.4856268330186,
+        "seconds_per_reconstruction": 200.71834159444228,
+        "bounds": [
+          0.4674,
+          0.4774
+        ],
+        "initial_simplex": [
+          0.46976802457485334,
+          0.47076802457485334
+        ],
+        "evaluated_range": [
+          0.46976802457485334,
+          0.47176802457485334
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 405.52457485326653,
+        "start": {
+          "source": "results/measured/npe-loo-ensemble/magnesium_wire.json",
+          "sha256": "a7e288f840eeeaac094ca1f49cf7064c20df0dbd11bfc8f8f7238776c698ea47",
+          "z01_est": 0.47026802457485334
+        },
+        "minus_cold_um": -22.60042514673488,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 6.941768282420213e-07,
+        "reconstructions_to_cold": 0.75,
+        "seconds_to_cold": 0.7089186289642762,
+        "seconds_at_cold_rate": 1911.1702877722491,
+        "cold_inside_bounds": true,
+        "start_minus_cold_um": -960.1004251466594,
+        "inside_bounds_of": {
+          "search": "box95-npe",
+          "bounds": [
+            0.4676355689501188,
+            0.4754325686848073
+          ],
+          "inside": true
+        },
+        "mfe_relative_to_best": 9.916814782684469e-07
+      },
+      "box95-cnn": {
+        "record": "results/measured/box95-cnn-loo-ensemble-b1-p4/magnesium_wire.json",
+        "sha256": "8ef2651221eda2fe97719c3200106fd539ce7aacbc0eaaf82f8633d71a3b93a3",
+        "git_commit": "901c04e",
+        "threads": 1,
+        "z01": 0.47123688959042953,
+        "mfe": 0.001173926517367363,
+        "converged": true,
+        "nm_iterations": 7,
+        "n_reconstructions": 9,
+        "n_evaluations": 14,
+        "distinct_points": 9,
+        "duplicates": 0,
+        "parabola_reconstructions": 9,
+        "parabola_same_points": true,
+        "seconds": 4967.685313925991,
+        "seconds_per_reconstruction": 551.9619762574471,
+        "bounds": [
+          0.4674,
+          0.4732466888997023
+        ],
+        "initial_simplex": [
+          0.4674,
+          0.4732466888997023
+        ],
+        "evaluated_range": [
+          0.4674,
+          0.4732466888997023
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 436.88959042953445,
+        "box": {
+          "source": "results/measured/cnn-loo-ensemble/magnesium_wire.json",
+          "sha256": "b152ff46ebe35fdcc5b64e552a75137988ae2a7a2ef1bd78fdf61212d35dd352",
+          "level": "95",
+          "interval": [
+            0.46636027561637466,
+            0.4732466888997023
+          ],
+          "bounds": [
+            0.4674,
+            0.4732466888997023
+          ]
+        },
+        "edge_distance_um": 2009.799309272753,
+        "near_edge": false,
+        "minus_cold_um": 8.764590429533037,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": 6.545095809329382e-06,
+        "reconstructions_to_cold": 0.75,
+        "seconds_to_cold": 1.9494673024596991,
+        "seconds_at_cold_rate": 1911.1702877722491,
+        "cold_inside_bounds": true,
+        "mfe_relative_to_best": 6.842602199963466e-06
+      },
+      "box95-npe": {
+        "record": "results/measured/box95-npe-loo-ensemble-b1-p4/magnesium_wire.json",
+        "sha256": "93996b3b61db67591efc4cb6f784dd6cdb48bd1070a093036a65b0449a913759",
+        "git_commit": "901c04e",
+        "threads": 3,
+        "z01": 0.47122949851532686,
+        "mfe": 0.001173918484710157,
+        "converged": true,
+        "nm_iterations": 8,
+        "n_reconstructions": 12,
+        "n_evaluations": 16,
+        "distinct_points": 12,
+        "duplicates": 0,
+        "parabola_reconstructions": 12,
+        "parabola_same_points": true,
+        "seconds": 2549.8282128039864,
+        "seconds_per_reconstruction": 212.4775020645005,
+        "bounds": [
+          0.4676355689501188,
+          0.4754325686848073
+        ],
+        "initial_simplex": [
+          0.4676355689501188,
+          0.4754325686848073
+        ],
+        "evaluated_range": [
+          0.4676355689501188,
+          0.4754325686848073
+        ],
+        "revisit_tolerance": 1e-09,
+        "minus_paper2_um": 429.4985153268649,
+        "box": {
+          "source": "results/measured/npe-loo-ensemble/magnesium_wire.json",
+          "sha256": "a7e288f840eeeaac094ca1f49cf7064c20df0dbd11bfc8f8f7238776c698ea47",
+          "level": "95",
+          "interval": [
+            0.4676355689501188,
+            0.4754325686848073
+          ],
+          "bounds": [
+            0.4676355689501188,
+            0.4754325686848073
+          ]
+        },
+        "edge_distance_um": 3593.9295652080427,
+        "near_edge": false,
+        "minus_cold_um": 1.3735153268634726,
+        "same_as_cold": true,
+        "mfe_relative_to_cold": -2.975043549291456e-07,
+        "reconstructions_to_cold": 1.0,
+        "seconds_to_cold": 1.0006283437108792,
+        "seconds_at_cold_rate": 2548.227050362999,
+        "cold_inside_bounds": true,
+        "mfe_relative_to_best": 0.0
+      }
+    }
+  },
+  "totals": {
+    "cold": {
+      "what": "Stage 3: Omega_z = guess +- 5 mm, simplex at its ends",
+      "samples": [
+        "spider_hair",
+        "tooth",
+        "cactus_needle",
+        "magnesium_wire"
+      ],
+      "n_reconstructions": 49,
+      "distinct_points": 49,
+      "parabola_reconstructions": 50,
+      "parabola_same_count": 3,
+      "parabola_same_points": 2,
+      "seconds": 10160.898382884996,
+      "threads": [
+        3
+      ]
+    },
+    "warm-stage5": {
+      "what": "Stage 5: from the matched CNN of Stage 5, simplex +- 0.5 mm",
+      "samples": [
+        "spider_hair",
+        "tooth",
+        "cactus_needle",
+        "magnesium_wire"
+      ],
+      "n_reconstructions": 44,
+      "distinct_points": 42,
+      "parabola_reconstructions": 45,
+      "parabola_same_count": 1,
+      "parabola_same_points": 0,
+      "seconds": 9575.117959309006,
+      "threads": [
+        3
+      ],
+      "max_abs_minus_cold_um": 38.09571266177869,
+      "all_same_as_cold": true,
+      "cold_reconstructions": 49,
+      "cold_seconds": 10160.898382884996,
+      "seconds_at_cold_rate": 9128.192923453065
+    },
+    "warm-cnn": {
+      "what": "from the CNN ensemble, simplex +- 0.5 mm",
+      "samples": [
+        "spider_hair",
+        "tooth",
+        "cactus_needle",
+        "magnesium_wire"
+      ],
+      "n_reconstructions": 38,
+      "distinct_points": 38,
+      "parabola_reconstructions": 38,
+      "parabola_same_count": 4,
+      "parabola_same_points": 2,
+      "seconds": 7653.9367009520065,
+      "threads": [
+        3
+      ],
+      "max_abs_minus_cold_um": 30.68948240758651,
+      "all_same_as_cold": true,
+      "cold_reconstructions": 49,
+      "cold_seconds": 10160.898382884996,
+      "seconds_at_cold_rate": 7876.640629071688,
+      "inside_bounds_of_box95": {
+        "inside": 4,
+        "checked": 4
+      }
+    },
+    "warm-npe": {
+      "what": "from the NPE ensemble, simplex +- 0.5 mm",
+      "samples": [
+        "spider_hair",
+        "tooth",
+        "cactus_needle",
+        "magnesium_wire"
+      ],
+      "n_reconstructions": 37,
+      "distinct_points": 37,
+      "parabola_reconstructions": 34,
+      "parabola_same_count": 2,
+      "parabola_same_points": 1,
+      "seconds": 7676.721022479032,
+      "threads": [
+        3
+      ],
+      "max_abs_minus_cold_um": 22.60042514673488,
+      "all_same_as_cold": true,
+      "cold_reconstructions": 49,
+      "cold_seconds": 10160.898382884996,
+      "seconds_at_cold_rate": 7663.657305189465,
+      "inside_bounds_of_box95": {
+        "inside": 3,
+        "checked": 4
+      }
+    },
+    "box95-cnn": {
+      "what": "in the 95 % interval of the CNN ensemble",
+      "samples": [
+        "spider_hair",
+        "tooth",
+        "cactus_needle",
+        "magnesium_wire"
+      ],
+      "n_reconstructions": 41,
+      "distinct_points": 41,
+      "parabola_reconstructions": 42,
+      "parabola_same_count": 3,
+      "parabola_same_points": 2,
+      "seconds": 23019.68184640797,
+      "threads": [
+        1
+      ],
+      "max_abs_minus_cold_um": 8.764590429533037,
+      "all_same_as_cold": true,
+      "cold_reconstructions": 49,
+      "cold_seconds": 10160.898382884996,
+      "seconds_at_cold_rate": 8466.416861016945,
+      "near_edge": 0,
+      "min_edge_distance_um": 1289.0845494479968
+    },
+    "box95-npe": {
+      "what": "in the 95 % interval of the NPE ensemble",
+      "samples": [
+        "spider_hair",
+        "tooth",
+        "cactus_needle",
+        "magnesium_wire"
+      ],
+      "n_reconstructions": 42,
+      "distinct_points": 42,
+      "parabola_reconstructions": 42,
+      "parabola_same_count": 4,
+      "parabola_same_points": 3,
+      "seconds": 8947.962500934984,
+      "threads": [
+        3
+      ],
+      "max_abs_minus_cold_um": 43.35739774682934,
+      "all_same_as_cold": true,
+      "cold_reconstructions": 49,
+      "cold_seconds": 10160.898382884996,
+      "seconds_at_cold_rate": 8684.185440495236,
+      "near_edge": 0,
+      "min_edge_distance_um": 701.734471781304
+    }
+  },
+  "parabola": {
+    "widths_mm": {
+      "0.5": {
+        "halvings": 3,
+        "mean": 5.257731958762887,
+        "min": 5,
+        "max": 6
+      },
+      "1": {
+        "halvings": 4,
+        "mean": 6.65979381443299,
+        "min": 6,
+        "max": 8
+      },
+      "1.5": {
+        "halvings": 4,
+        "mean": 6.65979381443299,
+        "min": 6,
+        "max": 8
+      },
+      "2": {
+        "halvings": 5,
+        "mean": 8.123711340206185,
+        "min": 7,
+        "max": 10
+      },
+      "3": {
+        "halvings": 5,
+        "mean": 8.123711340206185,
+        "min": 7,
+        "max": 10
+      },
+      "4": {
+        "halvings": 6,
+        "mean": 9.628865979381443,
+        "min": 8,
+        "max": 12
+      },
+      "5": {
+        "halvings": 6,
+        "mean": 9.628865979381443,
+        "min": 8,
+        "max": 12
+      },
+      "6": {
+        "halvings": 6,
+        "mean": 9.628865979381443,
+        "min": 8,
+        "max": 12
+      },
+      "7": {
+        "halvings": 7,
+        "mean": 11.154639175257731,
+        "min": 9,
+        "max": 14
+      },
+      "8": {
+        "halvings": 7,
+        "mean": 11.154639175257731,
+        "min": 9,
+        "max": 14
+      },
+      "10": {
+        "halvings": 7,
+        "mean": 11.154639175257731,
+        "min": 9,
+        "max": 14
+      }
+    },
+    "warm_distance_mm": {
+      "0": {
+        "mean": 9.0,
+        "min": 9,
+        "max": 9
+      },
+      "0.25": {
+        "mean": 8.987804878048781,
+        "min": 8,
+        "max": 9
+      },
+      "0.5": {
+        "mean": 10.0,
+        "min": 10,
+        "max": 10
+      },
+      "0.75": {
+        "mean": 8.621951219512194,
+        "min": 8,
+        "max": 9
+      },
+      "1": {
+        "mean": 9.073170731707316,
+        "min": 9,
+        "max": 10
+      },
+      "1.5": {
+        "mean": 11.0,
+        "min": 11,
+        "max": 11
+      },
+      "2": {
+        "mean": 11.829268292682928,
+        "min": 11,
+        "max": 13
+      },
+      "3": {
+        "mean": 12.0,
+        "min": 12,
+        "max": 12
+      },
+      "4": {
+        "mean": 13.0,
+        "min": 13,
+        "max": 13
+      }
+    }
+  },
+  "brent": {
+    "parabola": {
+      "power": 2.0,
+      "widths_mm": {
+        "0.5": {
+          "mean": 5.0,
+          "min": 5,
+          "max": 5,
+          "max_error_um": 29.61568245981562
+        },
+        "1": {
+          "mean": 5.525773195876289,
+          "min": 5,
+          "max": 7,
+          "max_error_um": 36.83660907870452
+        },
+        "1.5": {
+          "mean": 5.731958762886598,
+          "min": 5,
+          "max": 8,
+          "max_error_um": 32.991000803060274
+        },
+        "2": {
+          "mean": 5.855670103092783,
+          "min": 5,
+          "max": 9,
+          "max_error_um": 17.521710709258883
+        },
+        "3": {
+          "mean": 5.938144329896907,
+          "min": 5,
+          "max": 10,
+          "max_error_um": 15.129434826792743
+        },
+        "4": {
+          "mean": 5.938144329896907,
+          "min": 5,
+          "max": 8,
+          "max_error_um": 15.728090000841188
+        },
+        "5": {
+          "mean": 5.979381443298969,
+          "min": 5,
+          "max": 8,
+          "max_error_um": 13.673277486997204
+        },
+        "6": {
+          "mean": 6.0,
+          "min": 5,
+          "max": 8,
+          "max_error_um": 11.796067500631224
+        },
+        "7": {
+          "mean": 6.0,
+          "min": 5,
+          "max": 8,
+          "max_error_um": 13.762078750736428
+        },
+        "8": {
+          "mean": 6.0,
+          "min": 5,
+          "max": 8,
+          "max_error_um": 15.728090000841632
+        },
+        "10": {
+          "mean": 6.020618556701031,
+          "min": 5,
+          "max": 8,
+          "max_error_um": 13.673312501534696
+        }
+      }
+    },
+    "abs": {
+      "power": 1.0,
+      "widths_mm": {
+        "0.5": {
+          "mean": 4.979381443298969,
+          "min": 4,
+          "max": 5,
+          "max_error_um": 29.61568245981562
+        },
+        "1": {
+          "mean": 5.731958762886598,
+          "min": 5,
+          "max": 6,
+          "max_error_um": 35.72809000084122
+        },
+        "1.5": {
+          "mean": 6.288659793814433,
+          "min": 5,
+          "max": 7,
+          "max_error_um": 24.603675912667654
+        },
+        "2": {
+          "mean": 6.804123711340206,
+          "min": 5,
+          "max": 8,
+          "max_error_um": 30.598677835933728
+        },
+        "3": {
+          "mean": 7.247422680412371,
+          "min": 6,
+          "max": 8,
+          "max_error_um": 23.01564304039494
+        },
+        "4": {
+          "mean": 7.701030927835052,
+          "min": 6,
+          "max": 9,
+          "max_error_um": 23.592135001262005
+        },
+        "5": {
+          "mean": 7.969072164948454,
+          "min": 6,
+          "max": 10,
+          "max_error_um": 24.039984137173676
+        },
+        "6": {
+          "mean": 8.1340206185567,
+          "min": 6,
+          "max": 10,
+          "max_error_um": 28.8479809646085
+        },
+        "7": {
+          "mean": 8.329896907216495,
+          "min": 6,
+          "max": 10,
+          "max_error_um": 29.987284060329245
+        },
+        "8": {
+          "mean": 8.556701030927835,
+          "min": 6,
+          "max": 10,
+          "max_error_um": 21.565016525514125
+        },
+        "10": {
+          "mean": 8.927835051546392,
+          "min": 6,
+          "max": 11,
+          "max_error_um": 26.956270656892656
+        }
+      }
+    },
+    "quartic": {
+      "power": 4.0,
+      "widths_mm": {
+        "0.5": {
+          "mean": 5.0,
+          "min": 5,
+          "max": 5,
+          "max_error_um": 41.367319076187485
+        },
+        "1": {
+          "mean": 6.525773195876289,
+          "min": 5,
+          "max": 9,
+          "max_error_um": 34.99587823158125
+        },
+        "1.5": {
+          "mean": 7.34020618556701,
+          "min": 5,
+          "max": 10,
+          "max_error_um": 29.912578147321568
+        },
+        "2": {
+          "mean": 7.907216494845361,
+          "min": 5,
+          "max": 12,
+          "max_error_um": 27.86404500042061
+        },
+        "3": {
+          "mean": 8.65979381443299,
+          "min": 6,
+          "max": 13,
+          "max_error_um": 26.947731741825187
+        },
+        "4": {
+          "mean": 9.206185567010309,
+          "min": 6,
+          "max": 15,
+          "max_error_um": 31.37413920228793
+        },
+        "5": {
+          "mean": 9.608247422680412,
+          "min": 6,
+          "max": 16,
+          "max_error_um": 27.14838921311369
+        },
+        "6": {
+          "mean": 9.876288659793815,
+          "min": 6,
+          "max": 16,
+          "max_error_um": 26.942523722484957
+        },
+        "7": {
+          "mean": 10.216494845360824,
+          "min": 6,
+          "max": 17,
+          "max_error_um": 24.786241926604724
+        },
+        "8": {
+          "mean": 10.536082474226804,
+          "min": 6,
+          "max": 18,
+          "max_error_um": 22.200718421464316
+        },
+        "10": {
+          "mean": 10.958762886597938,
+          "min": 6,
+          "max": 19,
+          "max_error_um": 25.0028063016261
+        }
+      }
+    }
+  },
+  "curves": {
+    "spider_hair": {
+      "z01": 0.07948750000000002,
+      "mfe": 0.0001382326299790293,
+      "points": 48,
+      "below": {
+        "points": 11,
+        "power": 1.6948638468200627,
+        "rise_at_1mm_ppm": 101653.22324287567
+      },
+      "above": {
+        "points": 14,
+        "power": 1.1134286075559359,
+        "rise_at_1mm_ppm": 23693.405601496248
+      },
+      "searches": [
+        "cold",
+        "warm-stage5",
+        "warm-cnn",
+        "warm-npe",
+        "box95-npe"
+      ]
+    },
+    "tooth": {
+      "z01": 0.0806632816804283,
+      "mfe": 0.0003160274645779282,
+      "points": 51,
+      "below": {
+        "points": 14,
+        "power": 1.1593596803366282,
+        "rise_at_1mm_ppm": 23998.509248652736
+      },
+      "above": {
+        "points": 17,
+        "power": 1.1558263302056584,
+        "rise_at_1mm_ppm": 13644.45549983069
+      },
+      "searches": [
+        "cold",
+        "warm-stage5",
+        "warm-cnn",
+        "warm-npe",
+        "box95-npe"
+      ]
+    },
+    "cactus_needle": {
+      "z01": 0.2849068533853117,
+      "mfe": 0.00022955275198910385,
+      "points": 56,
+      "below": {
+        "points": 14,
+        "power": 1.9854696303135602,
+        "rise_at_1mm_ppm": 298.6872435240282
+      },
+      "above": {
+        "points": 16,
+        "power": 2.027937475257066,
+        "rise_at_1mm_ppm": 287.8516623890363
+      },
+      "searches": [
+        "cold",
+        "warm-stage5",
+        "warm-cnn",
+        "warm-npe",
+        "box95-npe"
+      ]
+    },
+    "magnesium_wire": {
+      "z01": 0.47122949851532686,
+      "mfe": 0.001173918484710157,
+      "points": 55,
+      "below": {
+        "points": 14,
+        "power": 1.9343201446858629,
+        "rise_at_1mm_ppm": 234.94728438527022
+      },
+      "above": {
+        "points": 16,
+        "power": 1.9375652778289876,
+        "rise_at_1mm_ppm": 213.92312006019037
+      },
+      "searches": [
+        "cold",
+        "warm-stage5",
+        "warm-cnn",
+        "warm-npe",
+        "box95-npe"
+      ]
+    }
+  }
+}

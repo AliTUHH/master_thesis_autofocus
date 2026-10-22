@@ -19,6 +19,7 @@ from holofocus.autofocus import (
     normalize_curve,
     prefilter,
     reconstruction_focus_curve,
+    search_points,
     simulated_focus_curve,
     symmetric_offsets,
 )
@@ -309,3 +310,104 @@ def test_find_focus_from_a_warm_start(monkeypatch):
     for bad in [(0.101, 0.100), (0.094, 0.096), (0.1, 0.101, 0.102)]:
         with pytest.raises(ValueError):
             find_focus(torch.zeros((8, 8)), GEOMETRY, initial_simplex=bad)
+
+
+def test_find_focus_in_given_bounds(monkeypatch):
+    z_true = 0.10237
+
+    def fake_asrm(hologram, fresnel_number, settings):
+        z01 = z01_from_fresnel_number(
+            fresnel_number, GEOMETRY.energy_kev, GEOMETRY.z02, GEOMETRY.pixel_size
+        )
+        return SimpleNamespace(final_loss=abs(z01 - z_true))
+
+    monkeypatch.setattr(search_module, "asrm_reconstruct", fake_asrm)
+    cold = find_focus(torch.zeros((8, 8)), GEOMETRY)
+    box = (0.1012, 0.1038)
+    boxed = find_focus(torch.zeros((8, 8)), GEOMETRY, bounds=box)
+    assert boxed.bounds == box
+    assert boxed.initial_simplex == pytest.approx(box)
+    assert [e.z01 for e in boxed.evaluations[:2]] == pytest.approx(list(box))
+    assert all(box[0] - 1e-12 <= e.z01 <= box[1] + 1e-12 for e in boxed.evaluations)
+    assert boxed.converged and abs(boxed.z01 - z_true) < 1e-4
+    assert boxed.n_reconstructions < cold.n_reconstructions
+    assert boxed.to_dict()["bounds"] == pytest.approx(list(box))
+    missed = find_focus(torch.zeros((8, 8)), GEOMETRY, bounds=(0.096, 0.100))
+    assert abs(missed.z01 - 0.100) < 1e-4
+    warm = find_focus(torch.zeros((8, 8)), GEOMETRY, bounds=box, initial_simplex=(0.102, 0.103))
+    assert [e.z01 for e in warm.evaluations[:2]] == pytest.approx([0.102, 0.103])
+    assert abs(warm.z01 - z_true) < 1e-4
+    for bad, simplex in [
+        ((0.1038, 0.1012), None),
+        ((0.0, 0.1), None),
+        ((0.1012, 21.0), None),
+        (box, (0.100, 0.102)),
+    ]:
+        with pytest.raises(ValueError):
+            find_focus(torch.zeros((8, 8)), GEOMETRY, bounds=bad, initial_simplex=simplex)
+
+
+def test_find_focus_revisit_tolerance(monkeypatch):
+    """A point that differs from an earlier one in the last bit is reconstructed again unless
+    ``revisit_tolerance`` covers it."""
+
+    def fake_asrm(hologram, fresnel_number, settings):
+        return SimpleNamespace(final_loss=1.0)
+
+    def fake_nelder_mead(objective, initial_simplex, bounds, **kwargs):
+        a, b = initial_simplex[0][0], initial_simplex[1][0]
+        values = [objective(np.array([z])) for z in (a, b, np.nextafter(a, b), a)]
+        return SimpleNamespace(x=np.array([a]), fun=min(values), iterations=1, converged=True)
+
+    monkeypatch.setattr(search_module, "asrm_reconstruct", fake_asrm)
+    monkeypatch.setattr(search_module, "nelder_mead", fake_nelder_mead)
+    exact = find_focus(torch.zeros((8, 8)), GEOMETRY)
+    assert [e.reconstructed for e in exact.evaluations] == [True, True, True, False]
+    tolerant = find_focus(torch.zeros((8, 8)), GEOMETRY, revisit_tolerance=1e-9)
+    assert [e.reconstructed for e in tolerant.evaluations] == [True, True, False, False]
+    assert tolerant.evaluations[2].mfe == search_module.PENALTY
+    assert tolerant.n_reconstructions == 2
+    with pytest.raises(ValueError):
+        find_focus(torch.zeros((8, 8)), GEOMETRY, revisit_tolerance=-1e-9)
+
+
+@pytest.mark.parametrize(
+    "bounds, simplex, tolerance",
+    [
+        (None, None, 0.0),
+        ((0.1012, 0.1038), None, 1e-9),
+        (None, (0.1019, 0.1029), 1e-9),
+        (None, (0.0950, 0.0960), 0.0),
+    ],
+)
+def test_search_points_are_the_points_of_find_focus(monkeypatch, bounds, simplex, tolerance):
+    """Cold, bounded and warm searches; any curve symmetric about the minimum gives the same."""
+    z_true = 0.10237
+
+    def parabola(z01):
+        return (z01 - z_true) ** 2
+
+    def fake_asrm(hologram, fresnel_number, settings):
+        z01 = z01_from_fresnel_number(
+            fresnel_number, GEOMETRY.energy_kev, GEOMETRY.z02, GEOMETRY.pixel_size
+        )
+        return SimpleNamespace(final_loss=parabola(z01))
+
+    monkeypatch.setattr(search_module, "asrm_reconstruct", fake_asrm)
+    result = find_focus(
+        torch.zeros((8, 8)),
+        GEOMETRY,
+        bounds=bounds,
+        initial_simplex=simplex,
+        revisit_tolerance=tolerance,
+    )
+    given = {"initial_simplex": simplex, "bounds": bounds, "revisit_tolerance": tolerance}
+    points = search_points(parabola, GEOMETRY.z01, **given)
+    assert [e.reconstructed for e in points] == [e.reconstructed for e in result.evaluations]
+    np.testing.assert_allclose(
+        [e.z01 for e in points], [e.z01 for e in result.evaluations], rtol=0, atol=1e-12
+    )
+    assert all(e.seconds == 0.0 for e in points)
+    assert sum(e.reconstructed for e in points) == result.n_reconstructions
+    root = search_points(lambda z01: abs(z01 - z_true) ** 0.5, GEOMETRY.z01, **given)
+    assert [(e.z01, e.reconstructed) for e in root] == [(e.z01, e.reconstructed) for e in points]

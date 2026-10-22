@@ -1,0 +1,200 @@
+{
+  "sample": "cactus_needle",
+  "label": "cactus needle",
+  "binning": 1,
+  "cutting_band": 0,
+  "input_shape": [
+    2048,
+    2048
+  ],
+  "padding_factor": 4.0,
+  "padding_factor_input": 4.0,
+  "stage_arrays": [
+    [
+      512,
+      512
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "settings": {
+    "stages": [
+      {
+        "iterations": 700,
+        "step": 0.9,
+        "down_sampling": 16,
+        "momentum": 1.0,
+        "momentum_fwhm": 8.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 0.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 300,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 500,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 1.0
+      }
+    ],
+    "padding_factor": 4.0,
+    "fade_width": 80,
+    "a0": 0.98,
+    "update": "reference",
+    "gradient": "reference",
+    "pin_phase": true
+  },
+  "geometry_guess": {
+    "energy_kev": 17.0,
+    "z01": 0.2861,
+    "z02": 19.652,
+    "pixel_size": 6.5e-06,
+    "wavelength": 7.293188143129427e-11,
+    "z12": 19.3659,
+    "magnification": 68.68926948619364,
+    "effective_pixel_size": 9.46290453897822e-08,
+    "effective_distance": 0.281934866171382,
+    "fresnel_number": 0.0004354945390048874
+  },
+  "paper2": {
+    "simplex": [
+      0.2811,
+      0.2911
+    ],
+    "z01_nm": 0.2842,
+    "z01_visual": 0.2842,
+    "samples": 12,
+    "padding_factor": 7.0
+  },
+  "result": {
+    "z01": 0.2849068533853117,
+    "z01_guess": 0.2861,
+    "bounds": [
+      0.2811,
+      0.2911
+    ],
+    "initial_simplex": [
+      0.28553185338531173,
+      0.28653185338531173
+    ],
+    "mfe": 0.00022955275198910385,
+    "nm_iterations": 6,
+    "converged": true,
+    "seconds": 1747.3307188470208,
+    "evaluations": [
+      {
+        "z01": 0.28553185338531173,
+        "mfe": 0.0002295783197041601,
+        "seconds": 204.1887615659798,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.28653185338531173,
+        "mfe": 0.00022972874285187572,
+        "seconds": 199.70188347800286,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.28453185338531173,
+        "mfe": 0.0002295624726684764,
+        "seconds": 189.26937732601073,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.2835318533853117,
+        "mfe": 0.00022968166740611196,
+        "seconds": 181.65212387699285,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.2835318533853117,
+        "mfe": 1.7976931348623157e+308,
+        "seconds": 0.0,
+        "reconstructed": false
+      },
+      {
+        "z01": 0.28503185338531173,
+        "mfe": 0.00022955378517508507,
+        "seconds": 197.17689630298992,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.28553185338531173,
+        "mfe": 1.7976931348623157e+308,
+        "seconds": 0.0,
+        "reconstructed": false
+      },
+      {
+        "z01": 0.2847818533853117,
+        "mfe": 0.00022955401800572872,
+        "seconds": 192.75708544600639,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.2852818533853117,
+        "mfe": 0.00022956171596888453,
+        "seconds": 205.83354596601566,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.2849068533853117,
+        "mfe": 0.00022955275198910385,
+        "seconds": 190.6734963429917,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.2847818533853117,
+        "mfe": 1.7976931348623157e+308,
+        "seconds": 0.0,
+        "reconstructed": false
+      },
+      {
+        "z01": 0.2849693533853117,
+        "mfe": 0.0002295530284754932,
+        "seconds": 186.06892797900946,
+        "reconstructed": true
+      }
+    ],
+    "n_reconstructions": 9,
+    "n_evaluations": 12
+  },
+  "z01_minus_paper2_nm_um": 706.8533853116787,
+  "z01_minus_visual_um": 706.8533853116787,
+  "seconds_per_reconstruction": 194.14689980933326,
+  "git_commit": "901c04e",
+  "torch_version": "2.14.1+cpu",
+  "threads": 3,
+  "host": "cursor",
+  "cpu_count": 4,
+  "warm_start": {
+    "source": "results/measured/npe-loo-ensemble/cactus_needle.json",
+    "sha256": "9834c787bd8ba21ae3bf99d7dffcc781882ae03795cfbd5180c45e4228a3a679",
+    "half_width": 0.0005,
+    "sigmas": 0.0,
+    "z01_est": 0.28603185338531173,
+    "initial_simplex": [
+      0.28553185338531173,
+      0.28653185338531173
+    ]
+  },
+  "revisit_tolerance": 1e-09
+}

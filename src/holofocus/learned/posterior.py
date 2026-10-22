@@ -218,6 +218,135 @@ def _trapezoid(values: np.ndarray, step: float) -> np.ndarray:
     return (values.sum(axis=-1) - 0.5 * (values[..., 0] + values[..., -1])) * step
 
 
+class GaussianMixture:
+    """Equal-weight mixtures of ``K`` Gaussians, one per row: ``means`` and ``sigmas`` ``(B, K)``.
+
+    The predictive distribution of an ensemble of Gaussian networks (the CNN seeds of Stage 6)
+    on the real line, with the summaries of :class:`GridPosterior`. Quantiles come from
+    bisection on the exact CDF; HPD levels and widths from ``points`` grid points per row over
+    ``[min(m - 10 s), max(m + 10 s)]``.
+    """
+
+    SPAN = 10.0
+
+    def __init__(self, means: np.ndarray, sigmas: np.ndarray, points: int = 8001) -> None:
+        self.means = np.atleast_2d(np.asarray(means, dtype=float))
+        self.sigmas = np.atleast_2d(np.asarray(sigmas, dtype=float))
+        if self.means.ndim != 2 or self.means.shape != self.sigmas.shape:
+            raise ValueError("means and sigmas must have the same shape (B, K)")
+        if not (self.sigmas > 0).all():
+            raise ValueError("sigmas must be positive")
+        self.points = int(points)
+        self._grid: tuple[np.ndarray, np.ndarray] | None = None
+
+    def __len__(self) -> int:
+        return len(self.means)
+
+    def _rows(self, x: np.ndarray) -> np.ndarray:
+        return np.broadcast_to(np.asarray(x, dtype=float), (len(self),))
+
+    def _span(self) -> tuple[np.ndarray, np.ndarray]:
+        return (
+            (self.means - self.SPAN * self.sigmas).min(axis=1),
+            (self.means + self.SPAN * self.sigmas).max(axis=1),
+        )
+
+    def cdf(self, x: np.ndarray) -> np.ndarray:
+        """``F(x)`` per row for ``x`` ``(B,)`` or a scalar."""
+        z = (self._rows(x)[:, None] - self.means) / self.sigmas
+        return _normal_cdf(z).mean(axis=1)
+
+    def density(self, x: np.ndarray) -> np.ndarray:
+        z = (self._rows(x)[:, None] - self.means) / self.sigmas
+        return (np.exp(-0.5 * z**2) / (math.sqrt(2.0 * math.pi) * self.sigmas)).mean(axis=1)
+
+    def quantile(self, q: float, iterations: int = 100) -> np.ndarray:
+        if not 0.0 < q < 1.0:
+            raise ValueError("q must lie in (0, 1)")
+        lo, hi = self._span()
+        for _ in range(iterations):
+            mid = 0.5 * (lo + hi)
+            below = self.cdf(mid) < q
+            lo, hi = np.where(below, mid, lo), np.where(below, hi, mid)
+        return 0.5 * (lo + hi)
+
+    def median(self) -> np.ndarray:
+        return self.quantile(0.5)
+
+    def interval(self, level: float) -> tuple[np.ndarray, np.ndarray]:
+        """Central interval with mass ``level``."""
+        return self.quantile(0.5 * (1.0 - level)), self.quantile(0.5 * (1.0 + level))
+
+    def mean(self) -> np.ndarray:
+        return self.means.mean(axis=1)
+
+    def std(self) -> np.ndarray:
+        second = (self.sigmas**2 + self.means**2).mean(axis=1)
+        return np.sqrt(np.maximum(second - self.mean() ** 2, 0.0))
+
+    def pit(self, x: np.ndarray) -> np.ndarray:
+        return self.cdf(x)
+
+    def log_density(self, x: np.ndarray) -> np.ndarray:
+        return np.log(np.maximum(self.density(x), 1e-300))
+
+    def _grid_density(self) -> tuple[np.ndarray, np.ndarray]:
+        """Per-row grids ``(B, G)`` and the density on them."""
+        if self._grid is None:
+            lo, hi = self._span()
+            grid = lo[:, None] + (hi - lo)[:, None] * np.linspace(0.0, 1.0, self.points)
+            z = (grid[:, :, None] - self.means[:, None, :]) / self.sigmas[:, None, :]
+            density = np.exp(-0.5 * z**2) / (math.sqrt(2.0 * math.pi) * self.sigmas[:, None, :])
+            self._grid = (grid, density.mean(axis=2))
+        return self._grid
+
+    def _cells(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        grid, density = self._grid_density()
+        step = grid[:, 1] - grid[:, 0]
+        cell_density = 0.5 * (density[:, 1:] + density[:, :-1])
+        mass = cell_density * step[:, None]
+        return cell_density, mass / mass.sum(axis=1, keepdims=True), step
+
+    def hpd_level(self, x: np.ndarray) -> np.ndarray:
+        """Mass of the grid cells whose mean density exceeds the density at ``x``."""
+        cell_density, mass, _ = self._cells()
+        above = cell_density > self.density(x)[:, None]
+        return np.minimum((mass * above).sum(axis=1), 1.0)
+
+    def hpd_width(self, level: float) -> np.ndarray:
+        """Length of the smallest set of grid cells with mass ``level``."""
+        _, mass, step = self._cells()
+        order = np.argsort(-mass, axis=1)
+        cum = np.cumsum(np.take_along_axis(mass, order, axis=1), axis=1)
+        cells = np.minimum((cum < level).sum(axis=1) + 1, mass.shape[1])
+        return cells * step
+
+    def on_grid(self, theta: np.ndarray) -> GridPosterior:
+        """The densities on the uniform grid ``theta`` ``(G,)`` (e.g. the prior box), normalized
+        there, with the mass inside the grid as ``prior_mass``."""
+        theta = np.asarray(theta, dtype=float)
+        z = (theta[None, :, None] - self.means[:, None, :]) / self.sigmas[:, None, :]
+        density = (np.exp(-0.5 * z**2) / (math.sqrt(2.0 * math.pi) * self.sigmas[:, None, :])).mean(
+            axis=2
+        )
+        mass = self.cdf(np.full(len(self), theta[-1])) - self.cdf(np.full(len(self), theta[0]))
+        integral = _trapezoid(density, float(theta[1] - theta[0]))
+        return GridPosterior(theta, density / integral[:, None], mass)
+
+
+def mixture_summaries(mixture: GaussianMixture) -> dict[str, np.ndarray]:
+    """Median, mean, standard deviation, central intervals and HPD widths of a mixture, in its
+    units (the keys of :func:`posterior_summaries` without the mode and the prior mass)."""
+    out = {"dz01": mixture.median(), "dz01_mean": mixture.mean(), "sigma": mixture.std()}
+    for level in LEVELS:
+        key = f"{round(100 * level)}"
+        lower, upper = mixture.interval(level)
+        out[f"lower_{key}"] = lower
+        out[f"upper_{key}"] = upper
+        out[f"hpd_width_{key}"] = mixture.hpd_width(level)
+    return out
+
+
 def _normal_cdf(z: np.ndarray) -> np.ndarray:
     return torch.special.ndtr(torch.as_tensor(np.asarray(z, dtype=float))).numpy()
 
