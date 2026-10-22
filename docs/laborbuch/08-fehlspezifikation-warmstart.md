@@ -538,9 +538,9 @@ Kaktusnadel bei beiden erst im 95-%-Intervall):
 ![Suchen auf den Messhologrammen](figures/stage8-warmstart.png)
 
 *Abb. 7 – Die Suchen mit Padding 4 auf den vier Messhologrammen: oben die rekonstruierten
-Punkte in ihrer Reihenfolge, als Abstand vom Ergebnis der vollen Suche (grau: ±100 µm, die
-Toleranz der Suche); unten die Zahl der Rekonstruktionen, beschriftet mit dem Abstand des
-Ergebnisses von der vollen Suche in µm.*
+Punkte in ihrer Reihenfolge, als Abstand vom Ergebnis der vollen Suche (innerhalb ±0,1 mm
+linear, darüber logarithmisch; grau: ±100 µm, die Toleranz der Suche); unten die Zahl der
+Rekonstruktionen, beschriftet mit dem Abstand des Ergebnisses von der vollen Suche in µm.*
 
 ⟨TODO nach den Suchen⟩
 
@@ -550,7 +550,44 @@ Ergebnisses von der vollen Suche in µm.*
 
 ## 6 Offene Punkte
 
-⟨TODO⟩
+1. **Wie oft das 95-%-Intervall das Minimum verfehlt.** Auf den Test-Splits liegt die Wahrheit
+   bei 3,8 % (CNN-Ensemble) und 4,8 % (NPE-Ensemble) der Samples außerhalb des
+   95-%-Intervalls (5.4); eine Suche darin endet dann an seinem Rand. Wie weit sie dort vom
+   Minimum entfernt wäre, ist nicht gerechnet: Dafür bräuchte die Suche auf den simulierten
+   Test-Splits die Intervalle als Grenzen (eine Option wie `--box` für `holofocus-baseline`),
+   und mit etwa 330 s pro Suche (Laborbuch 04, 5.8) kosten die 1000 Test-Samples etwa 90 h
+   mit 3 Threads, ein Fall für Maxwell, der hier nicht vorbereitet ist. Bis dahin gilt: Endet
+   eine Suche im Intervall weniger als 100 µm vor seinem Rand, ist sie im vollen $\Omega_z$ zu
+   wiederholen. ⟨TODO: kam auf den Messhologrammen vor oder nicht⟩
+2. **Warmstart im Intervall.** Beide Varianten lassen sich verbinden: Start beim Median mit
+   ±0,5 mm, begrenzt auf das 95-%-Intervall. ⟨TODO: in wie vielen Fällen der Warmstart im
+   Intervall blieb und damit schon diese Suche ist (`inside_bounds_of` in `warmstart.json`)⟩
+3. **Die Breite als Anfangssimplex** (Laborbuch 07, 7, Punkt 4): Der Warmstart nimmt wie in
+   Etappe 5 ±0,5 mm um den Median. Ein Simplex aus dem 68-%-Intervall (beim Spinnenhaar
+   0,65 mm, bei der Kaktusnadel 3,8 mm breit, 5.5) passte die Schrittweite an die Unsicherheit
+   an; nicht gerechnet.
+4. **Abstand in den Merkmalen der CNNs.** Gerechnet sind die Eingabe, die für beide Netze
+   dieselbe ist, und die Einbettungen der NPEs. Ob die CNNs den Zahn für gewöhnlich halten,
+   wo sie sich einig sind (5.5, Punkt 3), zeigte derselbe Abstand in ihren Merkmalen vor dem
+   Gauß-Kopf; nicht gerechnet.
+5. **Lokale Kalibrierung** (Laborbuch 07, 6, Punkt 2): Die Überdeckung unter den 25 Nachbarn
+   (5.2) ist eine grobe Form davon; ein Test für einzelne Hologramme wie L-C2ST ([6],
+   Sec. 3.4) bleibt offen.
+6. **Das CNN-Ensemble nachkalibrieren.** Die Mischung deckt zu viel (zusammen 73,1 / 96,2 %,
+   5.4, Punkt 3). Ein gemeinsamer Faktor auf ihre Breiten, auf den Val-Splits bestimmt,
+   brächte sie ans Nominale und wäre dann ein drittes Rezept neben den beiden verglichenen
+   (E9).
+7. **Welche Nachbarschaft?** Die 25 Nachbarn in der Eingabe und in der Einbettung beschreiben
+   verschiedene Gegenden (beim Zahn MAE 471 gegen 889 µm, bei der Kaktusnadel Steigung 0,73
+   gegen 0,12; 5.2). ⟨TODO nach der Prüfung der Nachbarschaften⟩
+8. **Der Zahn in den Einbettungen.** Warum zwei der drei Einbettungen den gemessenen Zahn an
+   den Rand ihres Test-Splits legen und die NPE-Seeds sich dort uneinig sind, während sein
+   Spektrum gewöhnlich ist und die CNNs einig sind, ist offen (5.2, Punkt 6). Ob mehr
+   Trainingsdaten die Seeds einig machen, zeigen die Läufe auf Maxwell (Laborbuch 07, 9.10,
+   Punkt 1).
+9. **Aus Laborbuch 07, 9.10 unverändert offen:** die großen Läufe auf Maxwell (Punkt 1), die
+   Kalibrierung auf mehr Samples (Punkt 4) und die Frage an Daniel nach dem Einstellen an den
+   Testhologrammen (Punkt 5).
 
 ## 7 Nächste Schritte
 
@@ -558,6 +595,25 @@ Ergebnisses von der vollen Suche in µm.*
 
 ## 8 Bezug zur Masterarbeit
 
-⟨TODO⟩
+- **Fehleranalyse (Plan-Schritt 16, „Wann versagt ML … Out-of-distribution?“):** Gegen den
+  Simulator mit Objektmodell liegen die vier Messhologramme in der Eingabe der Netze beim
+  6.–77. Perzentil der simulierten Test-Samples ⟨TODO Kontrolle: gegen den Simulator von
+  Etappe 5 …⟩. Wo die gelernten Schätzungen auf den Messhologrammen versagen, fehlt dem
+  Spektrum die Information (Kaktusnadel, Mg-Draht); außerhalb der Simulationen liegt keines
+  der Hologramme. Beim Zahn gibt es einen schwachen Hinweis in den Einbettungen der NPEs
+  (5.2, Punkt 6). ⟨TODO Satz zur Antwort⟩
+- **Modellvergleich (Plan-Schritte 11 und 13):** Ensemble gegen Ensemble sind NPE und CNN gleich
+  genau (zusammen −31 µm [−67, +4]); mehr als die Hälfte des Vorsprungs aus Etappe 7 war das
+  Mitteln (5.4, Punkt 2). Was dem NPE bleibt, sind die Intervalle: kalibriert statt zu weit,
+  21 % schmaler, kleinere NLL. Für das Zusatzkapitel zur Posterior heißt das: Seed gegen Seed
+  und Ensemble gegen Ensemble vergleichen, nie ein Ensemble gegen ein einzelnes Netz.
+- **Geschwindigkeit bei gleicher Genauigkeit (Plan-Schritt 15):** ⟨TODO Warmstart und Suche
+  im Intervall: dasselbe Ergebnis, wie viel schneller⟩
+- **Methodik:** Ein Abstand braucht einen Maßstab und eine Kontrolle. Den Maßstab gibt der
+  Test-Split (E4), die Kontrolle der Simulator von Etappe 5, der nachweislich falsch war (E8).
+  In einer gelernten Einbettung heißt fern auf simulierten Daten „klar bestimmt“, nicht
+  „ungewöhnlich“ (5.2, Punkt 2); ein Perzentil in der Einbettung allein zeigt deshalb keine
+  Fehlspezifikation an.
+- **Quellen:** [6] Sec. 3.4; [2] Table 1 und Eq. (17), (22).
 
 Reproduktion: `docs/usage.md`, Abschnitt „Stage 8: misspecification, ensembles, warm start“.

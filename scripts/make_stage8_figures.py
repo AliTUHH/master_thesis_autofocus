@@ -140,12 +140,15 @@ def misspec_figure(directory: Path, out: Path, dpi: int) -> dict | None:
 
 
 def _measure_label(space: str, measure: str, components: int) -> str:
+    """The label of a row, shared by the probes: the embeddings keep the principal components
+    that hold 99.9 % of the variance, a number that differs between probes and seeds."""
+    pcs = f"{components} PC" if space == "input" else "PC for 99.9 %"
     if measure.startswith("knn"):
         text = f"{measure.removeprefix('knn')} nearest"
     elif measure == "mahalanobis":
-        text = f"Mahalanobis, {components} PC"
+        text = f"Mahalanobis, {pcs}"
     else:
-        text = f"residual outside {components} PC"
+        text = f"residual outside {pcs}"
     return f"{'input' if space == 'input' else space.replace('embedding', 'emb.')}: {text}"
 
 
@@ -538,6 +541,7 @@ def warmstart_figure(measured: Path, out: Path, dpi: int) -> dict | None:
         ax.axhspan(
             -0.1, 0.1, color="0.88", zorder=0, label="+- 100 um (xatol) around the full search"
         )
+        ax.set_yscale("symlog", linthresh=0.1, linscale=1.0)
         ax.set_title(MEASURED_SAMPLES[name].label, fontsize=9)
         ax.set_xlabel("reconstruction", fontsize=8)
         ax.tick_params(labelsize=7)
@@ -556,7 +560,7 @@ def warmstart_figure(measured: Path, out: Path, dpi: int) -> dict | None:
         ax.set_ylim(0, max(counts) + 2.5)
         ax.tick_params(labelsize=7)
         ax.grid(alpha=0.3, axis="y")
-    axes[0, 0].set_ylabel("z01 minus the full search (mm)", fontsize=8)
+    axes[0, 0].set_ylabel("z01 minus the full search (mm, linear within +- 0.1)", fontsize=8)
     axes[1, 0].set_ylabel("reconstructions (label: z01 minus the full search, um)", fontsize=8)
     _legend(fig, axes[0], columns=4)
     _save(fig, out / "stage8-warmstart.png", dpi)
