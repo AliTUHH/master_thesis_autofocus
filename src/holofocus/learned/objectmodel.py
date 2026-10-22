@@ -14,7 +14,8 @@ view produces it. This module fits the texture of each measured hologram:
   :class:`Texture`;
 * :func:`texture_grid`, :func:`refined_grid` and :func:`fit_objective`: the textures tried for
   each sample and the distance of the spectral features of a simulated set from those of the
-  measured hologram (``scripts/run_stage6_study.py fit``).
+  measured hologram (``scripts/run_stage6_study.py fit``); :data:`TEXTURE_FITS` holds the
+  result.
 """
 
 from __future__ import annotations
@@ -259,8 +260,10 @@ def refined_grid(best: Texture) -> list[Texture]:
 
 FIT_SCALES = {"ctf": 0.1, "upper_snr": 0.2, "slope": 2.0}
 """Scale of each feature in :func:`fit_objective`; every band of ``ctf_bands`` counts once more
-with the scale of ``ctf``. The floor and ``low_excess`` are left out: they follow the
-flat-field residual and the bulk object, which the texture does not change."""
+with the scale of ``ctf``. The floor and ``low_excess`` are left out: the flat-field residual
+and the bulk object set them more than the texture, and the residual of the corner fits puts
+more power at the highest frequencies of spider hair and tooth than their holograms have
+(Laborbuch 05, 5.6)."""
 
 
 def median_features(features: Sequence[Mapping]) -> dict:
@@ -284,3 +287,16 @@ def fit_objective(median: Mapping, measured: Mapping) -> float:
     terms += [(median[k] - measured[k]) / FIT_SCALES[k] for k in ("upper_snr", "slope")]
     value = float(np.sqrt(np.mean(np.square(terms))))
     return value if math.isfinite(value) else math.inf
+
+
+TEXTURE_FITS: dict[str, Texture] = {
+    "spider_hair": Texture(0.0, 0.1, 3.0),
+    "tooth": Texture(0.0, 0.0, 2.0),
+    "cactus_needle": Texture(0.3, 0.03, 1.75),
+    "magnesium_wire": Texture(0.3, 0.533, 1.75),
+}
+"""The texture of each measured hologram with the smallest :func:`fit_objective` over
+16 test samples (``results/objectmodel/fit-<sample>.json``): a film around the spider hair,
+none on the tooth, mostly inside the cactus needle, inside and around the Mg wire. The fit sees
+the whole hologram only; the Mg wire fills most of the field of view, so there texture and
+film are nearly interchangeable."""

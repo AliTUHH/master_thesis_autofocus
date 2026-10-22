@@ -10,6 +10,7 @@ from holofocus.learned.objectmodel import (
     DETECTOR_FITS,
     FIT_SCALES,
     REFINE_FACTOR,
+    TEXTURE_FITS,
     TEXTURE_GRID,
     Texture,
     field_of_view,
@@ -175,3 +176,12 @@ def test_median_features_take_the_bands_one_by_one():
     median = median_features(features)
     assert median["ctf"] == pytest.approx(0.2)
     assert median["ctf_bands"] == pytest.approx([0.2, 0.4, 0.0, -0.2])
+
+
+@pytest.mark.parametrize("name", list(MEASURED_SAMPLES))
+def test_texture_fits_are_the_best_textures_of_the_fit_records(name):
+    record = json.loads((ROOT / "results" / "objectmodel" / f"fit-{name}.json").read_text())
+    assert TEXTURE_FITS[name] == Texture(**record["best"]["texture"])
+    assert record["best"]["objective"] == min(e["objective"] for e in record["settings"])
+    refined = refined_grid(Texture(**record["best_coarse"]))
+    assert len(record["settings"]) == len(texture_grid()) + len(refined)
