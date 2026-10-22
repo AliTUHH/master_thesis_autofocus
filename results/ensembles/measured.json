@@ -1,0 +1,378 @@
+{
+  "samples": {
+    "spider_hair": {
+      "cnn-ensemble": {
+        "record": "results/measured/cnn-loo-ensemble/spider_hair.json",
+        "record_sha256": "b497573ea1aaf5cf5d58ad828619757eb73184625b5612e5d1e22dbb37942b01",
+        "z01_est": 0.07924472758711738,
+        "minus_guess_um": -555.2724128826264,
+        "width_um": {
+          "68": 1429.988038015423,
+          "95": 2946.478970166865
+        },
+        "width_68_to_test_median": 0.6588267520385348,
+        "seeds": {
+          "z01_est": [
+            0.07916889626085759,
+            0.07943780280202628,
+            0.07917118977308274
+          ],
+          "std_um": 154.5954372354318,
+          "range_um": 268.9065411686925
+        },
+        "phases_std_um": 3.834555732261738,
+        "references": {
+          "paper2_nm": {
+            "z01": 0.0794,
+            "distance_um": -155.27241288261496,
+            "pit": 0.5866375108014864,
+            "hpd_level": 0.2044905246385959,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 19.6
+          },
+          "baseline_b1_p4": {
+            "z01": 0.07948750000000002,
+            "distance_um": -242.77241288263306,
+            "pit": 0.6333946730488681,
+            "hpd_level": 0.296128916104672,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 26.8
+          }
+        }
+      },
+      "npe-ensemble": {
+        "record": "results/measured/npe-loo-ensemble/spider_hair.json",
+        "record_sha256": "6fe33af92a9f9d5d6c022830b38ed712070e98d4e0df8f9940f130686ad58961",
+        "z01_est": 0.07942892930333502,
+        "minus_guess_um": -371.0706966649907,
+        "width_um": {
+          "68": 647.423908809447,
+          "95": 1403.4689435626085
+        },
+        "width_68_to_test_median": 0.4565668508634273,
+        "seeds": {
+          "z01_est": [
+            0.07943857231267187,
+            0.07966373966478252,
+            0.07924599117664313
+          ],
+          "std_um": 209.08595909871687,
+          "range_um": 417.7484881393856
+        },
+        "phases_std_um": 3.8773789743747997,
+        "references": {
+          "paper2_nm": {
+            "z01": 0.0794,
+            "distance_um": 28.92930333502075,
+            "pit": 0.46657281200080447,
+            "hpd_level": 0.1966344894040234,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 3.5999999999999996
+          },
+          "baseline_b1_p4": {
+            "z01": 0.07948750000000002,
+            "distance_um": -58.57069666499737,
+            "pit": 0.5669670844626633,
+            "hpd_level": 0.31137413214013376,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 9.6
+          }
+        }
+      }
+    },
+    "tooth": {
+      "cnn-ensemble": {
+        "record": "results/measured/cnn-loo-ensemble/tooth.json",
+        "record_sha256": "dca10526c62c427ed815c2ba3a528a7bdd46f3ec97a456e943280b53590ef827",
+        "z01_est": 0.0806632816804283,
+        "minus_guess_um": -2236.718319571701,
+        "width_um": {
+          "68": 1753.5507957702227,
+          "95": 3605.0530151265875
+        },
+        "width_68_to_test_median": 0.8836417424521554,
+        "seeds": {
+          "z01_est": [
+            0.08073331856131553,
+            0.08062172644734383,
+            0.08061353557705879
+          ],
+          "std_um": 66.91767775178562,
+          "range_um": 119.78298425674438
+        },
+        "phases_std_um": 20.720890410084433,
+        "references": {
+          "paper2_nm": {
+            "z01": 0.0809,
+            "distance_um": -236.7183195716993,
+            "pit": 0.6074195922717543,
+            "hpd_level": 0.20239766158859798,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 29.599999999999998
+          },
+          "baseline_b1_p4": {
+            "z01": 0.08063437500000001,
+            "distance_um": 28.906680428292255,
+            "pit": 0.48674468112074304,
+            "hpd_level": 0.039173424701141546,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 4.0
+          }
+        }
+      },
+      "npe-ensemble": {
+        "record": "results/measured/npe-loo-ensemble/tooth.json",
+        "record_sha256": "6d7c209740e28142848deb482ed72fc7994cefcf1b35a5a54f16e7a1c24e1ade",
+        "z01_est": 0.08125859233211943,
+        "minus_guess_um": -1641.4076678805677,
+        "width_um": {
+          "68": 1850.6539488440421,
+          "95": 4039.3967507247476
+        },
+        "width_68_to_test_median": 1.5852151901849694,
+        "seeds": {
+          "z01_est": [
+            0.08029871171500327,
+            0.08143929510283111,
+            0.08157959841257231
+          ],
+          "std_um": 702.5295029774535,
+          "range_um": 1280.8866975690391
+        },
+        "phases_std_um": 30.356098974210184,
+        "references": {
+          "paper2_nm": {
+            "z01": 0.0809,
+            "distance_um": 358.592332119434,
+            "pit": 0.361520687665069,
+            "hpd_level": 0.514644748800825,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 50.4
+          },
+          "baseline_b1_p4": {
+            "z01": 0.08063437500000001,
+            "distance_um": 624.2173321194256,
+            "pit": 0.2765783689917368,
+            "hpd_level": 0.6245141993248172,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 66.4
+          }
+        }
+      }
+    },
+    "cactus_needle": {
+      "cnn-ensemble": {
+        "record": "results/measured/cnn-loo-ensemble/cactus_needle.json",
+        "record_sha256": "482f32c880175f781071c62b9502809d217b7c5c9692d263dbff93af6f659a44",
+        "z01_est": 0.2864771746548812,
+        "minus_guess_um": 377.17465488118495,
+        "width_um": {
+          "68": 3549.388232506398,
+          "95": 7033.934230532621
+        },
+        "width_68_to_test_median": 1.272803980517894,
+        "seeds": {
+          "z01_est": [
+            0.28624866564422846,
+            0.28670944274067883,
+            0.28646893252283334
+          ],
+          "std_um": 230.46264893023954,
+          "range_um": 460.777096450371
+        },
+        "phases_std_um": 146.1847841572746,
+        "references": {
+          "paper2_nm": {
+            "z01": 0.2842,
+            "distance_um": 2277.174654881198,
+            "pit": 0.10148088836690689,
+            "hpd_level": 0.7976619886153276,
+            "inside": {
+              "68": false,
+              "95": true
+            },
+            "abs_distance_percentile": 83.2
+          },
+          "baseline_b1_p4": {
+            "z01": 0.28492812500000003,
+            "distance_um": 1549.0496548811739,
+            "pit": 0.1927325926319141,
+            "hpd_level": 0.6151104943114925,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 72.8
+          }
+        }
+      },
+      "npe-ensemble": {
+        "record": "results/measured/npe-loo-ensemble/cactus_needle.json",
+        "record_sha256": "9834c787bd8ba21ae3bf99d7dffcc781882ae03795cfbd5180c45e4228a3a679",
+        "z01_est": 0.28603185338531173,
+        "minus_guess_um": -68.14661468829142,
+        "width_um": {
+          "68": 3762.8845679634283,
+          "95": 7870.904102048933
+        },
+        "width_68_to_test_median": 1.6840055658098858,
+        "seeds": {
+          "z01_est": [
+            0.28594243968003896,
+            0.2858096981512393,
+            0.2863095592263886
+          ],
+          "std_um": 258.9266849996625,
+          "range_um": 499.86107514932155
+        },
+        "phases_std_um": 174.65272322144682,
+        "references": {
+          "paper2_nm": {
+            "z01": 0.2842,
+            "distance_um": 1831.8533853117215,
+            "pit": 0.15286186108748442,
+            "hpd_level": 0.6590192647524193,
+            "inside": {
+              "68": false,
+              "95": true
+            },
+            "abs_distance_percentile": 78.4
+          },
+          "baseline_b1_p4": {
+            "z01": 0.28492812500000003,
+            "distance_um": 1103.7283853116974,
+            "pit": 0.2648097102783735,
+            "hpd_level": 0.4053762379037287,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 62.0
+          }
+        }
+      }
+    },
+    "magnesium_wire": {
+      "cnn-ensemble": {
+        "record": "results/measured/cnn-loo-ensemble/magnesium_wire.json",
+        "record_sha256": "b152ff46ebe35fdcc5b64e552a75137988ae2a7a2ef1bd78fdf61212d35dd352",
+        "z01_est": 0.4698224355175924,
+        "minus_guess_um": -2577.5644824075907,
+        "width_um": {
+          "68": 3437.778758634125,
+          "95": 6886.413283327597
+        },
+        "width_68_to_test_median": 1.0202853606800693,
+        "seeds": {
+          "z01_est": [
+            0.47002860253453255,
+            0.4696714149951935,
+            0.46975439777374267
+          ],
+          "std_um": 186.93016995421203,
+          "range_um": 357.18753933905447
+        },
+        "phases_std_um": 72.06001629810056,
+        "references": {
+          "paper2_nm": {
+            "z01": 0.4708,
+            "distance_um": -977.5644824076002,
+            "pit": 0.7150468072952142,
+            "hpd_level": 0.4283302180858654,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 45.2
+          },
+          "baseline_b1_p4": {
+            "z01": 0.471228125,
+            "distance_um": -1405.6894824076016,
+            "pit": 0.7927125269781757,
+            "hpd_level": 0.583892864710635,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 55.2
+          }
+        }
+      },
+      "npe-ensemble": {
+        "record": "results/measured/npe-loo-ensemble/magnesium_wire.json",
+        "record_sha256": "a7e288f840eeeaac094ca1f49cf7064c20df0dbd11bfc8f8f7238776c698ea47",
+        "z01_est": 0.47026802457485334,
+        "minus_guess_um": -2131.9754251466484,
+        "width_um": {
+          "68": 4097.705035180054,
+          "95": 7796.999734688453
+        },
+        "width_68_to_test_median": 1.3087761154387665,
+        "seeds": {
+          "z01_est": [
+            0.4707511796402632,
+            0.46969557370134485,
+            0.47030473513018295
+          ],
+          "std_um": 529.889020651896,
+          "range_um": 1055.605938918347
+        },
+        "phases_std_um": 108.03368472865067,
+        "references": {
+          "paper2_nm": {
+            "z01": 0.4708,
+            "distance_um": -531.9754251466579,
+            "pit": 0.5991784492798532,
+            "hpd_level": 0.36391511544138544,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 33.2
+          },
+          "baseline_b1_p4": {
+            "z01": 0.471228125,
+            "distance_um": -960.1004251466594,
+            "pit": 0.674040118285798,
+            "hpd_level": 0.5173343769226383,
+            "inside": {
+              "68": true,
+              "95": true
+            },
+            "abs_distance_percentile": 48.4
+          }
+        }
+      }
+    }
+  },
+  "git_commit": "b6165a6",
+  "torch_version": "2.14.1+cpu",
+  "sbi_version": "0.27.0",
+  "threads": 3,
+  "host": "cursor",
+  "cpu_count": 4
+}

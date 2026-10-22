@@ -1,0 +1,188 @@
+{
+  "sample": "tooth",
+  "label": "tooth",
+  "binning": 1,
+  "cutting_band": 80,
+  "input_shape": [
+    1888,
+    1888
+  ],
+  "padding_factor": 4.0,
+  "padding_factor_input": 4.338983050847458,
+  "stage_arrays": [
+    [
+      512,
+      512
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "settings": {
+    "stages": [
+      {
+        "iterations": 700,
+        "step": 0.9,
+        "down_sampling": 16,
+        "momentum": 1.0,
+        "momentum_fwhm": 8.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 0.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 300,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 500,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 1.0
+      }
+    ],
+    "padding_factor": 4.338983050847458,
+    "fade_width": 80,
+    "a0": 0.96,
+    "update": "reference",
+    "gradient": "reference",
+    "pin_phase": true
+  },
+  "geometry_guess": {
+    "energy_kev": 17.0,
+    "z01": 0.0829,
+    "z02": 19.652,
+    "pixel_size": 6.5e-06,
+    "wavelength": 7.293188143129427e-11,
+    "z12": 19.569100000000002,
+    "magnification": 237.05669481302775,
+    "effective_pixel_size": 2.7419601058416443e-08,
+    "effective_distance": 0.08255029462650113,
+    "fresnel_number": 0.0001248780816566809
+  },
+  "paper2": {
+    "simplex": [
+      0.0779,
+      0.0879
+    ],
+    "z01_nm": 0.0809,
+    "z01_visual": 0.081,
+    "samples": 11,
+    "padding_factor": 4.0
+  },
+  "result": {
+    "z01": 0.08063359233211943,
+    "z01_guess": 0.0829,
+    "bounds": [
+      0.0779,
+      0.0879
+    ],
+    "initial_simplex": [
+      0.08075859233211943,
+      0.08175859233211943
+    ],
+    "mfe": 0.0003160417836625129,
+    "nm_iterations": 5,
+    "converged": true,
+    "seconds": 1960.5811237159942,
+    "evaluations": [
+      {
+        "z01": 0.08075859233211943,
+        "mfe": 0.00031648186268284917,
+        "seconds": 215.50471000300604,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08175859233211943,
+        "mfe": 0.00032011285657063127,
+        "seconds": 230.56069063799805,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.07975859233211943,
+        "mfe": 0.00032306162756867707,
+        "seconds": 226.3248853010009,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08125859233211943,
+        "mfe": 0.00031801825389266014,
+        "seconds": 210.45713615202112,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08025859233211943,
+        "mfe": 0.00031896564178168774,
+        "seconds": 202.85213759698672,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08100859233211943,
+        "mfe": 0.0003172023862134665,
+        "seconds": 224.54199866999988,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08050859233211943,
+        "mfe": 0.00031653090263716877,
+        "seconds": 220.84136115401634,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08063359233211943,
+        "mfe": 0.0003160417836625129,
+        "seconds": 219.2272005570121,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08050859233211943,
+        "mfe": 1.7976931348623157e+308,
+        "seconds": 0.0,
+        "reconstructed": false
+      },
+      {
+        "z01": 0.08069609233211944,
+        "mfe": 0.00031625054543837905,
+        "seconds": 210.25674671499291,
+        "reconstructed": true
+      }
+    ],
+    "n_reconstructions": 9,
+    "n_evaluations": 10
+  },
+  "z01_minus_paper2_nm_um": -266.4076678805666,
+  "z01_minus_visual_um": -366.4076678805694,
+  "seconds_per_reconstruction": 217.84076297633712,
+  "git_commit": "901c04e",
+  "torch_version": "2.14.1+cpu",
+  "threads": 3,
+  "host": "cursor",
+  "cpu_count": 4,
+  "warm_start": {
+    "source": "results/measured/npe-loo-ensemble/tooth.json",
+    "sha256": "6d7c209740e28142848deb482ed72fc7994cefcf1b35a5a54f16e7a1c24e1ade",
+    "half_width": 0.0005,
+    "sigmas": 0.0,
+    "z01_est": 0.08125859233211943,
+    "initial_simplex": [
+      0.08075859233211943,
+      0.08175859233211943
+    ]
+  },
+  "revisit_tolerance": 1e-09
+}

@@ -1,0 +1,190 @@
+{
+  "sample": "spider_hair",
+  "label": "spider hair",
+  "binning": 1,
+  "cutting_band": 0,
+  "input_shape": [
+    2048,
+    2048
+  ],
+  "padding_factor": 4.0,
+  "padding_factor_input": 4.0,
+  "stage_arrays": [
+    [
+      512,
+      512
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "settings": {
+    "stages": [
+      {
+        "iterations": 700,
+        "step": 0.9,
+        "down_sampling": 16,
+        "momentum": 1.0,
+        "momentum_fwhm": 8.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 0.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 300,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 500,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 1.0
+      }
+    ],
+    "padding_factor": 4.0,
+    "fade_width": 80,
+    "a0": 0.98,
+    "update": "reference",
+    "gradient": "reference",
+    "pin_phase": true
+  },
+  "geometry_guess": {
+    "energy_kev": 11.0,
+    "z01": 0.07980000000000001,
+    "z02": 19.661,
+    "pixel_size": 6.5e-06,
+    "wavelength": 1.1271290766654569e-10,
+    "z12": 19.581200000000003,
+    "magnification": 246.3784461152882,
+    "effective_pixel_size": 2.638217791567062e-08,
+    "effective_distance": 0.07947610803112763,
+    "fresnel_number": 7.769821554674424e-05
+  },
+  "paper2": {
+    "simplex": [
+      0.0748,
+      0.0848
+    ],
+    "z01_nm": 0.0794,
+    "z01_visual": 0.0794,
+    "samples": 13,
+    "padding_factor": 7.0
+  },
+  "result": {
+    "z01": 0.07948225613812725,
+    "z01_guess": 0.07980000000000001,
+    "bounds": [
+      0.07878052166634594,
+      0.08018399060990855
+    ],
+    "initial_simplex": [
+      0.07878052166634594,
+      0.08018399060990855
+    ],
+    "mfe": 0.00013823338667862117,
+    "nm_iterations": 5,
+    "converged": true,
+    "seconds": 1701.8364872029924,
+    "evaluations": [
+      {
+        "z01": 0.07878052166634594,
+        "mfe": 0.00014657348219770938,
+        "seconds": 207.4490369919804,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08018399060990855,
+        "mfe": 0.0001398621388943866,
+        "seconds": 209.66168413698324,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08018399060990855,
+        "mfe": 1.7976931348623157e+308,
+        "seconds": 0.0,
+        "reconstructed": false
+      },
+      {
+        "z01": 0.07948225613812725,
+        "mfe": 0.00013823338667862117,
+        "seconds": 209.2966816960252,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.07878052166634594,
+        "mfe": 1.7976931348623157e+308,
+        "seconds": 0.0,
+        "reconstructed": false
+      },
+      {
+        "z01": 0.0798331233740179,
+        "mfe": 0.00013952743029221892,
+        "seconds": 201.41264846301056,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.07913138890223657,
+        "mfe": 0.00014067604206502438,
+        "seconds": 207.42020735499682,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.07965768975607257,
+        "mfe": 0.00013871290138922632,
+        "seconds": 227.67243416799465,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.07930682252018191,
+        "mfe": 0.00013880099868401885,
+        "seconds": 209.2246123610239,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.0795699729470999,
+        "mfe": 0.00013834593119099736,
+        "seconds": 229.65700597601244,
+        "reconstructed": true
+      }
+    ],
+    "n_reconstructions": 8,
+    "n_evaluations": 10
+  },
+  "z01_minus_paper2_nm_um": 82.25613812724852,
+  "z01_minus_visual_um": 82.25613812724852,
+  "seconds_per_reconstruction": 212.7242888935034,
+  "git_commit": "901c04e",
+  "torch_version": "2.14.1+cpu",
+  "threads": 3,
+  "host": "cursor",
+  "cpu_count": 4,
+  "box": {
+    "source": "results/measured/npe-loo-ensemble/spider_hair.json",
+    "sha256": "6fe33af92a9f9d5d6c022830b38ed712070e98d4e0df8f9940f130686ad58961",
+    "level": "95",
+    "interval": [
+      0.07878052166634594,
+      0.08018399060990855
+    ],
+    "bounds": [
+      0.07878052166634594,
+      0.08018399060990855
+    ]
+  },
+  "revisit_tolerance": 1e-09
+}

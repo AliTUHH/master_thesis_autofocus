@@ -9,7 +9,39 @@
 | Abbildungen | `docs/laborbuch/figures/stage8-*.png`, Zahlen in `stage8-metrics.json` |
 | Quellen | [2] Dora et al., Opt. Express 33(4), 6641 (2025); [6] M. Deistler et al., „Simulation-based inference: A practical guide“, arXiv:2508.12939 (2025) |
 
-Kurz: ⟨TODO Kurzfassung nach allen Läufen⟩
+Kurz: **Fehlspezifikation.** In der Eingabe der Netze liegen die vier Messhologramme beim
+6.–77. Perzentil der simulierten Test-Samples ihres Leave-one-out-Satzes, in den Einbettungen
+der drei NPEs beim 2.–100. (Zahn bei zwei Seeds beim 95., Mg-Draht bei einem beim 100.). Der
+Abstand erklärt das Versagen nicht. Auf den Test-Splits heißt fern in der Einbettung „klar
+bestimmt“, nicht „ungewöhnlich“ (mit dem Mahalanobis-Abstand haben ferne Samples kleinere
+Fehler, Rangkorrelation −0,24 bis −0,56). Gegen den Simulator von Etappe 5, der für die
+Messhologramme nachweislich falsch war, sieht der Abstand in der Eingabe nichts (18.–80.
+Perzentil) und der in der Einbettung nur die Kaktusnadel (98.) und den Mg-Draht halb, nicht den
+Zahn, bei dem das NPE dieses Simulators 2,3 mm danebenlag. Was ein Hologramm erwarten lässt,
+steht in seiner Nachbarschaft in der Einbettung (Rangkorrelation des Fehlers mit dem Mittel
+seiner 25 nächsten Test-Samples +0,52 bis +0,67). Danach ist das Versagen auf den
+Messhologrammen fehlende Information, kein falscher Simulator: Die Kaktusnadel bleibt beim
+Schätzwert, weil es die simulierten Hologramme in ihrer Nähe auch tun (Steigung 0,12, ganzer
+Split 0,70), und kein Messhologramm versagt mehr als ein typisches Test-Sample. Gegen seine 25
+Nachbarn in der Einbettung versagt jedes Hologramm mit dem Objektmodell gewöhnlich (24.–52.
+Perzentil des Fehlers), mit dem Simulator von Etappe 5 schlechter als fast alle (88.–100., Zahn
+und Kaktusnadel über allen); das trennt die beiden Simulatoren, braucht aber die Wahrheit.
+**Ensembles.** Ensemble gegen Ensemble sind CNN und NPE gleich genau
+(MAE über die vier Test-Splits 1138 gegen 1106 µm, gepaart −31 µm [−67, +4]); mehr als die
+Hälfte des Vorsprungs aus Etappe 7 war das Mitteln. Das NPE-Ensemble deckt nominal (68 / 95 %:
+66,8 / 95,2 %) mit 21 % schmaleren Intervallen, das CNN-Ensemble deckt zu viel (73,1 / 96,2 %).
+Auf den Messhologrammen liegt das NPE-Ensemble bei drei Proben näher an Padding 4, das
+CNN-Ensemble beim Zahn (29 gegen 624 µm). **Warmstart.** Alle 16 neuen Suchen enden höchstens
+43 µm neben der vollen, innerhalb ihrer Toleranz von 100 µm, und keine im Intervall an
+seinem Rand. Sie sparen wenig: Über die vier Proben braucht der Warmstart vom NPE-Ensemble 24 %
+weniger Rekonstruktionen, der vom CNN-Ensemble 22 %, die Suche im 95-%-Intervall des
+NPE-Ensembles 14 % und die im Intervall des CNN-Ensembles 16 % weniger; der Warmstart von
+Etappe 5 sparte 10 %. Mit 3 Threads dauern die vier vollen Suchen 169 min, die Warmstarts von
+beiden Ensembles je 128 min. Nelder–Mead braucht pro Halbierung der Startbreite im Mittel 1,5
+Rekonstruktionen, ein gelerntes Intervall spart deshalb nur mit dem Logarithmus seiner Breite,
+und ein Warmstart braucht nie weniger als etwa 9; dieselben 24 Suchen auf einer Parabel
+brauchen zusammen genau so viele Rekonstruktionen wie die echten (251), einzeln höchstens zwei
+mehr oder weniger.
 
 ## 1 Ziel
 
@@ -158,14 +190,16 @@ Standardabweichung der Schätzungen der drei Seeds. Dazu, pro Raum und Maß:
    seine 25 nächsten anderen Test-Samples, und dessen Rangkorrelation mit der Größe des Samples
    selbst. Das prüft auf simulierten Daten, ob der Schluss aus Punkt 3 trägt.
 
-### 3.5 Positivkontrolle (`66df569`)
+### 3.5 Positivkontrolle (`66df569`, `08f9363`)
 
 Mit `--control results/npe` rechnet `misspec` dieselben Abstände des Hologramms noch einmal
 gegen den Simulator von Etappe 5: zu den Trainings-Samples von `data/matched-<probe>`, in der
 Eingabe und in der Einbettung des NPE, das Etappe 7 darauf trainiert hat
-(`results/npe/matched-<probe>`, Laborbuch 07, 5.7), als Perzentile unter dessen Test-Split. Mit
-diesem Simulator lagen die gelernten Schätzungen 0,29–5,64 mm über [2]; er war für die
-Messhologramme nachweislich falsch (E8).
+(`results/npe/matched-<probe>`, Laborbuch 07, 5.7), als Perzentile unter dessen Test-Split.
+Dazu derselbe Blick wie in 3.4, Punkte 2 und 3 (`08f9363`): das Versagen dieses NPE auf seinem
+Test-Split und auf dem Hologramm und die 25 nächsten Test-Samples des Hologramms in der Eingabe
+und in seiner Einbettung. Mit diesem Simulator lagen die gelernten Schätzungen 0,29–5,64 mm
+über [2]; er war für die Messhologramme nachweislich falsch (E8).
 
 ### 3.6 Die Ensembles verglichen (`e7bec24`)
 
@@ -214,7 +248,10 @@ das Intervall in Millimetern, den Start, die Regel für Wiederholungen und den A
 Nelder–Mead, und `search_points` bekommt dieselben Eingaben wie die Suche: Schätzwert,
 Intervall, Anfangssimplex und Toleranz aus dem Datensatz. Dazu die Rekonstruktionen auf einer
 Parabel gegen die Breite des Startintervalls (Minimum an 97 Stellen darin) und gegen den Abstand
-eines Warmstarts vom Minimum (`parabola` in `warmstart.json`).
+eines Warmstarts vom Minimum (`parabola` in `warmstart.json`). Zum Vergleich zählt `warmstart`
+die Auswertungen von Brents Verfahren in Grenzen auf Modellkurven aus denselben Intervallen
+(`brent`) und passt an die Punkte aller Suchen einer Probe mit der Threadzahl der vollen Suche
+den Anstieg der MFE vom Minimum an (`curves`; `1969a01`, 5.6, Punkt 9, und 7, Punkt 1).
 
 ### 3.8 Tests
 
@@ -231,11 +268,15 @@ kalt, im Intervall und mit zwei Warmstarts: dieselben Punkte in derselben Reihen
 denselben Wiederholungen, und mit der Wurzel des Abstands dieselben wie mit der Parabel. Ein
 erster Entwurf nahm das Intervall der Suche in Metern und rechnete es in Millimeter um; dabei
 wich das obere Ende von $\Omega_z$ im letzten Bit ab (105,00000000000001 statt 105 mm), und eine
-Wiederholung wurde rekonstruiert. Deshalb rechnen beide das Intervall mit derselben Funktion. In `tests/test_posterior.py` (2 Tests): Die Mischung aus einem Glied ist die
-Gauß-Dichte; die Mischung aus zwei Gliedern gegen Median, Standardabweichung, Quantile, Dichte,
-HPD-Niveaus und -Breiten, die Fassung auf dem Gitter und die Zusammenfassung. Die CI rechnet `misspec` und `ensembles` auf den NPE-Läufen ihres Schritts
-für Etappe 7, dazu `ensembles`, `warmstart` und alle Abbildungen aus den versionierten
-Ergebnissen. ⟨TODO Zahl der Tests⟩
+Wiederholung wurde rekonstruiert. Deshalb rechnen beide das Intervall mit derselben Funktion.
+In `tests/test_posterior.py` (2 Tests): Die Mischung aus einem Glied ist die Gauß-Dichte; die
+Mischung aus zwei Gliedern gegen Median, Standardabweichung, Quantile, Dichte, HPD-Niveaus und
+-Breiten, die Fassung auf dem Gitter und die Zusammenfassung. Die CI rechnet `misspec` und
+`ensembles` auf den NPE-Läufen ihres Schritts für Etappe 7, dazu `ensembles`, `warmstart` und
+alle Abbildungen aus den versionierten Ergebnissen.
+
+363 Tests bestehen, einer wird übersprungen (nur CUDA); `ruff` ist sauber. In `main`
+(`7fcaafe`) waren es 352; ein Test in `tests/test_autofocus.py` läuft mit vier Fällen.
 
 ## 4 Entscheidungen und Begründung
 
@@ -310,9 +351,9 @@ Suchen in zwei Lanes; so laufen auch die kalten Suchen von Etappe 3 und 5. Die Z
 mit 3 Threads sind direkt vergleichbar; die der Lane mit einem Thread rechne ich mit der Rate der
 kalten Suche derselben Probe um (`seconds_at_cold_rate`).
 
-**E14 – Keine GPU.** Die Abstände kosten Minuten, der Vergleich der Ensembles Sekunden, die Suchen
-⟨TODO⟩ Kernstunden auf der VM. Nichts davon braucht Maxwell; `docs/maxwell-gpu.md` bleibt
-unverändert. Was die GPU sinnvoll machen würde, steht in Abschnitt 6 (Punkt ⟨TODO⟩).
+**E14 – Keine GPU.** Die Abstände kosten Minuten, der Vergleich der Ensembles Sekunden, die 16
+Suchen 26,6 Kernstunden auf der VM (5.7). Nichts davon braucht Maxwell; `docs/maxwell-gpu.md`
+bleibt unverändert. Was die GPU sinnvoll machen würde, steht in Abschnitt 6 (Punkt 1).
 
 **E15 – Eine Parabel als Modell der Suche.** Nelder–Mead vergleicht nur Funktionswerte, und
 die Suche bricht nur an der Länge des Simplex ab ($f_\text{atol} = 10^6$). Auf jeder Kurve, die
@@ -384,8 +425,10 @@ Fehler gegen Padding 4); im Titel die Rangkorrelation mit Bootstrap-Intervall.*
 *Abb. 4 – Verschiebung des NPE-Ensembles vom Schätzwert gegen den wahren Abstand vom Schätzwert
 auf den Test-Splits (grau), die 25 Test-Samples, die dem Hologramm in der Einbettung von Seed 0
 am nächsten liegen (violette Kreise), und das Hologramm (Stern, Wahrheit Padding 4); im Titel
-die Steigung auf dem ganzen Split und unter den Nachbarn und der Anteil des Weges zu Padding 4,
-den das Ensemble auf dem Hologramm zurücklegt.*
+die Steigung auf dem ganzen Split und unter den Nachbarn, der Anteil des Weges zu Padding 4,
+den das Ensemble auf dem Hologramm zurücklegt, und das Perzentil seines Fehlers unter den
+Nachbarn. Unten dasselbe für das NPE der Positivkontrolle auf dem Test-Split des Simulators von
+Etappe 5, mit den 25 Nachbarn in seiner Einbettung (braune Kreise; 5.3).*
 
 **Abstand und Versagen auf dem Test-Split.** Rangkorrelation des Abstands zu den 10 nächsten
 Trainings-Samples (Einbettung: Seed 0) und des Mahalanobis-Abstands in der Einbettung mit den
@@ -496,7 +539,17 @@ beim Fehler mit 95-%-Bootstrap-Intervall:
 8. **Spinnenhaar:** überall gewöhnlich; die Schätzung ist die beste der vier (−59 µm, 10.
    Perzentil des Test-Splits).
 
-⟨TODO Antwort auf die Frage, nach der Prüfung der Nachbarschaften und der Positivkontrolle⟩
+**Antwort auf Frage 1.** Der Abstand erklärt das Versagen nicht, in keinem der beiden Räume:
+Gegen das Objektmodell sind die Messhologramme gewöhnlich (5.1), und gegen den Simulator von
+Etappe 5, der nachweislich falsch war, wären sie es in der Eingabe auch, in der Einbettung beim
+Zahn ebenso (5.3, Punkte 2 und 3). Was das Versagen erklärt, sind die Nachbarn in der
+Einbettung: Mit dem Objektmodell versagen die vier Hologramme wie ihre 25 nächsten simulierten
+Hologramme (24.–52. Perzentil des Fehlers), mit dem Simulator von Etappe 5 schlechter als fast
+alle (88.–100.; 5.3, Punkt 5). Dass die Kaktusnadel beim Schätzwert bleibt und der
+Mg-Draht über Padding 4 hinausschießt, ist deshalb zu wenig Information im Spektrum, kein
+falscher Simulator. Die Streuung der NPE-Seeds beim Zahn bleibt der einzige Hinweis auf eine
+Fehlspezifikation (Punkt 7); sein Fehler ist für seine Nachbarn in der Einbettung gewöhnlich
+(52.), für die in der Eingabe hoch (84.).
 
 ### 5.3 Positivkontrolle gegen den Simulator von Etappe 5
 
@@ -537,7 +590,41 @@ Binning-Phasen:
    mit dem Simulator von Etappe 5 beim 56. Perzentil, und das NPE liegt 2,3 mm daneben. Nur bei
    der Kaktusnadel gehen Abstand und Versagen zusammen: mit Etappe 5 das 98,4. Perzentil und
    4,9 mm, mit dem Objektmodell das 32.–71. und 1,1 mm.
-5. ⟨TODO Nachbarschaft der Kontrolle⟩
+
+**Die Nachbarschaften gegen Etappe 5.** `control.neighbours`: die 25 Test-Samples des Simulators
+von Etappe 5, die dem Hologramm in der Einbettung dieses NPE am nächsten liegen, in Klammern die
+25 nächsten in der Eingabe, wie in 5.2 (ganzer Test-Split: MAE 213 / 206 / 613 / 1176 µm,
+Steigung 0,99 / 1,00 / 0,89 / 0,71). Rechts das Perzentil des Hologramms unter ihnen, Fehler /
+Breite 95 % / Verschiebung vom Schätzwert, und zum Vergleich der Fehler mit dem Objektmodell
+(5.2):
+
+| Probe | MAE | Steigung | Breite 95 % | Wahrheit − Schätzwert, Median | Perzentil des Hologramms | Objektmodell: Fehler |
+|---|---|---|---|---|---|---|
+| Spinnenhaar | 120 (172) µm | 0,91 (1,03) | 684 (686) µm | −139 (−976) µm | 88 / 68 / 44 (56 / 64 / 76) | 32 (16) |
+| Zahn | 334 (274) µm | 0,60 (1,01) | 1083 (906) µm | +59 (−909) µm | 100 / 80 / 56 (100 / 80 / 56) | 52 (84) |
+| Kaktusnadel | 908 (938) µm | 0,65 (0,88) | 5055 (4144) µm | +3223 (+316) µm | 100 / 76 / 64 (100 / 88 / 92) | 28 (56) |
+| Mg-Draht | 1527 (1228) µm | 0,43 (0,67) | 8285 (4781) µm | +2363 (−632) µm | 92 / 60 / 48 (96 / 88 / 88) | 24 (64) |
+
+5. **Gegen seine Nachbarn versagt das Hologramm nur mit dem falschen Simulator** (Abb. 4, unten
+   gegen oben). Mit dem Simulator von Etappe 5 liegt der Fehler des Hologramms in der
+   Einbettung beim 88.–100. Perzentil seiner 25 Nachbarn, beim Zahn und bei der Kaktusnadel
+   über allen (2,3 und 4,9 mm gegen eine MAE der Nachbarn von 0,33 und 0,91 mm); mit dem
+   Objektmodell beim 24.–52. Passte das Hologramm zu seinen Nachbarn, läge es mit der
+   Wahrscheinlichkeit 1/26 über allen 25. In der Eingabe trennt die Nachbarschaft weniger
+   (56.–100. gegen 16.–84.). Breite und
+   Verschiebung, die keine Wahrheit brauchen, liegen auch mit Etappe 5 im Bereich der Nachbarn
+   (60.–88. und 44.–92. Perzentil); was den falschen Simulator verrät, ist der Fehler, und der
+   braucht Padding 4.
+6. **Das falsche NPE legt das Hologramm zu Samples mit der falschen Wahrheit.** Beim Zahn liegt
+   Padding 4 2,27 mm unter dem Schätzwert, seine Nachbarn in der Einbettung von Etappe 5 liegen
+   im Median 59 µm darüber, und die Schätzung bleibt beim Schätzwert (Anteil des Weges −0,02)
+   mit einem 95-%-Intervall von 1,8 mm. Bei Kaktusnadel und Mg-Draht liegen die Nachbarn
+   3,2 und 2,4 mm über dem Schätzwert, die Wahrheit 1,2 mm darunter, und die Schätzungen gehen
+   3,7 und 2,1 mm nach oben. Mit dem Objektmodell liegen die Nachbarn beim Zahn und beim
+   Mg-Draht auf der Seite der Wahrheit (−2,40 und −1,82 mm; 5.2), bei der Kaktusnadel nicht
+   (+1,20 mm), aber dort sind sie schlecht bestimmt (Steigung 0,12). Beim Zahn zeigt sich die
+   Fehlspezifikation also nicht als Abstand: Das Hologramm landet in einer gewöhnlichen Gegend
+   der Einbettung (56. Perzentil), nur in der falschen.
 
 ### 5.4 Die Ensembles auf den Test-Splits
 
@@ -624,35 +711,69 @@ als schwarzer Strich die Zahl derselben Suche auf der Parabel um ihr Ergebnis (E
 Parabel um ihr Ergebnis (E15); „Punkte“: verschiedene Punkte, wo die Suche einen Punkt zweimal
 rekonstruierte (Etappe 5 ohne Toleranz, E11):
 
-⟨TABELLE Rekonstruktionen⟩
+| Probe | voll | warm, CNN von Etappe 5 | warm, CNN-Ensemble | warm, NPE-Ensemble | 95 %, CNN-Ensemble | 95 %, NPE-Ensemble |
+|---|---|---|---|---|---|---|
+| Spinnenhaar | 13 (13) | 8 (9) | 9 (9) | 10 (8) | 8 (9) | 8 (8) |
+| Zahn | 11 (12) | 10 (10), 9 Punkte | 9 (9) | 9 (9) | 12 (12) | 12 (12) |
+| Kaktusnadel | 13 (13) | 14 (13) | 10 (10) | 9 (8) | 12 (12) | 10 (10) |
+| Mg-Draht | 12 (12) | 12 (13), 11 Punkte | 10 (10) | 9 (9) | 9 (9) | 12 (12) |
+| zusammen | 49 (50) | 44 (45) | 38 (38) | 37 (34) | 41 (42) | 42 (42) |
+| gegen voll | – | −10 % | −22 % | −24 % | −16 % | −14 % |
+
+Zeit in min mit 3 Threads; die Suche im Intervall des CNN-Ensembles lief mit einem Thread und
+steht hier mit der Rate der vollen Suche derselben Probe (E13), gemessen in Klammern:
+
+| Probe | voll | warm, CNN von Etappe 5 | warm, CNN-Ensemble | warm, NPE-Ensemble | 95 %, CNN-Ensemble | 95 %, NPE-Ensemble |
+|---|---|---|---|---|---|---|
+| Spinnenhaar | 45 | 28 | 32 | 36 | 28 (75) | 28 |
+| Zahn | 36 | 37 | 29 | 33 | 39 (118) | 43 |
+| Kaktusnadel | 45 | 53 | 33 | 29 | 42 (108) | 35 |
+| Mg-Draht | 42 | 42 | 33 | 30 | 32 (83) | 42 |
+| zusammen | 169 | 160 | 128 | 128 | 141 (384) | 149 |
+| gegen voll | – | −6 % | −25 % | −24 % | −17 % | −12 % |
 
 Ergebnis minus volle Suche in µm (volle Suche: ihr Ergebnis in mm), in Klammern die MFE am Ende
-über der kleinsten der sechs Suchen derselben Probe in ppm:
+über der kleinsten der sechs Suchen derselben Probe in ppm (die Suche im Intervall des
+CNN-Ensembles mit einem Thread liegt dabei um einige ppm zu hoch, Punkt 9):
 
-⟨TABELLE Ergebnisse⟩
+| Probe | voll | warm, CNN von Etappe 5 | warm, CNN-Ensemble | warm, NPE-Ensemble | 95 %, CNN-Ensemble | 95 %, NPE-Ensemble |
+|---|---|---|---|---|---|---|
+| Spinnenhaar | 79,4875 (0,0) | +18 (36,4) | +7 (4,2) | +4 (1,1) | −5 (6,4) | −5 (5,5) |
+| Zahn | 80,6344 (40,9) | +9 (13,6) | +29 (1,7) | −1 (47,0) | +2 (0,0) | +43 (30,4) |
+| Kaktusnadel | 284,9281 (0,2) | −38 (0,7) | −13 (0,8) | −21 (0,0) | +4 (8,6) | +28 (1,1) |
+| Mg-Draht | 471,2281 (0,3) | +10 (1,3) | −31 (1,2) | −23 (1,0) | +9 (6,8) | +1 (0,0) |
+| größter Betrag | – | 38 | 31 | 23 | 9 | 43 |
 
 Der Start: beim Warmstart die Schätzung minus volle Suche in µm, sonst die Breite des
 Startintervalls in mm:
 
-⟨TABELLE Start⟩
+| Probe | voll | warm, CNN von Etappe 5 | warm, CNN-Ensemble | warm, NPE-Ensemble | 95 %, CNN-Ensemble | 95 %, NPE-Ensemble |
+|---|---|---|---|---|---|---|
+| Spinnenhaar | 10,00 | +330 | −243 | −59 | 2,95 | 1,40 |
+| Zahn | 10,00 | +1009 | +29 | +624 | 3,61 | 4,04 |
+| Kaktusnadel | 10,00 | +4024 | +1549 | +1104 | 7,03 | 7,87 |
+| Mg-Draht | 10,00 | +2385 | −1406 | −960 | 5,85 | 7,80 |
 
-1. **Dasselbe Ergebnis.** Alle 16 neuen Suchen enden höchstens ⟨43⟩ µm neben der vollen
+1. **Dasselbe Ergebnis.** Alle 16 neuen Suchen enden höchstens 43 µm neben der vollen
    Suche, innerhalb ihrer Toleranz von 100 µm (E12); die von Etappe 5 höchstens 38 µm. Die MFE
-   am Ende liegt höchstens ⟨47⟩ ppm über der kleinsten. Die größten Abweichungen hat der Zahn:
-   Seine sechs Ergebnisse liegen auf 80,634–⟨80,678⟩ mm in einer flachen Senke, in der auch
+   am Ende liegt höchstens 47 ppm über der kleinsten. Die größten Abweichungen hat der Zahn:
+   Seine sechs Ergebnisse liegen auf 80,634–80,678 mm in einer flachen Senke, in der auch
    die volle Suche nicht die kleinste MFE fand (41 ppm darüber).
 2. **Schneller, aber wenig.** Über die vier Proben zusammen spart der Warmstart vom
-   NPE-Ensemble 24 % der Rekonstruktionen (37 statt 49), der vom CNN-Ensemble ⟨…⟩, die Suche im
-   95-%-Intervall des NPE-Ensembles 14 % (42), die im Intervall des CNN-Ensembles ⟨…⟩; der
-   Warmstart von Etappe 5 sparte 10 % (44). Keine Variante spart bei jeder Probe: Beim Zahn
-   brauchen beide Suchen im Intervall 12 Rekonstruktionen, eine mehr als die volle, beim
-   Mg-Draht die im Intervall des NPE-Ensembles so viele wie die volle (12). Am meisten spart das
-   Spinnenhaar: 8 statt 13 in beiden Intervallen.
+   NPE-Ensemble 24 % der Rekonstruktionen (37 statt 49), der vom CNN-Ensemble 22 % (38), die
+   Suche im 95-%-Intervall des NPE-Ensembles 14 % (42), die im Intervall des CNN-Ensembles
+   16 % (41); der Warmstart von Etappe 5 sparte 10 % (44). In der Zeit mit 3 Threads ist das
+   fast dasselbe: je 128 statt 169 min für die vier Proben (−24 und −25 %), etwa 10 min pro
+   Probe weniger. Die Warmstarts der beiden Ensembles sparen bei jeder Probe (9–10
+   Rekonstruktionen statt 11–13), die Suchen im Intervall nicht: Beim Zahn brauchen beide 12,
+   eine mehr als die volle, beim Mg-Draht die im Intervall des NPE-Ensembles so viele wie die
+   volle (12), die im Intervall des CNN-Ensembles 9. Am meisten sparen die Intervalle beim
+   Spinnenhaar: 8 statt 13.
 3. **Die Parabel erklärt die Zahlen.** Auf der Parabel um ihr Ergebnis braucht jede Suche
-   höchstens ⟨2⟩ Rekonstruktionen mehr oder weniger als die echte, ⟨…⟩ von ⟨24⟩ genau gleich
-   viele, alle zusammen ⟨…⟩ (echt ⟨…⟩). Die Zahl hängt also an der Geometrie des Starts, nicht
-   an der Form der MFE-Kurve: im Intervall an seiner Breite und an der Lage des Minimums darin,
-   beim Warmstart am Abstand der Schätzung vom Minimum.
+   höchstens 2 Rekonstruktionen mehr oder weniger als die echte, 17 von 24 genau gleich viele
+   (10 davon mit denselben Punkten), alle zusammen 251 wie die echten. Die Zahl hängt also an
+   der Geometrie des Starts, nicht an der Form der MFE-Kurve: im Intervall an seiner Breite und
+   an der Lage des Minimums darin, beim Warmstart am Abstand der Schätzung vom Minimum.
 
 **Wie viele Rekonstruktionen eine Suche braucht.** Auf einer Parabel (E15; `parabola` in
 `warmstart.json`), gestartet an den Enden eines Intervalls der Breite $W$ wie die volle Suche
@@ -687,21 +808,70 @@ Und gestartet mit ±0,5 mm um eine Schätzung, die $d$ neben dem Minimum liegt, 
    ±0,11 mm darum. Deshalb brauchen beide Suchen im Intervall 12 und die volle, bei der das
    Minimum bei 27 % von $\Omega_z$ liegt, 11. Je genauer ein symmetrisches Intervall um das
    Minimum liegt, desto weniger spart es.
-6. **Der Warmstart spart, wenn die Schätzung nahe genug liegt.** Mit ±0,5 mm um eine Schätzung
-   bis 1 mm neben dem Minimum braucht die Parabel 8,6–10, ab 1,5 mm 11–13 Rekonstruktionen. Die
-   Schätzungen der Ensembles liegen 0,03–1,55 mm neben der vollen Suche (5.5), die von Etappe 5
-   0,33–4,02 mm. Der Warmstart von Etappe 5 sparte deshalb vor allem beim Spinnenhaar (0,33 mm
-   daneben, 8 statt 13), beim Zahn (1,0 mm) eine Rekonstruktion, beim Mg-Draht (2,4 mm) keine,
-   und brauchte bei der Kaktusnadel (4,0 mm) eine mehr als die volle Suche. ⟨CNN-Ensemble⟩
-7. **Kein Ergebnis am Rand.** Keine Suche im Intervall endet näher als ⟨702⟩ µm an seinem Rand
+6. **Der Warmstart spart, wenn die Schätzung höchstens etwa 1 mm danebenliegt, aber nie unter
+   etwa 9.** Mit ±0,5 mm um eine Schätzung bis 1 mm neben dem Minimum braucht die Parabel
+   8,6–10 Rekonstruktionen, ab 1,5 mm 11–13. Auch eine Schätzung genau auf dem Minimum braucht
+   9: Der Simplex von 1 mm muss auf 100 µm schrumpfen. Die Schätzungen der Ensembles liegen
+   0,03–1,55 mm neben der vollen Suche (5.5), und ihre Warmstarts brauchen 9–10, wie
+   weit die Schätzung auch danebenliegt: beim Zahn 9 vom CNN-Ensemble (29 µm daneben) wie vom
+   NPE-Ensemble (624 µm), beim Spinnenhaar 10 vom NPE-Ensemble (59 µm). Die Schätzungen von
+   Etappe 5 lagen 0,33–4,02 mm daneben. Ihr Warmstart sparte deshalb vor allem beim
+   Spinnenhaar (0,33 mm daneben, 8 statt 13), beim Zahn (1,0 mm) eine Rekonstruktion, beim
+   Mg-Draht (2,4 mm) keine, und brauchte bei der Kaktusnadel (4,0 mm) eine mehr als die volle
+   Suche. Eine genauere Schätzung als die der Ensembles spart mit diesem Simplex nichts mehr;
+   sparen könnte nur ein kleinerer Anfangssimplex (6, Punkt 3).
+7. **Kein Ergebnis am Rand.** Keine Suche im Intervall endet näher als 702 µm an seinem Rand
    (6, Punkt 1); das kleinste ist das 1,4 mm breite Intervall des NPE-Ensembles beim
    Spinnenhaar.
-8. **Der Warmstart blieb ⟨…⟩-mal im 95-%-Intervall** seines Ensembles (`inside_bounds_of`):
-   ⟨…⟩. Dort ist er auch der Warmstart im Intervall (6, Punkt 2).
+8. **Der Warmstart blieb in 7 von 8 Fällen im 95-%-Intervall** seines Ensembles
+   (`inside_bounds_of`). Nur beim Spinnenhaar ging der Warmstart vom NPE-Ensemble bis
+   80,929 mm, über das obere Ende des 1,4 mm breiten Intervalls (80,184 mm) hinaus. In den
+   anderen Fällen ist er auch der Warmstart, der auf das Intervall beschränkt ist (6, Punkt 2).
+9. **Die MFE hängt an der Zahl der Threads.** Nach den Suchen habe ich einzelne Punkte mit
+   dem Code der Suchen und der anderen Threadzahl noch einmal rekonstruiert (nicht
+   versioniert). Mit drei Threads wiederholt, gibt das Ergebnis der vollen Suche der
+   Kaktusnadel bitgenau die MFE von `b1-p4`; bei gleicher Threadzahl ist die Rekonstruktion
+   also deterministisch. Mit einem Thread liegt die MFE dort 8,9 ppm höher, bei 284,9325 mm,
+   einem Punkt der Suche im Intervall des CNN-Ensembles, 9,1 ppm, und beim Mg-Draht bei
+   467,4 mm, wo die volle Suche und die im Intervall des CNN-Ensembles beginnen, 4,2 ppm. Beim
+   Zahn aber liegt die MFE bei 80,6926 mm mit drei Threads 675 ppm über der mit einem: Dort
+   endet die flache Senke mit einer Stufe (Punkt 1; 7, Punkt 1), mit einem Thread erst hinter
+   diesem Punkt (dort 2 ppm über der kleinsten MFE), mit drei Threads davor (80,678 mm 29 ppm,
+   80,6926 mm 677 ppm, 80,696 mm 706 ppm). Welche Seite der Stufe die Rekonstruktion trifft,
+   entscheiden dort Rundungsunterschiede. Für die Suchen heißt das: Innerhalb einer Suche
+   haben alle Punkte dieselbe Threadzahl, und alle Ergebnisse liegen in der Senke; dasselbe
+   Ergebnis (Punkt 1) gilt deshalb unabhängig davon. Die MFE der Suche im Intervall des
+   CNN-Ensembles ist gegen die der anderen um einige ppm verschoben (6,4–8,6 ppm über der
+   kleinsten bei Spinnenhaar, Kaktusnadel und Mg-Draht, fast alles davon die Threadzahl), und
+   `curves` nimmt nur die Suchen mit 3 Threads.
 
 ### 5.7 Laufzeiten
 
-⟨TODO⟩
+Auf der VM (4 Kerne), mit der Uhr der Programme. Lane A (3 Threads) lief von 12:18 bis 20:16
+Uhr (die Suchen bis 20:12), Lane B (ein Thread) von 12:58 bis 20:22 Uhr, danach die Prüfungen
+der Threads (5.6, Punkt 9). Zweimal stand die VM still, 13:59–14:13 und etwa 15:12–15:59 Uhr;
+die Uhr der Programme zählt das nicht, die Rekonstruktionen, die eine Pause überspannten,
+dauerten bis zu 20 % länger.
+
+| Schritt | Threads | Zeit |
+|---|---|---|
+| `sources` | 1 | 5 s; erneut gerechnet, dieselben Dateien bis auf den Commit |
+| `misspec` mit Positivkontrolle | 3 | 3,1 min mit den Eingaben der Splits aus dem Zwischenspeicher (`--cache`); die Läufe, die ihn füllten, 5,9 und 8,0 min |
+| `ensembles` | 3 | 22 s |
+| Warmstart vom NPE-Ensemble, 4 Proben | 3 | 128 min (37 Rekonstruktionen, 207 s pro Rekonstruktion) |
+| Suche im 95-%-Intervall des NPE-Ensembles | 3 | 149 min (42; 213 s) |
+| Warmstart vom CNN-Ensemble | 3 | 128 min (38; 201 s) |
+| Suche im 95-%-Intervall des CNN-Ensembles | 1 | 384 min (41; 561 s), mit der Rate der vollen Suche 141 min |
+| Prüfungen der Threads, 4 Rekonstruktionen | 3 und 1 | 3,5 min pro Rekonstruktion mit 3 Threads, 9,5 min mit einem |
+| `warmstart` | 1 | 3 s |
+| Abbildungen | 1 | 6 s |
+| Testsuite (364 Tests) | 1, die Cluster-Tests 4 | 59 s |
+| Schritt der CI für diese Etappe, lokal | 2 | ⟨…⟩ |
+
+Zusammen sind das etwa 28 Kernstunden (Threads mal Wandzeit): 26,6 für die 16 Suchen, davon
+6,4 für die Suche mit einem Thread, gut eine für `misspec` und die Prüfungen der Threads; alles
+andere kostet Sekunden. Eine volle Suche kostet mit 3 Threads im Mittel 42 min pro Probe, gut
+2 Kernstunden, der Warmstart vom NPE-Ensemble 32 min.
 
 ## 6 Offene Punkte
 
@@ -713,10 +883,12 @@ Und gestartet mit ±0,5 mm um eine Schätzung, die $d$ neben dem Minimum liegt, 
    und mit etwa 330 s pro Suche (Laborbuch 04, 5.8) kosten die 1000 Test-Samples etwa 90 h
    mit 3 Threads, ein Fall für Maxwell, der hier nicht vorbereitet ist. Bis dahin gilt: Endet
    eine Suche im Intervall weniger als 100 µm vor seinem Rand, ist sie im vollen $\Omega_z$ zu
-   wiederholen. ⟨TODO: kam auf den Messhologrammen vor oder nicht⟩
+   wiederholen. Auf den Messhologrammen kam das nicht vor: Die Suchen im Intervall enden
+   mindestens 702 µm vor seinem Rand (5.6, Punkt 7).
 2. **Warmstart im Intervall.** Beide Varianten lassen sich verbinden: Start beim Median mit
-   ±0,5 mm, begrenzt auf das 95-%-Intervall. ⟨TODO: in wie vielen Fällen der Warmstart im
-   Intervall blieb und damit schon diese Suche ist (`inside_bounds_of` in `warmstart.json`)⟩
+   ±0,5 mm, begrenzt auf das 95-%-Intervall. In 7 von 8 Fällen ist der Warmstart schon diese
+   Suche, weil er im Intervall blieb (5.6, Punkt 8); nicht gerechnet ist nur das Spinnenhaar mit
+   dem NPE-Ensemble, dessen Warmstart über das Intervall hinausging.
 3. **Die Breite als Anfangssimplex** (Laborbuch 07, 7, Punkt 4): Der Warmstart nimmt wie in
    Etappe 5 ±0,5 mm um den Median. Ein Simplex aus dem 68-%-Intervall (beim Spinnenhaar
    0,65 mm, bei der Kaktusnadel 3,8 mm breit, 5.5) passte die Schrittweite an die Unsicherheit
@@ -734,13 +906,21 @@ Und gestartet mit ±0,5 mm um eine Schätzung, die $d$ neben dem Minimum liegt, 
    (E9).
 7. **Welche Nachbarschaft?** Die 25 Nachbarn in der Eingabe und in der Einbettung beschreiben
    verschiedene Gegenden (beim Zahn MAE 471 gegen 889 µm, bei der Kaktusnadel Steigung 0,73
-   gegen 0,12; 5.2). ⟨TODO nach der Prüfung der Nachbarschaften⟩
+   gegen 0,12; 5.2). Für die Prüfung gegen die Nachbarn trennt die Einbettung die beiden
+   Simulatoren sauber (88.–100. gegen 24.–52. Perzentil), die Eingabe nicht (56.–100. gegen
+   16.–84.; 5.3, Punkt 5). Wie das Perzentil an der Zahl der Nachbarn und an der Einbettung
+   hängt, ist nicht geprüft; die Kontrolle hat nur ein NPE pro Probe.
 8. **Der Zahn in den Einbettungen.** Warum zwei der drei Einbettungen den gemessenen Zahn an
    den Rand ihres Test-Splits legen und die NPE-Seeds sich dort uneinig sind, während sein
    Spektrum gewöhnlich ist und die CNNs einig sind, ist offen (5.2, Punkt 7). Ob mehr
    Trainingsdaten die Seeds einig machen, zeigen die Läufe auf Maxwell (Laborbuch 07, 9.10,
    Punkt 1).
-9. **Aus Laborbuch 07, 9.10 unverändert offen:** die großen Läufe auf Maxwell (Punkt 1), die
+9. **Die Stufe beim Zahn.** Bei etwa 80,69 mm springt die MFE um etwa 680 ppm, und ob ein
+   Punkt davor oder dahinter landet, hängt an der Zahl der Threads (5.6, Punkt 9). Ob die
+   Rekonstruktion dort zwischen zwei Lösungen wechselt und ob es solche Stufen auch bei den
+   anderen Proben gibt, ist nicht untersucht; für eine Suche, die die Werte der MFE nutzt
+   (7, Punkt 1), ist das zuerst zu klären.
+10. **Aus Laborbuch 07, 9.10 unverändert offen:** die großen Läufe auf Maxwell (Punkt 1), die
    Kalibrierung auf mehr Samples (Punkt 4) und die Frage an Daniel nach dem Einstellen an den
    Testhologrammen (Punkt 5).
 
@@ -758,43 +938,62 @@ Und gestartet mit ±0,5 mm um eine Schätzung, die $d$ neben dem Minimum liegt, 
    bei jeder Breite ab 1 mm im Mittel 5,5–6,0 Auswertungen, auf einer Kurve, die wie $|d|$
    steigt, 5,7–8,9 und auf einer flachen Senke wie $d^4$ 6,5–11,0, so viele wie Nelder–Mead
    (5,3–11,2). Die MFE der Messhologramme steigt zwischen 0,2 und 3 mm vom Minimum bei
-   Kaktusnadel und Mg-Draht wie eine Parabel (Exponent 1,92–2,03), beim Zahn fast linear (1,12
-   und 1,20), beim Spinnenhaar dazwischen (1,66 unten, 1,16 oben; `curves`, aus den Punkten
-   aller Suchen einer Probe). Auf solchen Kurven bräuchte Brents Verfahren in $\Omega_z$ etwa
+   Kaktusnadel und Mg-Draht wie eine Parabel (Exponent 1,93–2,03), beim Zahn fast linear (1,16
+   auf beiden Seiten), beim Spinnenhaar dazwischen (1,69 unten, 1,11 oben; `curves`, aus den
+   Punkten aller Suchen einer Probe mit 3 Threads). Auf solchen Kurven bräuchte Brents
+   Verfahren in $\Omega_z$ etwa
    6 statt 12–13 Rekonstruktionen bei Kaktusnadel und Mg-Draht und 9 statt 11 beim Zahn, ohne
    gelernte Schätzung. Zu prüfen auf der echten MFE, zuerst auf den vier Messhologrammen (etwa
    30 Rekonstruktionen, knapp 2 h mit 3 Threads), dann auf den simulierten Test-Splits, wo die
    Wahrheit bekannt ist, mit dem Vorbehalt der schmalen Senken der MFE (Laborbuch 04, 9,
-   Punkt 1) ⟨TODO Zahn: Boden und Stufe, nach dem Vergleich der Threads⟩.
+   Punkt 1). Beim Zahn liegen die Punkte zwischen 80,634 und 80,678 mm innerhalb von 45 ppm;
+   bei 80,693 mm liegt die MFE mit 3 Threads 680 ppm darüber, mit einem Thread noch in der
+   Senke (5.6, Punkt 9). Die Senke endet also mit einer Stufe, und an ihr kann eine Parabel
+   durch drei Punkte weit danebenliegen.
 2. **Maxwell** (Laborbuch 07, 9.10, Punkt 1): die großen Läufe, dann dieselben Befehle wie
    hier. Daran zeigt sich, ob mehr Trainingsdaten die NPE-Seeds beim Zahn einig machen und die
    Intervalle bei Kaktusnadel und Mg-Draht schmaler; erst dann spart die Suche im Intervall auch
    dort etwas (5.6).
 3. **Die Suche im Intervall auf den Test-Splits** (6, Punkt 1), ebenfalls auf Maxwell: wie oft
    und wie weit sie das Minimum verfehlt, wenn die Wahrheit außerhalb des Intervalls liegt.
-4. ⟨TODO nach der Positivkontrolle: `misspec` als Prüfung bei jedem neuen Simulator⟩
+4. **`misspec` als Prüfung jedes neuen Simulators.** Die Prüfung gegen die Nachbarn in der
+   Einbettung hat den falschen Simulator erkannt und den mit Objektmodell nicht verworfen
+   (5.3, Punkt 5); der Abstand allein leistet das nicht. Sie braucht die Wahrheit, hier
+   Padding 4, und mit vier Hologrammen ist sie ein Anhaltspunkt, kein Test. Für einen neuen
+   Simulator genügt `misspec` auf seinen Sätzen und NPEs (`--data`, `--npe`); mehr
+   Messhologramme mit bekannter Wahrheit machten aus ihr einen Test.
 
 ## 8 Bezug zur Masterarbeit
 
 - **Fehleranalyse (Plan-Schritt 16, „Wann versagt ML … Out-of-distribution?“):** Gegen den
   Simulator mit Objektmodell liegen die vier Messhologramme in der Eingabe der Netze beim
-  6.–77. Perzentil der simulierten Test-Samples ⟨TODO Kontrolle: gegen den Simulator von
-  Etappe 5 …⟩. Wo die gelernten Schätzungen auf den Messhologrammen versagen, fehlt dem
-  Spektrum die Information (Kaktusnadel, Mg-Draht); außerhalb der Simulationen liegt keines
-  der Hologramme. Beim Zahn gibt es einen schwachen Hinweis in den Einbettungen der NPEs
-  (5.2, Punkt 7). ⟨TODO Satz zur Antwort⟩
+  6.–77. Perzentil der simulierten Test-Samples, gegen den von Etappe 5, der nachweislich
+  falsch war, ebenso (18.–80.). Wo die gelernten Schätzungen auf den Messhologrammen versagen,
+  fehlt dem Spektrum die Information (Kaktusnadel, Mg-Draht); außerhalb der Simulationen liegt
+  keines der Hologramme. Beim Zahn gibt es einen schwachen Hinweis in den Einbettungen der NPEs
+  (5.2, Punkt 7). Ein Maß für Out-of-distribution über Abstände hätte den falschen Simulator
+  nicht erkannt; erkannt hat ihn erst das Versagen gegen die Nachbarn in der Einbettung, mit
+  Padding 4 als Wahrheit (5.3, Punkt 5).
 - **Modellvergleich (Plan-Schritte 11 und 13):** Ensemble gegen Ensemble sind NPE und CNN gleich
   genau (zusammen −31 µm [−67, +4]); mehr als die Hälfte des Vorsprungs aus Etappe 7 war das
   Mitteln (5.4, Punkt 2). Was dem NPE bleibt, sind die Intervalle: kalibriert statt zu weit,
   21 % schmaler, kleinere NLL. Für das Zusatzkapitel zur Posterior heißt das: Seed gegen Seed
   und Ensemble gegen Ensemble vergleichen, nie ein Ensemble gegen ein einzelnes Netz.
-- **Geschwindigkeit bei gleicher Genauigkeit (Plan-Schritt 15):** ⟨TODO Warmstart und Suche
-  im Intervall: dasselbe Ergebnis, wie viel schneller⟩
+- **Geschwindigkeit bei gleicher Genauigkeit (Plan-Schritt 15):** Warmstart und Suche im
+  gelernten 95-%-Intervall finden auf den vier Messhologrammen dasselbe Minimum wie die volle
+  Suche (höchstens 43 µm daneben, Toleranz 100 µm), sparen aber nur 14–24 % der
+  Rekonstruktionen (128–149 statt 169 min mit 3 Threads). Das liegt an Nelder–Mead, nicht an
+  den Schätzungen: Die Zahl wächst mit dem Logarithmus der Startbreite, und ein Warmstart
+  braucht nie weniger als etwa 9 (5.6, Punkte 4–6). Eine Suche, die die Werte der MFE nutzt,
+  bräuchte bei Kaktusnadel und Mg-Draht etwa halb so viele (7, Punkt 1). Glatt ist die MFE
+  dabei nicht überall: Beim Zahn endet die Senke mit einer Stufe, deren Lage an
+  Rundungsunterschieden hängt (5.6, Punkt 9).
 - **Methodik:** Ein Abstand braucht einen Maßstab und eine Kontrolle. Den Maßstab gibt der
   Test-Split (E4), die Kontrolle der Simulator von Etappe 5, der nachweislich falsch war (E8).
   In einer gelernten Einbettung heißt fern auf simulierten Daten „klar bestimmt“, nicht
   „ungewöhnlich“ (5.2, Punkt 2); ein Perzentil in der Einbettung allein zeigt deshalb keine
-  Fehlspezifikation an.
+  Fehlspezifikation an. Von den geprüften Maßen erkennt nur das Versagen gegen die Nachbarn
+  die Kontrolle (5.3, Punkt 5).
 - **Quellen:** [6] Sec. 3.4; [2] Table 1 und Eq. (17), (22).
 
 Reproduktion: `docs/usage.md`, Abschnitt „Stage 8: misspecification, ensembles, warm start“.

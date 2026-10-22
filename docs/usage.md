@@ -760,12 +760,15 @@ all on the CPU. `scripts/run_stage8_study.py`:
   probes on a given MFE curve, without reconstructing), and the reconstructions on a parabola
   against the width of the start interval and the distance of a warm start; for comparison,
   the evaluations of Brent's bounded method (SciPy) on model curves from the same intervals,
-  and how the MFE of each probe rises from its minimum, from the points of all its searches.
+  and how the MFE of each probe rises from its minimum, from the points of all its searches
+  with the thread count of the full search (with one thread instead of three, the same
+  reconstruction gives an MFE that differs by a few ppm, at a step of the tooth by 675 ppm).
 
 The searches are `run_stage3_experiments.py measured` with `--warm-start` (start from the
 estimate +- 0.5 mm) or `--box` (search only inside the central interval `--box-level`, default
 95 %, cut to `Omega_z`), both with `--revisit-tolerance 1e-9` (points within 1 nm of an earlier
-one count as repeated). Each takes 35–50 min with 3 threads.
+one count as repeated). With 3 threads a search takes 30–45 min per probe (8–12
+reconstructions of about 3.5 min), all four probes about 2 to 2.5 h.
 
 ```bash
 python scripts/run_stage8_study.py sources
