@@ -12,7 +12,7 @@ from .criteria import (
 )
 from .curves import reconstruction_focus_curve, simulated_focus_curve, symmetric_offsets
 from .nelder_mead import NelderMeadResult, nelder_mead
-from .search import FocusEvaluation, FocusSearchResult, find_focus
+from .search import FocusEvaluation, FocusSearchResult, find_focus, search_points
 
 __all__ = [
     "FOCUS_EXTREMUM",
@@ -29,6 +29,7 @@ __all__ = [
     "normalize_curve",
     "prefilter",
     "reconstruction_focus_curve",
+    "search_points",
     "simulated_focus_curve",
     "symmetric_offsets",
 ]

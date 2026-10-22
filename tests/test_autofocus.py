@@ -19,6 +19,7 @@ from holofocus.autofocus import (
     normalize_curve,
     prefilter,
     reconstruction_focus_curve,
+    search_points,
     simulated_focus_curve,
     symmetric_offsets,
 )
@@ -368,3 +369,45 @@ def test_find_focus_revisit_tolerance(monkeypatch):
     assert tolerant.n_reconstructions == 2
     with pytest.raises(ValueError):
         find_focus(torch.zeros((8, 8)), GEOMETRY, revisit_tolerance=-1e-9)
+
+
+@pytest.mark.parametrize(
+    "bounds, simplex, tolerance",
+    [
+        (None, None, 0.0),
+        ((0.1012, 0.1038), None, 1e-9),
+        (None, (0.1019, 0.1029), 1e-9),
+        (None, (0.0950, 0.0960), 0.0),
+    ],
+)
+def test_search_points_are_the_points_of_find_focus(monkeypatch, bounds, simplex, tolerance):
+    """Cold, bounded and warm searches; any curve symmetric about the minimum gives the same."""
+    z_true = 0.10237
+
+    def parabola(z01):
+        return (z01 - z_true) ** 2
+
+    def fake_asrm(hologram, fresnel_number, settings):
+        z01 = z01_from_fresnel_number(
+            fresnel_number, GEOMETRY.energy_kev, GEOMETRY.z02, GEOMETRY.pixel_size
+        )
+        return SimpleNamespace(final_loss=parabola(z01))
+
+    monkeypatch.setattr(search_module, "asrm_reconstruct", fake_asrm)
+    result = find_focus(
+        torch.zeros((8, 8)),
+        GEOMETRY,
+        bounds=bounds,
+        initial_simplex=simplex,
+        revisit_tolerance=tolerance,
+    )
+    given = {"initial_simplex": simplex, "bounds": bounds, "revisit_tolerance": tolerance}
+    points = search_points(parabola, GEOMETRY.z01, **given)
+    assert [e.reconstructed for e in points] == [e.reconstructed for e in result.evaluations]
+    np.testing.assert_allclose(
+        [e.z01 for e in points], [e.z01 for e in result.evaluations], rtol=0, atol=1e-12
+    )
+    assert all(e.seconds == 0.0 for e in points)
+    assert sum(e.reconstructed for e in points) == result.n_reconstructions
+    root = search_points(lambda z01: abs(z01 - z_true) ** 0.5, GEOMETRY.z01, **given)
+    assert [(e.z01, e.reconstructed) for e in root] == [(e.z01, e.reconstructed) for e in points]

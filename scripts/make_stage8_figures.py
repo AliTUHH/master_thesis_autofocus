@@ -552,6 +552,21 @@ def warmstart_figure(measured: Path, out: Path, dpi: int) -> dict | None:
         counts = [entries[v]["n_reconstructions"] for v in variants]
         colors = [SEARCHES[v][1] for v in variants]
         ax.bar(x, counts, color=colors, alpha=0.8)
+        parabola = [
+            (xi, entries[v]["parabola_reconstructions"])
+            for xi, v in enumerate(variants)
+            if "parabola_reconstructions" in entries[v]
+        ]
+        if parabola:
+            ax.scatter(
+                *zip(*parabola, strict=True),
+                marker="_",
+                s=220,
+                linewidths=1.6,
+                color="k",
+                zorder=3,
+                label="the same search on a parabola about its result",
+            )
         for xi, v in zip(x, variants, strict=True):
             e = entries[v]
             text = "" if v == "cold" else f"{e['minus_cold_um']:+.0f}"
@@ -562,10 +577,11 @@ def warmstart_figure(measured: Path, out: Path, dpi: int) -> dict | None:
         ax.grid(alpha=0.3, axis="y")
     axes[0, 0].set_ylabel("z01 minus the full search (mm, linear within +- 0.1)", fontsize=8)
     axes[1, 0].set_ylabel("reconstructions (label: z01 minus the full search, um)", fontsize=8)
-    _legend(fig, axes[0], columns=4)
+    _legend(fig, axes, columns=4)
     _save(fig, out / "stage8-warmstart.png", dpi)
     return {
         "totals": summary["totals"],
+        "parabola": summary.get("parabola"),
         "samples": {
             s: {
                 v: {
@@ -577,6 +593,8 @@ def warmstart_figure(measured: Path, out: Path, dpi: int) -> dict | None:
                         "mfe_relative_to_best",
                         "n_reconstructions",
                         "distinct_points",
+                        "parabola_reconstructions",
+                        "parabola_same_points",
                         "seconds",
                         "threads",
                         "seconds_per_reconstruction",

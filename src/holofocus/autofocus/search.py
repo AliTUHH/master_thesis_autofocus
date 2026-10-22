@@ -19,6 +19,9 @@ point ``z01_hat`` is a full ASRM reconstruction (:func:`holofocus.asrm.asrm_reco
 * the simplex lives in millimetres. Revisited points are then bit-identical to the first
   visit for intervals like 95-105 mm, whereas in metres they can differ in the last bit and
   would be reconstructed a second time.
+
+:func:`search_points` gives the points the same search probes on a given MFE curve, without
+reconstructing (Stage 8).
 """
 
 from __future__ import annotations
@@ -118,21 +121,102 @@ def find_focus(
     """
     settings = ASRMSettings() if settings is None else settings
     z01_guess = geometry.z01
-    if bounds is None:
-        lower, upper = z01_guess - confidence, z01_guess + confidence
-    else:
-        lower, upper = (float(b) for b in bounds)
+    (lower, upper), interval_mm = _interval(z01_guess, confidence, bounds)
     if not 0 < lower < upper < geometry.z02:
         raise ValueError(
             f"search interval [{lower}, {upper}] m must lie between focus and detector"
         )
-    if revisit_tolerance < 0:
-        raise ValueError("revisit_tolerance must not be negative")
+    best: list[ASRMResult] = []
+
+    def reconstruct(z01: float) -> tuple[float, float]:
+        start = time.perf_counter()
+        result = asrm_reconstruct(hologram, geometry.with_z01(z01).fresnel_number, settings)
+        seconds = time.perf_counter() - start
+        if not best or result.final_loss < best[0].final_loss:
+            best[:] = [result]
+        if log is not None:
+            log(f"z01 = {z01 * 1e3:.4f} mm  MFE = {result.final_loss:.6e}  ({seconds:.1f} s)")
+        return result.final_loss, seconds
+
+    start = time.perf_counter()
+    nm, evaluations, start_mm = _search(
+        reconstruct, interval_mm, initial_simplex, xatol, fatol, max_evaluations, revisit_tolerance
+    )
+    return FocusSearchResult(
+        z01=float(nm.x[0]) / MM_PER_M,
+        z01_guess=z01_guess,
+        bounds=(lower, upper),
+        mfe=nm.fun,
+        nm_iterations=nm.iterations,
+        converged=nm.converged,
+        seconds=time.perf_counter() - start,
+        evaluations=evaluations,
+        reconstruction=best[0] if best else None,
+        initial_simplex=(start_mm[0] / MM_PER_M, start_mm[1] / MM_PER_M),
+    )
+
+
+def search_points(
+    mfe: Callable[[float], float],
+    z01_guess: float,
+    confidence: float = 5e-3,
+    xatol: float = 1e-4,
+    fatol: float = 1e6,
+    max_evaluations: int | None = None,
+    initial_simplex: tuple[float, float] | None = None,
+    bounds: tuple[float, float] | None = None,
+    revisit_tolerance: float = 0.0,
+) -> list[FocusEvaluation]:
+    """The points :func:`find_focus` probes from the guess ``z01_guess`` if the MFE at ``z01``
+    were ``mfe(z01)``, in order, without reconstructing (``seconds`` 0).
+
+    The search only compares MFE values, so every curve that is symmetric about its minimum
+    and rises on both sides gives the points of a parabola about that minimum. The other
+    arguments as in :func:`find_focus`; lengths in metres.
+    """
+    _, interval_mm = _interval(z01_guess, confidence, bounds)
+    _, evaluations, _ = _search(
+        lambda z01: (float(mfe(z01)), 0.0),
+        interval_mm,
+        initial_simplex,
+        xatol,
+        fatol,
+        max_evaluations,
+        revisit_tolerance,
+    )
+    return evaluations
+
+
+def _interval(
+    z01_guess: float, confidence: float, bounds: tuple[float, float] | None
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    """The search interval in metres and, as the simplex sees it, in millimetres. Converted
+    from metres, ``Omega_z`` can differ in the last bit and revisits go unnoticed."""
     if bounds is None:
         guess_mm, confidence_mm = z01_guess * MM_PER_M, confidence * MM_PER_M
-        lower_mm, upper_mm = guess_mm - confidence_mm, guess_mm + confidence_mm
-    else:
-        lower_mm, upper_mm = lower * MM_PER_M, upper * MM_PER_M
+        return (
+            (z01_guess - confidence, z01_guess + confidence),
+            (guess_mm - confidence_mm, guess_mm + confidence_mm),
+        )
+    lower, upper = (float(b) for b in bounds)
+    return (lower, upper), (lower * MM_PER_M, upper * MM_PER_M)
+
+
+def _search(
+    evaluate: Callable[[float], tuple[float, float]],
+    interval_mm: tuple[float, float],
+    initial_simplex: tuple[float, float] | None,
+    xatol: float,
+    fatol: float,
+    max_evaluations: int | None,
+    revisit_tolerance: float,
+):
+    """Nelder-Mead over ``z01`` in ``interval_mm``; ``evaluate(z01)`` gives ``(mfe, seconds)``
+    of a new point. Returns the optimizer's result, the probing history and the starting
+    points in millimetres."""
+    if revisit_tolerance < 0:
+        raise ValueError("revisit_tolerance must not be negative")
+    lower_mm, upper_mm = interval_mm
     tolerance_mm = revisit_tolerance * MM_PER_M
     if initial_simplex is None:
         start_mm = (lower_mm, upper_mm)
@@ -151,7 +235,6 @@ def find_focus(
             )
     evaluations: list[FocusEvaluation] = []
     seen: list[float] = []
-    best: list[ASRMResult] = []
 
     def objective(x: np.ndarray) -> float:
         z01_mm = float(x[0])
@@ -160,17 +243,10 @@ def find_focus(
             evaluations.append(FocusEvaluation(z01, PENALTY, 0.0, False))
             return PENALTY
         seen.append(z01_mm)
-        start = time.perf_counter()
-        result = asrm_reconstruct(hologram, geometry.with_z01(z01).fresnel_number, settings)
-        seconds = time.perf_counter() - start
-        evaluations.append(FocusEvaluation(z01, result.final_loss, seconds, True))
-        if not best or result.final_loss < best[0].final_loss:
-            best[:] = [result]
-        if log is not None:
-            log(f"z01 = {z01 * 1e3:.4f} mm  MFE = {result.final_loss:.6e}  ({seconds:.1f} s)")
-        return result.final_loss
+        mfe, seconds = evaluate(z01)
+        evaluations.append(FocusEvaluation(z01, mfe, seconds, True))
+        return mfe
 
-    start = time.perf_counter()
     nm = nelder_mead(
         objective,
         initial_simplex=[[start_mm[0]], [start_mm[1]]],
@@ -179,15 +255,4 @@ def find_focus(
         fatol=fatol,
         max_evaluations=max_evaluations,
     )
-    return FocusSearchResult(
-        z01=float(nm.x[0]) / MM_PER_M,
-        z01_guess=z01_guess,
-        bounds=(lower, upper),
-        mfe=nm.fun,
-        nm_iterations=nm.iterations,
-        converged=nm.converged,
-        seconds=time.perf_counter() - start,
-        evaluations=evaluations,
-        reconstruction=best[0] if best else None,
-        initial_simplex=(start_mm[0] / MM_PER_M, start_mm[1] / MM_PER_M),
-    )
+    return nm, evaluations, start_mm

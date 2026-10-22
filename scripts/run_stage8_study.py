@@ -39,7 +39,11 @@ and ``matched-<sample>-seed<k>``.
   interval (``box95-...``), against the full search of Stage 3 (``b1-p4``) and the warm start
   from the CNN of Stage 5 (``warm-b1-p4``): position, MFE, reconstructions and time, and
   whether each warm start kept to the 95 % interval of its ensemble, which makes it also the
-  warm start bounded by that interval (``results/measured/warmstart.{json,csv}``).
+  warm start bounded by that interval. To explain the counts, each search again on the
+  parabola about its result (:func:`holofocus.autofocus.search_points`, the same points for
+  every curve symmetric about its minimum), and the counts on a parabola against the width of
+  the start interval and the distance of a warm start from the minimum (``parabola``;
+  ``results/measured/warmstart.{json,csv}``).
 
 Usage (Laborbuch 08)::
 
@@ -72,6 +76,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from holofocus.autofocus import search_points
 from holofocus.baseline.runner import dataset_identity, file_sha256
 from holofocus.learned import read_predictions
 from holofocus.learned.data import load_inputs
@@ -150,6 +155,10 @@ WARM_IN_BOX = (("warm-cnn", "box95-cnn"), ("warm-npe", "box95-npe"))
 """A warm start and the bounded search of the same ensemble. ``find_focus`` only clips trial
 points to its interval, so a warm start whose points all lie in the 95 % interval is exactly
 the search that starts there and is bounded by it."""
+PARABOLA_WIDTHS_MM = (0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0)
+"""Widths of the start interval for the reconstructions of the search on a parabola."""
+PARABOLA_DISTANCES_MM = (0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0)
+"""Distances of a warm start (+- 0.5 mm) from the minimum, for the same counts."""
 
 
 def cnn_estimates(args, name: str) -> list[Path]:
@@ -1042,10 +1051,78 @@ def distinct_points(evaluations: list[dict]) -> int:
     return len(seen)
 
 
+def parabola_points(r: dict) -> list:
+    """The points the search of the record ``r`` probes on the parabola about its result,
+    from the same start in the same interval (:func:`holofocus.autofocus.search_points`)."""
+    res = r["result"]
+    return search_points(
+        lambda z01: (z01 - res["z01"]) ** 2,
+        res["z01_guess"],
+        MEASURED_SAMPLES[r["sample"]].confidence,
+        initial_simplex=r["warm_start"]["initial_simplex"] if "warm_start" in r else None,
+        bounds=r["box"]["bounds"] if "box" in r else None,
+        revisit_tolerance=r.get("revisit_tolerance", 0.0),
+    )
+
+
+def same_points(points: list, evaluations: list[dict]) -> bool:
+    return len(points) == len(evaluations) and all(
+        abs(p.z01 - e["z01"]) <= SAME_POINT and p.reconstructed == e["reconstructed"]
+        for p, e in zip(points, evaluations, strict=True)
+    )
+
+
+def count_summary(counts: list[int]) -> dict:
+    return {"mean": float(np.mean(counts)), "min": int(min(counts)), "max": int(max(counts))}
+
+
+def parabola_counts() -> dict:
+    """Reconstructions of the search on a parabola. ``widths_mm``: from the ends of an interval
+    of width W (``--box``; the full search has W = 10 mm), with the minimum at 97 places inside
+    it, and the halvings of the simplex from W down to ``xatol``. ``warm_distance_mm``: from
+    +- 0.5 mm around an estimate at d from the minimum (either side) in Omega_z = guess +- 5 mm,
+    with the estimate at 41 places within +- 0.4 mm of the guess."""
+    guess, confidence, half_width = 0.1, 5e-3, 5e-4
+
+    def reconstructions(minimum: float, **search) -> int:
+        points = search_points(
+            lambda z01: (z01 - minimum) ** 2,
+            guess,
+            confidence,
+            revisit_tolerance=SAME_POINT,
+            **search,
+        )
+        return sum(p.reconstructed for p in points)
+
+    widths = {}
+    for width_mm in PARABOLA_WIDTHS_MM:
+        width = width_mm * 1e-3
+        lower = guess - width / 2
+        counts = [
+            reconstructions(lower + u * width, bounds=(lower, lower + width))
+            for u in np.linspace(0.02, 0.98, 97)
+        ]
+        halvings = math.ceil(math.log2(width_mm * 1e3 / XATOL_UM))
+        widths[f"{width_mm:g}"] = {"halvings": halvings, **count_summary(counts)}
+    warm = {}
+    for distance_mm in PARABOLA_DISTANCES_MM:
+        counts = [
+            reconstructions(
+                estimate + side * distance_mm * 1e-3,
+                initial_simplex=(estimate - half_width, estimate + half_width),
+            )
+            for estimate in guess + np.linspace(-4e-4, 4e-4, 41)
+            for side in (-1, 1)
+        ]
+        warm[f"{distance_mm:g}"] = count_summary(counts)
+    return {"widths_mm": widths, "warm_distance_mm": warm}
+
+
 def search_entry(path: Path, cold: dict | None) -> dict:
     r = json.loads(path.read_text())
     res = r["result"]
     points = distinct_points(res["evaluations"])
+    parabola = parabola_points(r)
     entry = {
         "record": repo_relative(path),
         "sha256": file_sha256(path),
@@ -1059,6 +1136,8 @@ def search_entry(path: Path, cold: dict | None) -> dict:
         "n_evaluations": res["n_evaluations"],
         "distinct_points": points,
         "duplicates": res["n_reconstructions"] - points,
+        "parabola_reconstructions": sum(p.reconstructed for p in parabola),
+        "parabola_same_points": same_points(parabola, res["evaluations"]),
         "seconds": res["seconds"],
         "seconds_per_reconstruction": r["seconds_per_reconstruction"],
         "bounds": res["bounds"],
@@ -1122,8 +1201,9 @@ def cmd_warmstart(args) -> None:
             row = {"sample": name, "variant": variant, "z01_mm": e["z01"] * 1e3}
             for key in (
                 "minus_cold_um", "same_as_cold", "minus_paper2_um", "mfe", "mfe_relative_to_best",
-                "n_reconstructions", "distinct_points", "duplicates", "n_evaluations",
-                "nm_iterations", "converged", "seconds", "seconds_per_reconstruction", "threads",
+                "n_reconstructions", "distinct_points", "duplicates", "parabola_reconstructions",
+                "parabola_same_points", "n_evaluations", "nm_iterations", "converged", "seconds",
+                "seconds_per_reconstruction", "threads",
                 "reconstructions_to_cold", "seconds_to_cold", "seconds_at_cold_rate",
                 "start_minus_cold_um", "cold_inside_bounds",
             ):  # fmt: skip
@@ -1137,7 +1217,8 @@ def cmd_warmstart(args) -> None:
             print(
                 f"{name} {variant}: {e['z01'] * 1e3:.4f} mm"
                 + (f" ({e['minus_cold_um']:+.0f} um from cold)" if "minus_cold_um" in e else "")
-                + f", {e['n_reconstructions']} reconstructions ({e['distinct_points']} points), "
+                + f", {e['n_reconstructions']} reconstructions ({e['distinct_points']} points, "
+                f"{e['parabola_reconstructions']} on a parabola), "
                 f"{e['seconds']:.0f} s at {e['threads']} threads"
             )
         samples[name] = entries
@@ -1153,6 +1234,11 @@ def cmd_warmstart(args) -> None:
             "samples": [n for n, s in samples.items() if variant in s],
             "n_reconstructions": sum(e["n_reconstructions"] for e in found),
             "distinct_points": sum(e["distinct_points"] for e in found),
+            "parabola_reconstructions": sum(e["parabola_reconstructions"] for e in found),
+            "parabola_same_count": sum(
+                e["parabola_reconstructions"] == e["n_reconstructions"] for e in found
+            ),
+            "parabola_same_points": sum(e["parabola_same_points"] for e in found),
             "seconds": sum(e["seconds"] for e in found),
             "threads": sorted({e["threads"] for e in found}),
         }
@@ -1175,6 +1261,7 @@ def cmd_warmstart(args) -> None:
         "searches": {v: {"folder": f, "what": w} for v, f, w in SEARCHES},
         "samples": samples,
         "totals": totals,
+        "parabola": parabola_counts(),
     }
     write_json(args.out / "warmstart.json", record)
     write_csv(args.out / "warmstart.csv", rows)
