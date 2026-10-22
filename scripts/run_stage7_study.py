@@ -260,9 +260,18 @@ def restrict(table: dict[str, np.ndarray], indices) -> dict[str, np.ndarray]:
     return {k: v[rows] for k, v in table.items()}
 
 
+def midranks(v: np.ndarray) -> np.ndarray:
+    """Ranks with tied values at the mean of their ranks; bootstrap resamples repeat rows, and
+    widths tie where posteriors fill the prior box."""
+    _, inverse, counts = np.unique(v, return_inverse=True, return_counts=True)
+    return (np.cumsum(counts) - (counts - 1) / 2)[inverse]
+
+
 def spearman(x: np.ndarray, y: np.ndarray) -> float:
-    """Rank correlation; ties are broken by position (widths and errors are continuous)."""
-    rx, ry = (np.argsort(np.argsort(v, kind="stable")) for v in (x, y))
+    """Rank correlation (Pearson correlation of the midranks); NaN if all x or all y tie."""
+    rx, ry = midranks(x), midranks(y)
+    if np.ptp(rx) == 0 or np.ptp(ry) == 0:
+        return float("nan")
     return float(np.corrcoef(rx, ry)[0, 1])
 
 
