@@ -34,6 +34,14 @@ def test_extra_training_data_has_the_physics_of_cpu_4x(name):
     assert list(extra.splits) == ["train"] and not extra.storage.store_phase
 
 
+def test_calibration_split_has_the_physics_of_cpu_4x():
+    main = DatasetConfig.from_yaml(CONFIG_DIR / "cpu-4x.yaml")
+    calibration = DatasetConfig.from_yaml(CONFIG_DIR / "cpu-4x-calibration.yaml")
+    for section in ("geometry", "sampling", "simulation", "phantoms", "noise"):
+        assert getattr(calibration, section) == getattr(main, section), section
+    assert calibration.splits == {"calibration": 2000} and not calibration.storage.store_phase
+
+
 def test_repository_datasets_have_their_own_seeds():
     seeds = [DatasetConfig.from_yaml(path).seed for path in sorted(CONFIG_DIR.glob("*.yaml"))]
     assert len(set(seeds)) == len(seeds)
