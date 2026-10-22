@@ -87,6 +87,32 @@ jobs:
             --out ${{ runner.temp }}/figures-ci
           python scripts/make_stage5_figures.py --quick --out ${{ runner.temp }}/figures
 
+      - name: NPE smoke run (configs/learned/npe-ci.yaml), Stage 7 study and figures (quick mode)
+        run: |
+          demo=${{ runner.temp }}/demo-dataset
+          learned=${{ runner.temp }}/learned-ci
+          root=${{ runner.temp }}/npe-ci
+          mkdir -p $root/data/matched-cactus_needle $root/learned/matched-cactus_needle
+          ln -s $demo/val.h5 $root/data/matched-cactus_needle/val.h5
+          ln -s $demo/test.h5 $root/data/matched-cactus_needle/test.h5
+          cp -r $learned/test $root/learned/matched-cactus_needle/
+          for run in npe-nsf matched-cactus_needle; do
+            holofocus-learn npe-train configs/learned/npe-ci.yaml --train $demo/train.h5 \
+              --val $demo/val.h5 --out $root/npe/$run --threads 2
+          done
+          study="python scripts/run_stage7_study.py --threads 2 --npe $root/npe --cnn $learned"
+          $study predict --data $root/data --val $demo/val.h5 --test $demo/test.h5 \
+            --calibration $demo/val.h5
+          $study sbc --calibration $demo/val.h5 --samples 100
+          $study compare --test $demo/test.h5 --calibration $demo/val.h5 --baseline $root/none
+          $study timing --test $demo/test.h5 --samples 4 --repeats 1
+          $study examples --test $demo/test.h5 --indices 0 1 --worst 1
+          $study perturb --samples cactus_needle --perturbations noise object --limit 4 \
+            --data $root/data --sets $root/sets --cnn-learned $root/learned --cnn-sim2real $root/none
+          python scripts/make_stage7_figures.py --quick --npe $root/npe --cnn $learned \
+            --learned $root/learned --measured $root/none --out ${{ runner.temp }}/figures-ci
+          python scripts/make_stage7_figures.py --quick --out ${{ runner.temp }}/figures
+
       - name: Upload demo dataset
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
