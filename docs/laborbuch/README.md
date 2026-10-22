@@ -13,6 +13,7 @@ werden von den Skripten in `scripts/` erzeugt.
 | 05 | Gelernter Autofokus auf den Messhologrammen | [05-messdaten.md](05-messdaten.md) |
 | 06 | Objektmodell mit Textur | [06-objektmodell.md](06-objektmodell.md) |
 | 07 | Posterior von `z01` mit Neural Posterior Estimation (sbi) | [07-npe.md](07-npe.md) |
+| 07, Abschnitt 9 | NPE auf dem Objektmodell von Etappe 6 (Leave-one-out-Sätze, Messhologramme) | [07-npe.md](07-npe.md#9-npe-auf-dem-objektmodell-von-etappe-6) |
 
 Quellen:
 

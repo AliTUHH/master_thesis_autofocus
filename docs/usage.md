@@ -539,6 +539,8 @@ Stage 7 included (`npe-train --train data/loo-<sample>/train.h5 --val data/loo-<
 `run_stage7_study.py` takes the roots as `--data`, `--npe` and `--cnn-learned` and expects the
 names `matched-<sample>` below them; its `measured` reads the CNN to compare with from
 `cnn/<sample>.json` below `--measured`, the format of `results/measured/cnn-loo/<sample>.json`).
+`scripts/run_stage7_loo_study.py` does this for the leave-one-out sets, with the leave-one-out
+CNNs and their seeds (see "Stage 7 on the object model" below).
 
 | Config | Sample | Samples (train/val/test) | CPU time | Size |
 |---|---|---|---|---|
@@ -692,6 +694,44 @@ results/npe/sim2real/<sample>.{json,csv}  matched NPE and CNN on the perturbed t
 results/npe/measured/<sample>.json       the matched NPEs on the four measured holograms
 results/learned/spectrum-cnn-wide/calibration/  the Stage 4 CNN on the calibration split
 results/datasets/cpu-4x-calibration-calibration.csv  fingerprint of the calibration split
+```
+
+### Stage 7 on the object model
+
+The same NPE (`configs/learned/npe-nsf.yaml`, unchanged) on the leave-one-out sets of Stage 6,
+with the training seeds of the leave-one-out CNNs (0, 1 and 2) and the ensemble of the three
+seeds (Laborbuch 07, Abschnitt 9). `scripts/run_stage7_loo_study.py` compares them on the
+leave-one-out test splits with the leave-one-out CNNs and with the guess, whose intervals are
+those of the uniform prior, and on the measured holograms with [2], padding 4 and the
+leave-one-out CNNs (`results/measured/cnn-loo`). The data are the sets of Stage 6
+(`data/loo-<sample>`, see above).
+
+```bash
+for s in spider_hair tooth cactus_needle magnesium_wire; do
+    loo="--train data/loo-$s/train.h5 --val data/loo-$s/val.h5"
+    holofocus-learn npe-train configs/learned/npe-nsf.yaml $loo --out results/npe-loo/matched-$s \
+        --threads 3
+    for k in 1 2; do
+        holofocus-learn npe-train configs/learned/npe-nsf.yaml $loo --seed $k \
+            --out results/npe-loo/matched-$s-seed$k --threads 3
+    done
+done
+python scripts/run_stage7_loo_study.py --threads 3 predict   # every run on val and test, ensemble on test
+python scripts/run_stage7_loo_study.py compare               # NPE, ensemble, CNN and guess on test
+python scripts/run_stage7_loo_study.py --threads 1 measured --holograms $H
+python scripts/run_stage7_loo_study.py --threads 1 timing
+python scripts/make_stage7_loo_figures.py
+```
+
+Other runs, such as the large sets of [maxwell-gpu.md](maxwell-gpu.md) 8.2, take `--npe`,
+`--cnn`, `--cnn-seeds` and `--seeds`; the outputs go below `--npe`. The results:
+
+```
+results/npe-loo/matched-<sample>[-seed<k>]/  NPE run (model.pt, history.csv, ...) with val/, test/
+results/npe-loo/matched-<sample>-ensemble/test/  the three seeds as one posterior
+results/npe-loo/comparison/              NPE seeds, ensemble, CNN seeds and guess on the test splits
+results/npe-loo/measured/<sample>.json   seeds and ensemble on the four measured holograms
+results/npe-loo/timing.json              time per estimate, CNN against NPE and ensemble
 ```
 
 ## GPU runs on DESY Maxwell

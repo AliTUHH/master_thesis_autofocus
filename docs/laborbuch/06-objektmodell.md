@@ -570,7 +570,8 @@ gemessen; sie sind nicht mitgezählt. Eine Schätzung kostet wie in Etappe 5 Mil
    nur zum Einstellen dienen.
 2. **NPE (Etappe 7) unverändert auf den Leave-one-out-Sätzen** (Laborbuch 07, 7, Punkt 1;
    `docs/usage.md`, „Object model (Stage 6)“): ob die Posterior auf den Messhologrammen die
-   Referenzen deckt und ob sie sich vom Schätzwert löst, wo das CNN es nicht tut.
+   Referenzen deckt und ob sie sich vom Schätzwert löst, wo das CNN es nicht tut. Gerechnet in
+   Laborbuch 07, Abschnitt 9.
 3. **Maxwell** (`docs/maxwell-gpu.md`, 7.2): die Sätze mit 50 000 Trainings-Samples, mit
    Training und Schätzung. Daran zeigt sich, ob mehr Daten das Netz bei der Kaktusnadel vom
    Schätzwert lösen und die Intervalle schmaler machen.

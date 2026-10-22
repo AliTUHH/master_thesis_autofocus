@@ -48,7 +48,7 @@ Die Jobs liegen in `cluster/maxwell/jobs/` und werden mit
 | `baseline` | klassischer Autofokus von [2] auf einem Split, als Job-Array in `--chunks N` Stücken (Abschnitt 6) | 24 h |
 | `merge` | fügt die Stücke eines Baseline-Arrays zu einem Laufverzeichnis zusammen | 15 min |
 | `train` | trainiert ein Modell und sagt Val und Test vorher, als Array mit einem Seed pro Task (Abschnitt 7) | 12 h |
-| `npe` | trainiert einen NPE (Etappe 7) und sagt Val, Test und den Kalibrier-Split vorher, mit den Prüfungen von sbi; als Array ein Seed pro Task (Abschnitt 8.1) | 12 h |
+| `npe` | trainiert einen NPE (Etappe 7) und sagt Val, Test und den Kalibrier-Split vorher, mit den Prüfungen von sbi; als Array ein Seed pro Task (Abschnitte 8.1 und 8.2) | 12 h |
 | `run` | beliebiger Befehl in der Umgebung, z. B. ein MFE-Scan (Abschnitt 8) | 8 h |
 
 Die Zeitlimits stehen als `#SBATCH --time` in den Job-Skripten; `--time` ersetzt sie.
@@ -690,7 +690,59 @@ Speicher (die Eingaben brauchen 4 KB pro Sample wie beim Spektrum-CNN) und ob di
 reichen. Die Batchgröße 32 und die übrigen Einstellungen der Config bleiben wie auf der VM,
 damit die Läufe vergleichbar sind.
 
-### 8.2 Dichter MFE-Scan (Laborbuch 04, 9.1)
+### 8.2 Etappe 7 auf dem Objektmodell: NPE auf den großen Leave-one-out-Sätzen (Laborbuch 07, Abschnitt 9)
+
+Laborbuch 07, Abschnitt 9, trainiert den NPE aus 8.1 (`configs/learned/npe-nsf.yaml`,
+unverändert) auf den Leave-one-out-Sätzen der Etappe 6, mit den drei Seeds der
+Leave-one-out-CNNs (0, 1 und 2), und wertet auch ihr Ensemble aus. Auf der VM waren es 6000
+Trainings-Samples pro Probe. Hier dasselbe mit den 56 000 Samples aus 7.2 (`loo-<probe>` und
+`loo-<probe>-large`); Val und Test bleiben die 250 Samples der kleinen Config. Voraussetzung
+sind die Daten aus 7.2 und die Umgebung mit sbi (8.1).
+
+```bash
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    loo=(--train loo-$p/train.h5 loo-$p-large/train.h5 --val loo-$p/val.h5 --test loo-$p/test.h5)
+    cluster/maxwell/submit.sh npe npe-loo-large/matched-$p configs/learned/npe-nsf.yaml "${loo[@]}"
+    cluster/maxwell/submit.sh --array 1-2 npe npe-loo-large/matched-$p \
+        configs/learned/npe-nsf.yaml "${loo[@]}"
+done
+```
+
+Das sind zwölf Trainings: pro Probe Seed 0 nach `npe-loo-large/matched-<probe>` und die Seeds 1
+und 2 als Array nach `matched-<probe>-seed1` und `-seed2`. Die Namen nicht ändern:
+`scripts/run_stage7_loo_study.py` sucht die Läufe unter ihnen. Auf der VM dauerte ein Training
+auf 6000 Samples mit 3 Threads 12–13 min (7 s pro Epoche), mit 1 Thread 28–29 min. Mit 56 000
+Samples hat jede Epoche 9,3-mal so viele Schritte, auf der CPU der VM also etwa 2 h mit
+3 Threads; das Zeitlimit des Jobs (12 h) reicht damit auch ohne GPU. **PRÜFEN:** die Zeit pro
+Epoche auf der A100 (im Log die Zeilen `epoch …: … (… s)`), wie in 8.1. Die Eingaben brauchen
+4 KB pro Sample, 56 000 Samples also 230 MB.
+
+Ausgewertet wird nach dem Zurückgeben (Abschnitt 9) auf der VM, mit den großen
+Leave-one-out-CNNs aus 7.2 als Vergleich:
+
+```bash
+N=results/maxwell/npe-loo-large
+L=results/maxwell/learned-large
+S="python scripts/run_stage7_loo_study.py --npe $N --cnn $L --cnn-seeds $N/none"
+$S --threads 3 predict
+$S compare
+$S --threads 1 measured --holograms DIR --cnn-measured results/maxwell/measured-large/cnn-loo
+$S --threads 1 timing
+python scripts/make_stage7_loo_figures.py --npe $N --cnn $L --cnn-seeds $N/none --out $N/figures
+```
+
+- `predict` sagt das Ensemble der drei Seeds auf dem Test-Split vorher; die Vorhersagen der
+  einzelnen Läufe auf Val und Test bringt der Job mit. Sind die Splits von Maxwell nicht
+  bytegleich mit denen der VM (WARN in 7.2), rechnet `predict` sie auf den Splits der VM neu.
+  Dafür müssen `data/loo-<probe>/{val,test}.h5` auf der VM liegen.
+- `--cnn-seeds $N/none` ist Absicht: Die großen CNNs aus 7.2 haben nur Seed 0. Ohne die Option
+  nähme `compare` die CNNs der VM mit den Seeds 1 und 2 (`results/objectmodel/seeds`, auf
+  6000 Samples trainiert) als Seeds der großen.
+- `measured` vergleicht mit den großen CNNs auf den Messhologrammen (`$M/cnn-loo` aus 7.2);
+  ohne `--cnn-measured` wären es die der VM.
+- Die Zeit pro Schätzung (`timing`) gehört auf die CPU der VM, wie in 8.1.
+
+### 8.3 Dichter MFE-Scan (Laborbuch 04, 9.1)
 
 Woher die schmalen Senken des MFE kommen, soll ein dichter Scan klären: der MFE eines Samples
 in Schritten von 10 µm, einmal mit der Iterationszahl von [2] und einmal mit der doppelten. Das
@@ -730,14 +782,14 @@ M=results/maxwell
 git checkout -b maxwell-ergebnisse-$(date +%Y%m%d)
 mkdir -p $M/logs
 cp -r $R/baseline $R/comparison $R/learned $R/learned-large $R/gpu-check $R/mfe-scan $M/  # was es davon gibt
-cp -r $R/npe $R/npe-large $M/       # die NPE-Läufe aus 8.1, falls trainiert
+cp -r $R/npe $R/npe-large $R/npe-loo-large $M/   # die NPE-Läufe aus 8.1 und 8.2, falls trainiert
 rm -rf $M/baseline/*/chunk-*
 cp $HOLOFOCUS_SCRATCH/logs/holofocus-*.out $M/logs/
 cp $HOLOFOCUS_ENV/holofocus-env.txt $M/
 git add $M                          # HDF5-Dateien und *.pt schließt .gitignore aus
 git add -f $M/learned/*/model.pt    # die trainierten Modelle gehören dazu
 git add -f $M/learned-large/*/model.pt   # die Modelle aus 7.1 und 7.2, falls trainiert
-git add -f $M/npe*/*/model.pt       # die NPEs aus 8.1, falls trainiert
+git add -f $M/npe*/*/model.pt       # die NPEs aus 8.1 und 8.2, falls trainiert
 git commit -m "Maxwell: Baseline auf dem ganzen Test-Split, Training auf 60 000 Samples"
 git push -u origin maxwell-ergebnisse-$(date +%Y%m%d)
 ```
@@ -798,7 +850,7 @@ Auf der VM geprüft (4 CPU-Kerne, ohne SLURM und ohne GPU, mit `--device cpu`):
 - `gpu-check --local` auf der CPU der VM: alle Prüfungen PASS einschließlich `training`, „no
   check failed“, 5,5 min mit 4 Threads; die Baseline von Sample 0 trifft die Schätzung aus
   Etappe 3 auf 0 µm.
-- Die Befehle aus 6.4, 6.5 und 8.2 mit `--local run`: `check` gibt für eine Kopie des
+- Die Befehle aus 6.4, 6.5 und 8.3 mit `--local run`: `check` gibt für eine Kopie des
   Warmstart-Laufs der VM PASS mit 0 µm Abweichung auf 48 Samples; `compare` erzeugt aus den
   committeten Läufen `results/comparison/cpu-4x-test/` bytegleich; der MFE-Scan läuft als
   `run bash -c '...'` (mit 3 Punkten und 2 % der Iterationen), und `$HOLOFOCUS_DATA` und
@@ -823,6 +875,6 @@ Nur auf Maxwell zu prüfen (**PRÜFEN**, Abschnitt 2 und gpu-check):
 - Treiber und CUDA-Version der A100-Knoten und damit der PyTorch-Index.
 - Alles, was auf der GPU rechnet: die Ergebnisse des gpu-check auf der A100 (Abschnitt 4), die
   Laufzeiten und damit die Zahl der Stücke und die Zeitlimits, die Zeit pro Sample der Sätze
-  mit Textur (Abschnitt 7.2), der NPE auf der GPU (Abschnitt 8.1).
+  mit Textur (Abschnitt 7.2), der NPE auf der GPU (Abschnitte 8.1 und 8.2).
 - Pfade und Kontingente von Scratch und DUST und ob alte Dateien auf Scratch gelöscht werden.
 - Ob von Maxwell aus ein Push zu GitHub geht (Abschnitt 9).
