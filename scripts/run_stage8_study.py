@@ -39,7 +39,9 @@ and ``matched-<sample>-seed<k>``.
   interval (``box95-...``), against the full search of Stage 3 (``b1-p4``) and the warm start
   from the CNN of Stage 5 (``warm-b1-p4``): position, MFE, reconstructions and time, and
   whether each warm start kept to the 95 % interval of its ensemble, which makes it also the
-  warm start bounded by that interval. To explain the counts, each search again on the
+  warm start bounded by that interval; for the bounded searches, how far the result lies from
+  the nearer end of the interval (closer than ``xatol``: the minimum may lie outside, search
+  Omega_z). To explain the counts, each search again on the
   parabola about its result (:func:`holofocus.autofocus.search_points`, the same points for
   every curve symmetric about its minimum), and the counts on a parabola against the width of
   the start interval and the distance of a warm start from the minimum (``parabola``;
@@ -1153,6 +1155,10 @@ def search_entry(path: Path, cold: dict | None) -> dict:
         entry["start"] = {k: r["warm_start"][k] for k in ("source", "sha256", "z01_est")}
     if "box" in r:
         entry["box"] = r["box"]
+        lower, upper = res["bounds"]
+        edge = min(res["z01"] - lower, upper - res["z01"]) * 1e6
+        entry["edge_distance_um"] = edge
+        entry["near_edge"] = bool(edge < XATOL_UM)
     if cold is not None:
         lower, upper = res["bounds"]
         entry.update(
@@ -1205,7 +1211,7 @@ def cmd_warmstart(args) -> None:
                 "parabola_same_points", "n_evaluations", "nm_iterations", "converged", "seconds",
                 "seconds_per_reconstruction", "threads",
                 "reconstructions_to_cold", "seconds_to_cold", "seconds_at_cold_rate",
-                "start_minus_cold_um", "cold_inside_bounds",
+                "start_minus_cold_um", "cold_inside_bounds", "edge_distance_um", "near_edge",
             ):  # fmt: skip
                 value = e.get(key, "")
                 row[key] = int(value) if isinstance(value, bool) else value
@@ -1255,6 +1261,10 @@ def cmd_warmstart(args) -> None:
                     "inside": sum(inside),
                     "checked": len(inside),
                 }
+            edges = [e["edge_distance_um"] for e in found if "edge_distance_um" in e]
+            if edges:
+                totals[variant]["near_edge"] = sum(e < XATOL_UM for e in edges)
+                totals[variant]["min_edge_distance_um"] = min(edges)
     record = {
         "xatol_um": XATOL_UM,
         "same_point_m": SAME_POINT,

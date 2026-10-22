@@ -4,7 +4,7 @@
 |---|---|
 | Datum | 22.10.2026 |
 | Branch | `cursor/stage8-misspecification-warmstart-1091` |
-| Code | `src/holofocus/learned/misspecification.py` (Abstand zu den nächsten Trainings-Samples, Hauptkomponenten, Mahalanobis-Abstand), `GaussianMixture` und `mixture_summaries` in `src/holofocus/learned/posterior.py`, `bounds` und `revisit_tolerance` in `find_focus` (`src/holofocus/autofocus/search.py`); `scripts/run_stage8_study.py` (`sources`, `misspec`, `ensembles`, `warmstart`), `--box`, `--box-level` und `--revisit-tolerance` in `scripts/run_stage3_experiments.py measured`, `scripts/make_stage8_figures.py`; `tests/test_misspecification.py`, Erweiterungen von `tests/test_autofocus.py` und `tests/test_posterior.py` |
+| Code | `src/holofocus/learned/misspecification.py` (Abstand zu den nächsten Trainings-Samples, Hauptkomponenten, Mahalanobis-Abstand), `GaussianMixture` und `mixture_summaries` in `src/holofocus/learned/posterior.py`, `bounds` und `revisit_tolerance` in `find_focus` und `search_points` (`src/holofocus/autofocus/search.py`); `scripts/run_stage8_study.py` (`sources`, `misspec`, `ensembles`, `warmstart`), `--box`, `--box-level` und `--revisit-tolerance` in `scripts/run_stage3_experiments.py measured`, `scripts/make_stage8_figures.py`; `tests/test_misspecification.py`, Erweiterungen von `tests/test_autofocus.py` und `tests/test_posterior.py` |
 | Ergebnisse | `results/misspecification/` (Abstände, Perzentile, Fehler pro Test-Sample, Nachbarschaften, Positivkontrolle), `results/ensembles/` (CNN-Ensemble gegen NPE-Ensemble), `results/measured/{cnn,npe}-loo-ensemble/` (die beiden Ensembles auf den Messhologrammen), `results/measured/{warm,box95}-{cnn,npe}-loo-ensemble-b1-p4/` (die neuen Suchen), `results/measured/warmstart.{json,csv}` |
 | Abbildungen | `docs/laborbuch/figures/stage8-*.png`, Zahlen in `stage8-metrics.json` |
 | Quellen | [2] Dora et al., Opt. Express 33(4), 6641 (2025); [6] M. Deistler et al., „Simulation-based inference: A practical guide“, arXiv:2508.12939 (2025) |
@@ -206,17 +206,31 @@ dem Stand `901c04e`, damit die Arbeit am Repo die Läufe nicht änderte; jede Er
 diesen Commit. `run_stage8_study.py warmstart` stellt alle sechs Suchen pro Probe nebeneinander
 (die kalte und die von Etappe 5 dazu) und schreibt `results/measured/warmstart.{json,csv}`.
 
+Um die Zahl der Rekonstruktionen zu erklären, rechnet `warmstart` jede Suche noch einmal auf
+der Parabel um ihr Ergebnis (`4b8ba53`, E15): `search_points` (`search.py`) gibt die Punkte, die
+`find_focus` bei einer gegebenen MFE-Kurve abfragt, ohne zu rekonstruieren. Beide teilen sich
+das Intervall in Millimetern, den Start, die Regel für Wiederholungen und den Aufruf von
+Nelder–Mead, und `search_points` bekommt dieselben Eingaben wie die Suche: Schätzwert,
+Intervall, Anfangssimplex und Toleranz aus dem Datensatz. Dazu die Rekonstruktionen auf einer
+Parabel gegen die Breite des Startintervalls (Minimum an 97 Stellen darin) und gegen den Abstand
+eines Warmstarts vom Minimum (`parabola` in `warmstart.json`).
+
 ### 3.8 Tests
 
 `tests/test_misspecification.py` (4 Tests): der Abstand zu den nächsten Punkten auf einem
 kleinen Satz von Hand und in Stücken gegen die direkte Rechnung; Hauptkomponenten,
 Mahalanobis-Abstand und Rest einer achsenparallelen Gauß-Verteilung mit bekannten Varianzen;
 Punkte auf einer Ebene, deren Rang die Zahl der Komponenten begrenzt; Fehler bei falschen
-Eingaben. In `tests/test_autofocus.py` (2 Tests): die Suche in gegebenen Grenzen (Start an ihren
+Eingaben. In `tests/test_autofocus.py` (3 Tests): die Suche in gegebenen Grenzen (Start an ihren
 Enden, alle Punkte darin, das Minimum mit weniger Rekonstruktionen als kalt, ein Intervall ohne
-das Minimum endet an seinem Rand, ein Warmstart darin) und die Toleranz für Wiederholungen (ein
+das Minimum endet an seinem Rand, ein Warmstart darin), die Toleranz für Wiederholungen (ein
 Punkt, der sich im letzten Bit unterscheidet, wird ohne Toleranz neu rekonstruiert, mit 1 nm
-nicht). In `tests/test_posterior.py` (2 Tests): Die Mischung aus einem Glied ist die
+nicht) und `search_points` gegen `find_focus` mit einer Modellkurve statt der Rekonstruktion,
+kalt, im Intervall und mit zwei Warmstarts: dieselben Punkte in derselben Reihenfolge, mit
+denselben Wiederholungen, und mit der Wurzel des Abstands dieselben wie mit der Parabel. Ein
+erster Entwurf nahm das Intervall der Suche in Metern und rechnete es in Millimeter um; dabei
+wich das obere Ende von $\Omega_z$ im letzten Bit ab (105,00000000000001 statt 105 mm), und eine
+Wiederholung wurde rekonstruiert. Deshalb rechnen beide das Intervall mit derselben Funktion. In `tests/test_posterior.py` (2 Tests): Die Mischung aus einem Glied ist die
 Gauß-Dichte; die Mischung aus zwei Gliedern gegen Median, Standardabweichung, Quantile, Dichte,
 HPD-Niveaus und -Breiten, die Fassung auf dem Gitter und die Zusammenfassung. Die CI rechnet `misspec` und `ensembles` auf den NPE-Läufen ihres Schritts
 für Etappe 7, dazu `ensembles`, `warmstart` und alle Abbildungen aus den versionierten
@@ -298,6 +312,13 @@ kalten Suche derselben Probe um (`seconds_at_cold_rate`).
 **E14 – Keine GPU.** Die Abstände kosten Minuten, der Vergleich der Ensembles Sekunden, die Suchen
 ⟨TODO⟩ Kernstunden auf der VM. Nichts davon braucht Maxwell; `docs/maxwell-gpu.md` bleibt
 unverändert. Was die GPU sinnvoll machen würde, steht in Abschnitt 6 (Punkt ⟨TODO⟩).
+
+**E15 – Eine Parabel als Modell der Suche.** Nelder–Mead vergleicht nur Funktionswerte, und
+die Suche bricht nur an der Länge des Simplex ab ($f_\text{atol} = 10^6$). Auf jeder Kurve, die
+um ihr Minimum symmetrisch ist und nach beiden Seiten steigt, fragt sie deshalb dieselben
+Punkte ab wie auf der Parabel um dieses Minimum. Die Parabel trennt so, was an der Geometrie
+liegt (Breite und Lage des Starts, Lage des Minimums), von dem, was an der Form der MFE-Kurve
+liegt: Wo die echte Suche anders läuft, entscheidet die Asymmetrie der Kurve oder ihr Rauschen.
 
 ## 5 Ergebnisse
 
@@ -540,9 +561,31 @@ Kaktusnadel bei beiden erst im 95-%-Intervall):
 *Abb. 7 – Die Suchen mit Padding 4 auf den vier Messhologrammen: oben die rekonstruierten
 Punkte in ihrer Reihenfolge, als Abstand vom Ergebnis der vollen Suche (innerhalb ±0,1 mm
 linear, darüber logarithmisch; grau: ±100 µm, die Toleranz der Suche); unten die Zahl der
-Rekonstruktionen, beschriftet mit dem Abstand des Ergebnisses von der vollen Suche in µm.*
+Rekonstruktionen, beschriftet mit dem Abstand des Ergebnisses von der vollen Suche in µm, und
+als schwarzer Strich die Zahl derselben Suche auf der Parabel um ihr Ergebnis (E15).*
 
-⟨TODO nach den Suchen⟩
+⟨TODO Tabelle und Punkte 1–2 nach den Suchen⟩
+
+**Wie viele Rekonstruktionen eine Suche braucht.** Auf einer Parabel (E15; `parabola` in
+`warmstart.json`), gestartet an den Enden eines Intervalls der Breite $W$ wie die volle Suche
+und die Suche im 95-%-Intervall, mit dem Minimum an 97 Stellen darin:
+
+| $W$ | Halbierungen bis 100 µm | Rekonstruktionen, Mittel (Spanne) |
+|---|---|---|
+| 0,5 mm | 3 | 5,3 (5–6) |
+| 1–1,5 mm | 4 | 6,7 (6–8) |
+| 2–3 mm | 5 | 8,1 (7–10) |
+| 4–6 mm | 6 | 9,6 (8–12) |
+| 7–10 mm | 7 | 11,2 (9–14) |
+
+Und gestartet mit ±0,5 mm um eine Schätzung, die $d$ neben dem Minimum liegt, wie der Warmstart
+(Mittel über 41 Lagen der Schätzung und beide Seiten):
+
+| $d$ (mm) | 0 | 0,25 | 0,5 | 0,75 | 1 | 1,5 | 2 | 3 | 4 |
+|---|---|---|---|---|---|---|---|---|---|
+| Rekonstruktionen | 9,0 | 9,0 | 10,0 | 8,6 | 9,1 | 11,0 | 11,8 | 12,0 | 13,0 |
+
+⟨TODO Punkte 3 ff. nach den Suchen⟩
 
 ### 5.7 Laufzeiten
 
