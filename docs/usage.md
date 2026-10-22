@@ -758,7 +758,9 @@ all on the CPU. `scripts/run_stage8_study.py`:
 - `warmstart`: the padding-4 searches on the measured holograms side by side, each also on the
   parabola about its result (`holofocus.autofocus.search_points`: the points `find_focus`
   probes on a given MFE curve, without reconstructing), and the reconstructions on a parabola
-  against the width of the start interval and the distance of a warm start.
+  against the width of the start interval and the distance of a warm start; for comparison,
+  the evaluations of Brent's bounded method (SciPy) on model curves from the same intervals,
+  and how the MFE of each probe rises from its minimum, from the points of all its searches.
 
 The searches are `run_stage3_experiments.py measured` with `--warm-start` (start from the
 estimate +- 0.5 mm) or `--box` (search only inside the central interval `--box-level`, default

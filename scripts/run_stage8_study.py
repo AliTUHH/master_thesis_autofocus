@@ -46,8 +46,10 @@ and ``matched-<sample>-seed<k>``.
   Omega_z). To explain the counts, each search again on the
   parabola about its result (:func:`holofocus.autofocus.search_points`, the same points for
   every curve symmetric about its minimum), and the counts on a parabola against the width of
-  the start interval and the distance of a warm start from the minimum (``parabola``;
-  ``results/measured/warmstart.{json,csv}``).
+  the start interval and the distance of a warm start from the minimum (``parabola``). For
+  comparison, the evaluations of Brent's bounded method on model curves from the same
+  intervals (``brent``), and how the MFE of each probe rises from its minimum, from the points
+  of all its searches (``curves``; ``results/measured/warmstart.{json,csv}``).
 
 Usage (Laborbuch 08)::
 
@@ -79,6 +81,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from scipy.optimize import minimize_scalar
 
 from holofocus.autofocus import search_points
 from holofocus.baseline.runner import dataset_identity, file_sha256
@@ -163,6 +166,12 @@ PARABOLA_WIDTHS_MM = (0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0)
 """Widths of the start interval for the reconstructions of the search on a parabola."""
 PARABOLA_DISTANCES_MM = (0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0)
 """Distances of a warm start (+- 0.5 mm) from the minimum, for the same counts."""
+BRENT_POWERS = {"parabola": 2.0, "abs": 1.0, "quartic": 4.0}
+"""Model curves ``|d|^p`` for Brent's method: a parabola, a V and a flat bottom."""
+RISE_RANGE_MM = (0.2, 3.0)
+"""Distances from the minimum over which ``curves`` fits the rise of the MFE; closer, the
+MFE of cactus needle and magnesium wire changes by a few ppm, as much as between neighbouring
+points."""
 
 
 def cnn_estimates(args, name: str) -> list[Path]:
@@ -1178,6 +1187,57 @@ def parabola_counts() -> dict:
     return {"widths_mm": widths, "warm_distance_mm": warm}
 
 
+def brent_counts() -> dict:
+    """Evaluations of Brent's bounded method (``scipy.optimize.minimize_scalar``, ``xatol`` of
+    the search) on ``|d|^p``, in an interval of width W with the minimum at the 97 places of
+    :func:`parabola_counts`. Unlike Nelder-Mead it uses the values, so the count depends on the
+    shape of the curve."""
+    out = {}
+    for shape, power in BRENT_POWERS.items():
+        widths = {}
+        for width_mm in PARABOLA_WIDTHS_MM:
+            counts, errors = [], []
+            for minimum in np.linspace(0.02, 0.98, 97) * width_mm:
+                r = minimize_scalar(
+                    lambda z, m=minimum, p=power: abs(z - m) ** p,
+                    bounds=(0.0, width_mm),
+                    method="bounded",
+                    options={"xatol": XATOL_UM * 1e-3},
+                )
+                counts.append(int(r.nfev))
+                errors.append(abs(r.x - minimum) * 1e3)
+            widths[f"{width_mm:g}"] = {**count_summary(counts), "max_error_um": max(errors)}
+        out[shape] = {"power": power, "widths_mm": widths}
+    return out
+
+
+def mfe_rise(paths: list[Path]) -> dict:
+    """How the MFE of a probe rises from its minimum, from the reconstructed points of all its
+    searches: per side the exponent and the rise at 1 mm of a power law fitted between the
+    distances :data:`RISE_RANGE_MM`, relative to the smallest MFE."""
+    points = {}
+    for path in paths:
+        for e in json.loads(path.read_text())["result"]["evaluations"]:
+            if e["reconstructed"]:
+                points[e["z01"]] = e["mfe"]
+    z01 = np.array(sorted(points))
+    mfe = np.array([points[z] for z in z01])
+    best = int(np.argmin(mfe))
+    d_mm, rise = (z01 - z01[best]) * 1e3, mfe / mfe[best] - 1.0
+    out = {"z01": float(z01[best]), "mfe": float(mfe[best]), "points": len(z01)}
+    near, far = RISE_RANGE_MM
+    for side, sign in (("below", -1), ("above", 1)):
+        fit = (sign * d_mm >= near) & (sign * d_mm <= far)
+        if fit.sum() >= 3:
+            power, log_rise = np.polyfit(np.log(sign * d_mm[fit]), np.log(rise[fit]), 1)
+            out[side] = {
+                "points": int(fit.sum()),
+                "power": float(power),
+                "rise_at_1mm_ppm": float(np.exp(log_rise) * 1e6),
+            }
+    return out
+
+
 def search_entry(path: Path, cold: dict | None) -> dict:
     r = json.loads(path.read_text())
     res = r["result"]
@@ -1238,18 +1298,28 @@ def search_entry(path: Path, cold: dict | None) -> dict:
 
 
 def cmd_warmstart(args) -> None:
-    samples, rows = {}, []
+    samples, curves, rows = {}, {}, []
     for name in args.samples:
         cold_path = args.measured / "b1-p4" / f"{name}.json"
         if not cold_path.exists():
             print(f"{name}: no full search {repo_relative(cold_path)}, skipped")
             continue
         cold = json.loads(cold_path.read_text())["result"]
-        entries = {}
+        entries, paths = {}, []
         for variant, folder, _ in SEARCHES:
             path = args.measured / folder / f"{name}.json"
             if path.exists():
                 entries[variant] = search_entry(path, None if variant == "cold" else cold)
+                paths.append(path)
+        curves[name] = mfe_rise(paths)
+        print(
+            f"{name}: MFE from {curves[name]['z01'] * 1e3:.4f} mm, power "
+            + " / ".join(
+                f"{curves[name][side]['power']:.2f} {side}"
+                for side in ("below", "above")
+                if side in curves[name]
+            )
+        )
         for warm, box in WARM_IN_BOX:
             if warm in entries and box in entries:
                 lower, upper = entries[box]["bounds"]
@@ -1330,6 +1400,8 @@ def cmd_warmstart(args) -> None:
         "samples": samples,
         "totals": totals,
         "parabola": parabola_counts(),
+        "brent": brent_counts(),
+        "curves": curves,
     }
     write_json(args.out / "warmstart.json", record)
     write_csv(args.out / "warmstart.csv", rows)
