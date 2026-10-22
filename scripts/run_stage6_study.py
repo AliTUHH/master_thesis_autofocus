@@ -21,9 +21,10 @@
   holograms, against [2] and the padding-4 search (``results/measured/cnn-loo/<sample>.json``).
 * ``compare``: leave-one-out CNN, Stage 5 CNN, [2], padding 4 and the guess side by side, with
   the test errors of the runs that made the estimates (``model`` of each estimate record) on
-  both test splits and the spread of the estimates over the training seeds, if the same CNNs
-  were trained with other seeds (``results/objectmodel/seeds/seed-<k>``;
-  ``results/objectmodel/comparison.{csv,json}``).
+  both test splits, the percentiles of the disagreement and of the measured ``sigma`` among the
+  errors and ``sigma`` of the leave-one-out test split, and the spread of the estimates over
+  the training seeds, if the same CNNs were trained with other seeds
+  (``results/objectmodel/seeds/seed-<k>``; ``results/objectmodel/comparison.{csv,json}``).
 
 Usage::
 
@@ -695,6 +696,9 @@ def cmd_compare(args) -> None:
             row["disagreement_b1_p4_percentile"] = percentile_rank(
                 abs_test, abs(loo["references"]["baseline_b1_p4"]["distance_um"])
             )
+        row["sigma_test_percentile"] = percentile_rank(
+            [r["sigma"] for r in test_rows], loo["sigma"]
+        )
         rows.append(row)
         details[name] = {
             "row": row,
