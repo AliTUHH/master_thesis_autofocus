@@ -617,6 +617,24 @@ def measured_failures(args, name: str, fail: dict) -> dict:
     return out
 
 
+def neighbour_percentiles(fail: dict, shift: dict, measured: dict, rows: np.ndarray) -> dict:
+    """Percentiles of the hologram's failures and shift from the guess (``measured_failures``)
+    among those of its nearest test samples ``rows``."""
+    out = {}
+    for kind, m in measured.items():
+        values = {f"{kind}_{k}": m[k] for k in ("seed_std_um", "width_95_um") if k in m}
+        if "minus_p4_um" in m:
+            values[f"{kind}_abs_error_um"] = abs(m["minus_p4_um"])
+        out[kind] = {
+            key.removeprefix(f"{kind}_"): percentile_rank(fail[key][rows], v)
+            for key, v in values.items()
+            if key in fail
+        }
+        if kind in shift:
+            out[kind]["shift_um"] = percentile_rank(shift[kind][rows], m["shift_um"])
+    return out
+
+
 def measure_row(name: str, space: str, measure: str, components: int, m: dict) -> dict:
     """A row of ``summary.csv``: the hologram's distance in one space and measure, its
     percentile among the test split and the Spearman of the distance with each failure."""
@@ -795,6 +813,10 @@ def cmd_misspec(args) -> None:
             )
         if x_measured is not None:
             record["measured_failures"] = measured_failures(args, name, fail)
+            for near in record["neighbours"].values():
+                near["measured_percentiles"] = neighbour_percentiles(
+                    fail, shift, record["measured_failures"], np.array(near["indices"])
+                )
             if args.control is not None:
                 control = control_record(args, name, autofocus, x_measured)
                 if control is not None:
