@@ -289,7 +289,14 @@ def calibration_figure(npe: Path, cnn: Path, out: Path, dpi: int) -> dict | None
         axes[1].plot(LEVELS, regions - LEVELS, style, color=color, label=label)
         counts = np.histogram(np.clip(t["pit"], 0, 1), bins=PIT_BINS, range=(0, 1))[0]
         edges = np.linspace(0, 1, PIT_BINS + 1)
-        axes[2].stairs(counts / (len(t["pit"]) / PIT_BINS), edges, color=color, ls=style, lw=1.2)
+        axes[2].stairs(
+            counts / (len(t["pit"]) / PIT_BINS),
+            edges,
+            baseline=None,
+            color=color,
+            ls=style,
+            lw=1.2,
+        )
         metrics[name] = {
             "n": len(t["pit"]),
             "central_coverage": {
@@ -326,6 +333,7 @@ def calibration_figure(npe: Path, cnn: Path, out: Path, dpi: int) -> dict | None
             axes[2].stairs(
                 counts / (len(r) / PIT_BINS),
                 np.linspace(0, 1, PIT_BINS + 1),
+                baseline=None,
                 color="tab:red",
                 ls=(0, (1, 1)),
                 lw=1.6,
