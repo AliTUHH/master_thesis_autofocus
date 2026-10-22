@@ -11,6 +11,7 @@ werden von den Skripten in `scripts/` erzeugt.
 | 03 | Klassische Autofokus-Baseline nach [2] | [03-baseline.md](03-baseline.md) |
 | 04 | Erstes gelerntes Modell (CNN mit Unsicherheit) | [04-lernmodell.md](04-lernmodell.md) |
 | 05 | Gelernter Autofokus auf den Messhologrammen | [05-messdaten.md](05-messdaten.md) |
+| 06 | Objektmodell mit Textur | [06-objektmodell.md](06-objektmodell.md) |
 | 07 | Posterior von `z01` mit Neural Posterior Estimation (sbi) | [07-npe.md](07-npe.md) |
 
 Quellen:
