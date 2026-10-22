@@ -23,10 +23,12 @@ from `z01` and is available as an alternative label.
 | 3 | Classical autofocus baseline of [2]: ASRM ([1] Alg. 5) ported from the paper code with the [2] Table 3 schedule, model fit error, projected Nelder–Mead, image criteria and focus curves; runs on the synthetic test split and on the Zenodo holograms of [1], cross-checked against holowizard; per-sample results in `results/` | [docs/laborbuch/03-baseline.md](docs/laborbuch/03-baseline.md) |
 | 4 | First learned autofocus: a small CNN estimates `Δz01` with a Gaussian uncertainty from the radial power spectrum (or the binned hologram), trained on 10 000 synthetic samples on CPU; compared per sample with the raw and offset-corrected baseline of [2], and used as a warm start for its Nelder–Mead search | [docs/laborbuch/04-lernmodell.md](docs/laborbuch/04-lernmodell.md) |
 | 5 | The learned autofocus on the four measured Zenodo holograms: one spectrum CNN per measured setup (energy, geometry, detector path, guess ± 5 mm), compared with [2] Table 1 and our padding-4 baseline, and as a warm start; the sim-to-real gap measured with test splits that change one simulator assumption at a time (detector blur, flat-field residual, noise, fibers, the measured object) and with training sets that have the measured properties | [docs/laborbuch/05-messdaten.md](docs/laborbuch/05-messdaten.md) |
+| 7 | The posterior of `Δz01` instead of a point estimate, by neural posterior estimation with sbi [6]: a spline flow on an embedding of the radial power spectrum, trained on the 10 000 synthetic samples of Stage 4 on CPU (five seeds as an ensemble, a mixture-density variant); calibration with SBC, expected coverage and TARP on 2000 prior draws, compared with the Stage 4 CNN on the test split and on the 48 baseline samples, on the perturbed test splits of Stage 5 and, for completeness, on the four measured holograms | [docs/laborbuch/07-npe.md](docs/laborbuch/07-npe.md) |
 
 **GPU runs.** The heavy runs (the baseline on the whole synthetic test split, larger training
-runs, later NPE) go to the A100 nodes of DESY Maxwell with the SLURM kit in `cluster/maxwell/`;
-[docs/maxwell-gpu.md](docs/maxwell-gpu.md) is the step-by-step guide (German).
+runs, NPE ensembles and larger NPE runs) go to the A100 nodes of DESY Maxwell with the SLURM
+kit in `cluster/maxwell/`; [docs/maxwell-gpu.md](docs/maxwell-gpu.md) is the step-by-step
+guide (German).
 `scripts/check_cluster_run.py` compares those runs sample by sample with the committed results.
 
 ## Quick start
@@ -46,6 +48,9 @@ holofocus-learn train configs/learned/ci.yaml --train /tmp/demo/train.h5 --val /
     --out /tmp/learned                          # tiny CNN on the demo dataset, seconds
 holofocus-learn predict results/learned/spectrum-cnn-wide --data data/cpu-4x/test.h5 \
     --out /tmp/predictions                      # trained model, a few ms per hologram on CPU
+pip install -e ".[dev,npe]"                     # sbi, for the posterior estimation of Stage 7
+holofocus-learn npe-train configs/learned/npe-ci.yaml --train /tmp/demo/train.h5 \
+    --val /tmp/demo/val.h5 --out /tmp/npe       # tiny NPE on the demo dataset, seconds
 ```
 
 ```python
@@ -78,22 +83,25 @@ src/holofocus/autofocus/  MFE and image criteria, Nelder-Mead, nested autofocus,
 src/holofocus/baseline/   baseline runs on dataset splits: YAML config, per-sample results, CLI
 src/holofocus/learned/    learned autofocus: representations, CNNs with a Gaussian head,
                           training, inference, metrics, comparison with the baseline, CLI;
-                          sim2real.py: measured noise, blur and object models, perturbations
+                          sim2real.py: measured noise, blur and object models, perturbations;
+                          npe.py: neural posterior estimation with sbi; posterior.py: posterior
+                          on a grid and its calibration statistics
 configs/dataset/          dataset configs (cpu-4x, cpu-4x-extra, cpu-4x-large, cpu-4x-z01-range,
-                          ci; matched-<sample> for the measured setups with -large, and
-                          -realistic for the cactus needle and the Mg wire)
+                          cpu-4x-calibration, ci; matched-<sample> for the measured setups with
+                          -large, and -realistic for the cactus needle and the Mg wire)
 configs/baseline/         baseline configs (paper2-cpu, paper2-cpu-warm, both at padding 4 as
                           -p4, ci)
 configs/learned/          learned-model configs (spectrum-cnn, spectrum-cnn-wide, -wide-hf,
-                          image-cnn, ci)
+                          image-cnn, ci; npe-nsf, npe-mdn, npe-ci for the NPE)
 results/                  per-sample results quoted in the lab notebook (baseline, learned
-                          models, comparison, measured holograms, sim-to-real study) and
-                          fingerprints of the val and test splits
+                          models, comparison, measured holograms, sim-to-real study, NPE) and
+                          fingerprints of the val, test and calibration splits
 cluster/maxwell/          SLURM run kit for the A100 nodes of DESY Maxwell: settings template,
                           environment setup, submit script, jobs
 tests/                    pytest suite (CPU; CUDA tests are skipped without a GPU)
-scripts/                  figure scripts, Stage 3 experiments, Stage 4 and 5 studies, cross-checks
-                          with holowizard, checks of cluster runs against the committed results
+scripts/                  figure scripts, Stage 3 experiments, Stage 4, 5 and 7 studies,
+                          cross-checks with holowizard, checks of cluster runs against the
+                          committed results
 docs/usage.md             how to run things (English)
 docs/maxwell-gpu.md       GPU runs on DESY Maxwell, step by step (German)
 docs/laborbuch/           lab notebook, one entry per stage (German), figures in figures/
@@ -115,3 +123,5 @@ cone-beam geometry of [1]/[2]; it remains available in the git history.
   [holowizard](https://pypi.org/project/holowizard/)).
 - [2] J. Dora et al., "Model-based autofocus for near-field phase retrieval," Opt. Express
   33(4), 6641 (2025), [doi:10.1364/OE.544573](https://doi.org/10.1364/OE.544573).
+- [6] M. Deistler et al., "Simulation-based inference: A practical guide," arXiv:2508.12939
+  (2025), [arxiv.org/abs/2508.12939](https://arxiv.org/abs/2508.12939).
