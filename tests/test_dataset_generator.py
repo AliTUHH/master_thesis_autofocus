@@ -145,6 +145,81 @@ def test_flat_field_residual_multiplies_the_hologram(config):
     assert residual.mean() == pytest.approx(0.0, abs=1e-5)
 
 
+def _changed(config, **phantoms):
+    data = config.to_dict()
+    data["phantoms"].update(phantoms)
+    return DatasetConfig.from_dict(data)
+
+
+def test_texture_leaves_the_rest_of_the_sample_unchanged(config, generator):
+    textured = HologramGenerator(
+        _changed(
+            config,
+            texture_rms_range=[0.05, 0.2],
+            texture_slope_range=[2.0, 3.0],
+            texture_cutoff=0.1,
+        ),
+        device="cpu",
+    )
+    for i in range(3):
+        base, other = generator.sample("test", i), textured.sample("test", i)
+        assert base.meta["texture_rms"] == base.meta["background_texture_rms"] == 0.0
+        assert base.meta["texture_slope"] == 0.0
+        assert 0.05 <= other.meta["texture_rms"] <= 0.2
+        assert 2.0 <= other.meta["texture_slope"] <= 3.0
+        assert other.meta["background_texture_rms"] == 0.0
+        assert other.labels == base.labels
+        for key in ("phantom_type", "phase_shift", "photons", "psf_sigma", "flat_field_rms"):
+            assert other.meta[key] == base.meta[key]
+        texture = other.phase.astype(np.float64) - base.phase
+        inside = base.phase < 0
+        assert not texture[~inside].any()
+        # RMS proportional to the square root of the thickness, unit field inside the object.
+        root = np.sqrt(base.phase[inside] / -base.meta["phase_shift"])
+        field = texture[inside] / (other.meta["texture_rms"] * root)
+        assert field.std() == pytest.approx(1.0, rel=0.35)
+        assert not np.array_equal(other.hologram, base.hologram)
+
+
+def test_background_texture_covers_the_field_of_view(config, generator):
+    film = HologramGenerator(
+        _changed(config, background_texture_rms_range=[0.1, 0.1], texture_cutoff=0.1), "cpu"
+    )
+    faint = HologramGenerator(
+        _changed(config, background_texture_rms_range=[1e-9, 1e-9], texture_cutoff=0.1), "cpu"
+    )
+    for i in range(2):
+        base, other = generator.sample("val", i), film.sample("val", i)
+        assert other.labels == base.labels and other.meta["phase_shift"] == base.meta["phase_shift"]
+        outside = base.phase == 0
+        assert other.phase[outside].std() == pytest.approx(0.1, rel=0.35)
+        # A compact object under a film is rendered on the whole simulation grid; without the
+        # film that gives the hologram of the object embedded in free space.
+        np.testing.assert_allclose(faint.sample("val", i).clean, base.clean, rtol=0, atol=1e-5)
+
+
+def test_phase_per_pixel_follows_the_fiber_thickness(config):
+    uniform = HologramGenerator(_changed(config, types={"fiber": 1.0}), "cpu")
+    coupled = HologramGenerator(
+        _changed(config, types={"fiber": 1.0}, phase_per_pixel_range=[0.02, 0.02]), "cpu"
+    )
+    n = config.geometry.fov_shape[0]
+    for i in range(3):
+        a, b = uniform.sample("train", i), coupled.sample("train", i)
+        ratio = b.meta["phase_shift"] / a.meta["phase_shift"]
+        np.testing.assert_allclose(b.phase, ratio * a.phase, rtol=1e-5, atol=1e-6)
+        assert -b.phase.min() == pytest.approx(b.meta["phase_shift"], rel=1e-6)
+        # Largest projected thickness in the field of view, in binned pixels.
+        assert 0 < b.meta["phase_shift"] / 0.02 <= 4 * n
+
+
+def test_textured_configs_need_the_texture_stream(config):
+    textured = HologramGenerator(_changed(config, texture_rms_range=[0.1, 0.1]), "cpu")
+    rng = np.random.default_rng(0)
+    with pytest.raises(ValueError, match="texture_rng"):
+        textured.draw(rng, rng)
+
+
 def test_fiber_samples_cross_the_field_of_view(config):
     data = config.to_dict()
     data["phantoms"]["types"] = {"fiber": 1.0}

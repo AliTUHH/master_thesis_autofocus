@@ -2,6 +2,7 @@ import math
 
 import numpy as np
 import pytest
+import torch
 
 from holofocus.phantoms import (
     COMPACT_TYPES,
@@ -15,6 +16,7 @@ from holofocus.phantoms import (
     random_phantom,
     rasterize,
     render,
+    texture_field,
 )
 
 
@@ -127,3 +129,55 @@ def test_compact_types_on_a_canvas_are_zero_padded():
     assert padded.shape == (101, 100)
     np.testing.assert_array_equal(padded[26:74, 26:74], plain)
     assert padded.sum() == pytest.approx(plain.sum())
+
+
+def test_fiber_thickness_in_pixels():
+    shape, canvas = (64, 64), (160, 160)
+    for seed in range(4):
+        pixels = random_phantom(
+            np.random.default_rng(seed), "fiber", shape, canvas=canvas, normalize=False
+        )
+        unit = random_phantom(np.random.default_rng(seed), "fiber", shape, canvas=canvas)
+        peak = pixels[48:112, 48:112].max()
+        np.testing.assert_allclose(pixels / peak, unit, rtol=1e-12, atol=1e-15)
+        # Diameters of 3-100 % of the field of view; the taper at most doubles a radius.
+        assert 0 < peak <= 2 * 2 * 64
+    with pytest.raises(ValueError, match="only fibers"):
+        random_phantom(np.random.default_rng(0), "ball", shape, normalize=False)
+
+
+def _radial_power(field: np.ndarray, bins: np.ndarray) -> np.ndarray:
+    f = np.hypot(*np.meshgrid(np.fft.fftfreq(field.shape[0]), np.fft.fftfreq(field.shape[1])))
+    power = np.abs(np.fft.fft2(field)) ** 2
+    index = np.digitize(f.T, bins)
+    return np.array([power[index == i].mean() for i in range(1, len(bins))])
+
+
+# Tolerance: 4 standard deviations of the mean variance of four realisations (the few modes
+# below the cutoff carry most of the power of steep spectra).
+@pytest.mark.parametrize("slope, tolerance", [(0.0, 0.02), (2.0, 0.05), (3.5, 0.15)])
+def test_texture_field_has_unit_rms_and_the_power_law(slope, tolerance):
+    rng = np.random.default_rng(11)
+    fields = [texture_field((256, 256), rng, slope, 0.02).numpy() for _ in range(4)]
+    assert all(f.dtype == np.float32 and f.shape == (256, 256) for f in fields)
+    assert np.mean([f.mean() for f in fields]) == pytest.approx(0.0, abs=1e-6)
+    assert np.mean([f.var() for f in fields]) == pytest.approx(1.0, rel=tolerance)
+    bins = np.array([0.1, 0.13, 0.2, 0.26, 0.4, 0.45])
+    power = np.mean([_radial_power(f, bins) for f in fields], axis=0)
+    centre = np.sqrt(bins[:-1] * bins[1:])
+    fitted = np.polyfit(np.log(centre[[0, 2, 4]]), np.log(power[[0, 2, 4]]), 1)[0]
+    assert fitted == pytest.approx(-slope, abs=0.15)
+
+
+def test_texture_field_is_band_limited_to_the_binned_grid():
+    a = texture_field((128, 96), np.random.default_rng(3), 2.0, 0.05, oversample=2)
+    b = texture_field((128, 96), np.random.default_rng(3), 2.0, 0.05, oversample=2)
+    np.testing.assert_array_equal(a.numpy(), b.numpy())
+    spectrum = np.abs(np.fft.fft2(a.numpy().astype(np.float64)))
+    fy, fx = np.meshgrid(np.fft.fftfreq(128), np.fft.fftfreq(96), indexing="ij")
+    outside = (np.abs(fy) >= 0.25) | (np.abs(fx) >= 0.25)
+    assert spectrum[outside].max() < 1e-4 * spectrum[~outside].max()
+    double = texture_field((64, 64), np.random.default_rng(0), 1.0, 0.1, dtype=torch.float64)
+    assert double.dtype == torch.float64
+    with pytest.raises(ValueError):
+        texture_field((64, 64), np.random.default_rng(0), -1.0, 0.1)
