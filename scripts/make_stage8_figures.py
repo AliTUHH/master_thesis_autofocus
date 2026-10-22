@@ -11,7 +11,8 @@
   the measured hologram (star; error against our padding-4 search).
 * ``stage8-shrinkage.png``: shift of the NPE ensemble from the guess against the true offset on
   the test split, the 25 test samples nearest to the measured hologram in the embedding (seed 0)
-  and the hologram (truth: padding 4).
+  and the hologram (truth: padding 4); below, the same for the NPE of the positive control on
+  the test split of the Stage 5 simulator.
 * ``stage8-ensembles.png``: CNN ensemble against NPE ensemble with their seeds and the guess on
   the leave-one-out test splits and pooled: MAE, coverage, width, NLL.
 * ``stage8-ensembles-measured.png``: the two ensembles on the measured holograms over the prior
@@ -289,61 +290,121 @@ def failures_figure(directory: Path, out: Path, dpi: int) -> dict | None:
     return metrics
 
 
+def _control_shifts(record: dict) -> tuple[np.ndarray, np.ndarray] | None:
+    """Truth minus guess and estimate minus guess (mm) on the test split of the positive
+    control, if ``misspec`` gave it the local look."""
+    control = record.get("control") or {}
+    if "neighbours" not in control or "predictions" not in control:
+        return None
+    rows = _csv(REPO / control["predictions"])
+    if not rows:
+        return None
+    return _column(rows, "dz01_true") * 1e3, _column(rows, "dz01_est") * 1e3
+
+
+def _shrinkage_panel(
+    ax, offset, shift, near: dict | None, measured: dict | None, color: str, near_label: str
+) -> str:
+    """Test samples, the nearest ones to the hologram and the hologram; returns the title."""
+    lim = 5.2
+    ax.plot(offset, shift, ".", color="0.6", ms=4, label="test samples")
+    ax.plot([-lim, lim], [-lim, lim], color="0.3", lw=0.8, ls=":", label="estimate = truth")
+    ax.axhline(0, color=GUESS_COLOR, lw=0.9, label="estimate = guess")
+    title = ""
+    if near is not None:
+        i = np.asarray(near["indices"])
+        label = f"{near['n']} {near_label}"
+        ax.plot(offset[i], shift[i], "o", color=color, ms=4, mfc="none", label=label)
+        title += f", nearest {near['npe_shrinkage']:.2f}"
+    if measured is not None and "p4_minus_guess_um" in measured:
+        ax.plot(
+            measured["p4_minus_guess_um"] / 1e3,
+            measured["shift_um"] / 1e3,
+            "*",
+            color="tab:orange",
+            ms=15,
+            mec="black",
+            label="measured hologram (truth: padding 4)",
+        )
+        title += f"\nhologram moved {measured['moved_fraction']:.2f} of the way"
+        if near is not None and "measured_percentiles" in near:
+            title += f", error at {near['measured_percentiles']['npe']['abs_error_um']:.0f} %"
+            title += " of the nearest"
+    ax.set_xlim(-lim, lim)
+    ax.set_ylim(-lim, lim)
+    ax.set_box_aspect(1)
+    ax.set_xlabel("truth minus guess (mm)", fontsize=8)
+    ax.tick_params(labelsize=7)
+    ax.grid(alpha=0.3)
+    return title
+
+
 def shrinkage_figure(directory: Path, out: Path, dpi: int) -> dict | None:
     data = {s: d for s, d in _misspec(directory).items() if "npe_shift_um" in d[1][0]}
     if not data:
         return None
+    controls = {s: _control_shifts(record) for s, (record, _) in data.items()}
+    controls = {s: c for s, c in controls.items() if c is not None}
+    rows_of_panels = 2 if controls else 1
     fig, axes = plt.subplots(
-        1, len(data), figsize=(3.6 * len(data) + 0.6, 4.0), squeeze=False, layout="constrained"
+        rows_of_panels,
+        len(data),
+        figsize=(3.6 * len(data) + 0.6, 4.6 * rows_of_panels + 0.6),
+        squeeze=False,
+        layout="constrained",
     )
     metrics = {}
-    for ax, (name, (record, rows)) in zip(axes[0], data.items(), strict=True):
+    for col, (name, (record, rows)) in enumerate(data.items()):
         offset, shift = _column(rows, "dz01_true_um") / 1e3, _column(rows, "npe_shift_um") / 1e3
-        ax.plot(offset, shift, ".", color="0.6", ms=4, label="test samples")
-        lim = 5.2
-        ax.plot([-lim, lim], [-lim, lim], color="0.3", lw=0.8, ls=":", label="estimate = truth")
-        ax.axhline(0, color=GUESS_COLOR, lw=0.9, label="estimate = guess")
-        test = record["test"]
-        title = f"{record['label']}: slope {test['npe_shrinkage']:.2f}"
         near = record.get("neighbours", {}).get("embedding")
-        if near is not None:
-            rows_near = [rows[i] for i in near["indices"]]
-            ax.plot(
-                _column(rows_near, "dz01_true_um") / 1e3,
-                _column(rows_near, "npe_shift_um") / 1e3,
-                "o",
-                color=ENSEMBLE_COLOR,
-                ms=4,
-                mfc="none",
-                label=f"{near['n']} nearest in the embedding (seed 0)",
-            )
-            title += f", nearest {near['npe_shrinkage']:.2f}"
         measured = (record.get("measured_failures") or {}).get("npe")
-        if measured is not None and "p4_minus_guess_um" in measured:
-            ax.plot(
-                measured["p4_minus_guess_um"] / 1e3,
-                measured["shift_um"] / 1e3,
-                "*",
-                color="tab:orange",
-                ms=15,
-                mec="black",
-                label="measured hologram (truth: padding 4)",
-            )
-            title += f"\nhologram moved {measured['moved_fraction']:.2f} of the way"
-        ax.set_xlim(-lim, lim)
-        ax.set_ylim(-lim, lim)
-        ax.set_aspect("equal")
-        ax.set_title(title, fontsize=8)
-        ax.set_xlabel("truth minus guess (mm)", fontsize=8)
-        ax.tick_params(labelsize=7)
-        ax.grid(alpha=0.3)
+        test = record["test"]
+        title = _shrinkage_panel(
+            axes[0, col],
+            offset,
+            shift,
+            near,
+            measured,
+            ENSEMBLE_COLOR,
+            "nearest in the embedding (seed 0)",
+        )
+        axes[0, col].set_title(
+            f"{record['label']}: slope {test['npe_shrinkage']:.2f}{title}", fontsize=8
+        )
         metrics[name] = {
             "test_shrinkage": test["npe_shrinkage"],
             "nearest_shrinkage": None if near is None else near["npe_shrinkage"],
             "moved_fraction": None if measured is None else measured.get("moved_fraction"),
         }
+        if not controls:
+            continue
+        ax = axes[1, col]
+        if name not in controls:
+            ax.set_axis_off()
+            continue
+        control = record["control"]
+        near, measured = control["neighbours"]["embedding"], control["measured_failures"]["npe"]
+        title = _shrinkage_panel(
+            ax,
+            *controls[name],
+            near,
+            measured,
+            CONTROL_COLOR,
+            "nearest in the embedding of the Stage 5 NPE",
+        )
+        ax.set_title(
+            f"Stage 5 simulator: slope {control['test']['npe_shrinkage']:.2f}{title}", fontsize=8
+        )
+        metrics[name]["control"] = {
+            "test_shrinkage": control["test"]["npe_shrinkage"],
+            "nearest_shrinkage": near["npe_shrinkage"],
+            "moved_fraction": measured["moved_fraction"],
+            "error_percentile_among_nearest": near["measured_percentiles"]["npe"]["abs_error_um"],
+        }
     axes[0, 0].set_ylabel("NPE ensemble minus guess (mm)", fontsize=8)
-    _legend(fig, axes, columns=5)
+    if controls:
+        axes[1, 0].set_ylabel("Stage 5 NPE minus guess (mm)", fontsize=8)
+    _legend(fig, axes, columns=4)
     _save(fig, out / "stage8-shrinkage.png", dpi)
     return metrics
 

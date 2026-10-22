@@ -171,7 +171,9 @@ BRENT_POWERS = {"parabola": 2.0, "abs": 1.0, "quartic": 4.0}
 RISE_RANGE_MM = (0.2, 3.0)
 """Distances from the minimum over which ``curves`` fits the rise of the MFE; closer, the
 MFE of cactus needle and magnesium wire changes by a few ppm, as much as between neighbouring
-points."""
+points. ``curves`` pools only the searches with the thread count of the full search: with one
+thread instead of three, the same reconstruction gives another MFE, mostly a few ppm, at the
+step that ends the flat bottom of the tooth 675 ppm."""
 
 
 def cnn_estimates(args, name: str) -> list[Path]:
@@ -1305,13 +1307,14 @@ def cmd_warmstart(args) -> None:
             print(f"{name}: no full search {repo_relative(cold_path)}, skipped")
             continue
         cold = json.loads(cold_path.read_text())["result"]
-        entries, paths = {}, []
+        entries, paths = {}, {}
         for variant, folder, _ in SEARCHES:
             path = args.measured / folder / f"{name}.json"
             if path.exists():
                 entries[variant] = search_entry(path, None if variant == "cold" else cold)
-                paths.append(path)
-        curves[name] = mfe_rise(paths)
+                if entries[variant]["threads"] == entries["cold"]["threads"]:
+                    paths[variant] = path
+        curves[name] = {**mfe_rise(list(paths.values())), "searches": list(paths)}
         print(
             f"{name}: MFE from {curves[name]['z01'] * 1e3:.4f} mm, power "
             + " / ".join(
