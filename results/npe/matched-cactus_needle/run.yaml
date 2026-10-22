@@ -1,0 +1,77 @@
+config:
+  name: npe-nsf
+  target_scale: 0.005
+  representation:
+    kind: spectrum
+    binning: 2
+    bins: 1024
+    f2_max: 0.125
+  embedding:
+    channels:
+    - 32
+    - 64
+    - 128
+    - 128
+    kernel_size: 7
+    pool_to: 16
+    hidden: 128
+    dropout: 0.1
+    features: 32
+  density:
+    estimator: nsf
+    hidden_features: 50
+    num_transforms: 5
+    num_bins: 10
+    num_components: 10
+  training:
+    epochs: 100
+    batch_size: 32
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    warmup_epochs: 2
+    clip_max_norm: 5.0
+    limit: null
+    patience: null
+    seed: 0
+  grid_points: 2001
+  device: auto
+datasets:
+  train:
+  - path: data/matched-cactus_needle/train.h5
+    sha256: ebb41c4816b2885093f1e80d007871fd42c59cda467f66de56e6e56a449ba515
+    split: train
+    n_samples: 6000
+    seed: 20261033
+    generator_commit: 2dc11b5
+    created_utc: '2026-10-21T16:33:31+00:00'
+  val:
+    path: data/matched-cactus_needle/val.h5
+    sha256: 5451abde4aeb47a50ad0428a5edf58e6babf6cd9220fcd15a3308accd5eec169
+    split: val
+    n_samples: 250
+    seed: 20261033
+    generator_commit: 2dc11b5
+    created_utc: '2026-10-21T16:47:58+00:00'
+n_train: 6000
+n_val: 250
+input_shape:
+- 1
+- 1024
+prior:
+- -1.0
+- 1.0
+n_parameters: 482091
+n_parameters_density: 28395
+best_epoch: 28
+epochs_run: 100
+load_seconds: 38.50986806100991
+train_seconds: 816.5006870240031
+holofocus_version: 0.1.0
+git_commit: 7f7cc8e
+torch_version: 2.14.1+cpu
+sbi_version: 0.27.0
+device: cpu
+threads: 3
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-22T02:26:44+00:00'
