@@ -66,6 +66,9 @@ DEFAULT_SECONDS = 600.0
 """Expected time of a job without ``seconds``."""
 MIN_REMAINING = 60.0
 """A running job past its expected time is expected to run this much longer."""
+SLACK_GB = 1e-6
+"""A job fits into this much less memory than it needs: what is left of the budget is a
+difference of sums in floating point."""
 BERLIN = ZoneInfo("Europe/Berlin")
 PAGE_SIZE = os.sysconf("SC_PAGE_SIZE")
 GB = 1024**3
@@ -290,7 +293,7 @@ def reservation(
     threads, memory = free_threads, free_memory
     for end, t, m in sorted(running):
         threads, memory = threads + t, memory + m
-        if threads >= job.threads and memory >= job.memory_gb:
+        if threads >= job.threads and memory + SLACK_GB >= job.memory_gb:
             return end, threads - job.threads, memory - job.memory_gb
     return float("inf"), 0, 0.0
 
@@ -309,14 +312,14 @@ def select(
     chosen, running, reserved = [], list(running), None
     for k, job in enumerate(ready):
         threads = job.threads_for(free_threads, alone=reserved is None and k == len(ready) - 1)
-        if threads > free_threads or job.memory_gb > free_memory:
+        if threads > free_threads or job.memory_gb > free_memory + SLACK_GB:
             if reserved is None:
                 reserved = reservation(job, free_threads, free_memory, running)
             continue
         end = now + expected_seconds(job, threads)
         if reserved is not None and end > reserved[0]:
             at, spare_threads, spare_memory = reserved
-            if threads > spare_threads or job.memory_gb > spare_memory:
+            if threads > spare_threads or job.memory_gb > spare_memory + SLACK_GB:
                 continue
             reserved = (at, spare_threads - threads, spare_memory - job.memory_gb)
         chosen.append((job, threads))

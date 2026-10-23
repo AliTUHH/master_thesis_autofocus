@@ -42,6 +42,13 @@ def test_select_backfills_what_does_not_delay_the_reserved_job():
     assert names(run_jobs.select([wide, long, short], 1, 0.5, 0.0, HOLD)) == [("short", 1)]
 
 
+def test_select_fits_a_job_into_exactly_what_is_left():
+    free = 8.0 - (3.1 + 3.1 + 1.1)
+    assert free < 0.7
+    chosen = run_jobs.select([job("gen", memory_gb=0.7)], 1, free, 0.0, [])
+    assert names(chosen) == [("gen", 1)]
+
+
 def test_select_gives_spare_threads_to_the_last_job_if_none_waits():
     first, elastic = job("first"), job("elastic", max_threads=3)
     chosen = run_jobs.select([first, elastic], 4, 9.0, 0.0, [])
