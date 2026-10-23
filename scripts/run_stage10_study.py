@@ -312,8 +312,10 @@ GENERATION_SECONDS = {
 GENERATION_GB = {"spider_hair": 1.8, "tooth": 1.1, "cactus_needle": 0.7, "magnesium_wire": 0.7}
 """Peak memory of a generation (1.65, 1.00 and 0.58 GB for three samples of the spider hair,
 the tooth and the cactus needle), with a margin."""
-TRAIN_SECONDS = {"radial-cnn": 0.23, "polar-cnn": 0.3, "image-cnn": 0.51, "npe": 0.29}
-"""Seconds per training sample with one thread (100 epochs; the image CNN 40)."""
+TRAIN_SECONDS = {"radial-cnn": 0.23, "polar-cnn": 0.47, "image-cnn": 0.58, "npe": 0.29}
+"""Seconds per training sample with one thread (100 epochs; the image CNN 40): the polar and
+the image CNN as their first trainings on cpu-4x took with four jobs on the four cores (46 and
+142 s per epoch of 10 000 samples)."""
 TRAIN_GB = {"radial-cnn": 0.9, "polar-cnn": 1.1, "image-cnn": 2.1, "npe": 0.9}
 """Memory of a training on a leave-one-out set: the inputs of the image CNN (6000 at 256^2 in
 float16) peak at 1.8 GB while they are joined; on cpu-4x it takes :data:`IMAGE_CPU4X_GB` (2.8
