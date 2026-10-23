@@ -296,8 +296,8 @@ Auf den synthetischen Samples (`results/baseline/cpu-4x-test-<Name>`):
 | `box95-cnn` | `paper2-cpu-box` | 95 % des CNN | 0–47 |
 | `repeat` | `paper2-cpu` | $\Omega_z$ | 11, 46, 0–5 (E8) |
 
-Das sind 248 Suchen. `run_stage9_study.py queue` lässt zwei Lanes (A mit 3, B mit einem
-Thread) die nächste Suche nehmen, die noch keine genommen hat (eine Datei pro Suche, angelegt
+Das sind 248 Suchen. `run_stage9_study.py queue` lässt zwei Lanes (A mit drei Threads, B mit
+einem) die nächste Suche nehmen, die noch keine genommen hat (eine Datei pro Suche, angelegt
 mit `open(..., "x")`); jede schreibt nach `runs/stage9/cpu-4x-test-<Name>/lane-<Lane>`, und
 `merge` fügt die Lanes zusammen und schreibt nach `results/stage9/lanes.csv`, welche Lane welche
 Suche mit wie vielen Threads rechnete.
@@ -389,8 +389,8 @@ gepaarte Differenz: Ersparnis mit Brent minus Ersparnis mit Nelder–Mead, Sampl
 **E8 – Nelder–Mead noch einmal.** Die kalten Suchen mit Nelder–Mead (`b1-p4`, Baseline von
 Etappe 3) liefen mit Numerik 3, alle neuen mit Numerik 1. Ein Unterschied zwischen Brent und
 Nelder–Mead könnte deshalb auch an der Numerik liegen: Nelder–Mead vergleicht nur Werte, und
-zwei Punkte, deren MFE sich um weniger als die 2–9 ppm der Numerik unterscheidet, können die Plätze
-tauschen. Die Wiederholung zeigt, wie viel die Numerik allein an einer Suche ändert: auf allen
+zwei Punkte, deren MFE weniger auseinanderliegt, als die Numerik sie verschiebt (meist einige
+ppm, 3.1 und 5.1), können die Plätze tauschen. Die Wiederholung zeigt, wie viel die Numerik allein an einer Suche ändert: auf allen
 vier Messhologrammen und auf 8 synthetischen Samples, darunter die beiden, bei denen in der Suche
 von Etappe 3 zwei MFE-Werte weniger als die Numerik auseinanderliegen (11 und 46).
 
