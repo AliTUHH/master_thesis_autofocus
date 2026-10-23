@@ -880,7 +880,9 @@ Auf der VM geprüft (4 CPU-Kerne, ohne SLURM und ohne GPU, mit `--device cpu`):
   sich um bis zu 1,1·10⁻⁴ relativ unterschieden: Die ASRM auf der CPU ist zwischen zwei Läufen
   nicht bitgleich. Die Schätzung von Sample 0 war trotzdem jedes Mal dieselbe. Abweichungen
   dieser Größe sind also keine Besonderheit der GPU; die Schwelle des Vergleichs mit der CPU
-  im gpu-check liegt bei 10⁻³.
+  im gpu-check liegt bei 10⁻³. Mit wie vielen Threads die drei liefen, ist nicht festgehalten.
+  Etappe 9 fand, dass eine Rekonstruktion mit derselben Threadzahl bitgleich wiederkommt und
+  nur zwischen Threadzahlen abweicht, und seit Etappe 9 auch das nicht mehr (8.4).
 
 Nur auf Maxwell zu prüfen (**PRÜFEN**, Abschnitt 2 und gpu-check):
 

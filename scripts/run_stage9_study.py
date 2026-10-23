@@ -152,9 +152,12 @@ offset of the MFE between the branches where they lie at most this far apart: th
 branch changes by far less over so short a distance than between the branches. Farther apart,
 the bend of the MFE over ``z01`` is as large as the offset."""
 BRANCH_SLOPE_UM = 250.0
-"""How far from a pair of :data:`BRANCH_PAIR_UM` the next full reconstruction on the same
-branch may lie to give the slope of the MFE there: up to 42 ppm per um on the tooth, as much
-over 1 um as the offset far from the focus; over 250 um the slope itself changes by far less."""
+"""How far from a pair of :data:`BRANCH_PAIR_UM` the full reconstructions on the same branch
+may lie that give the slope of the MFE there: up to 42 ppm per um on the tooth, as much over
+1 um as the offset far from the focus; over 250 um the slope itself changes by far less."""
+BRANCH_SLOPE_POINTS = 2
+"""How many of them at most, the nearest: near a switch single reconstructions lie 150 ppm
+off the line through their neighbours (79.15 mm on the tooth)."""
 WINDOWS_UM = (250.0, 500.0)
 """Half-widths of the windows about the minimum in which ``steps`` reports how densely the
 points lie (:func:`coverage`)."""
@@ -790,17 +793,23 @@ def upper_branch(losses: dict, reference: dict) -> dict:
 
 
 def branch_slope(points: list[dict], k: int, step: int) -> float | None:
-    """The slope of ``ln`` MFE in ppm per um from ``points[k]`` to the nearest point in
-    direction ``step`` on the same branch within :data:`BRANCH_SLOPE_UM`, ``None`` without one."""
+    """The slope of ``ln`` MFE in ppm per um of the line through ``points[k]`` and the next
+    :data:`BRANCH_SLOPE_POINTS` in direction ``step`` on the same branch within
+    :data:`BRANCH_SLOPE_UM` (least squares), ``None`` without one."""
+    near = [points[k]]
     j = k + step
     while (
         0 <= j < len(points) and abs(points[j]["z01"] - points[k]["z01"]) * 1e6 <= BRANCH_SLOPE_UM
     ):
         if points[j]["upper"] == points[k]["upper"]:
-            a, b = sorted((points[j], points[k]), key=lambda p: p["z01"])
-            return float(np.log(b["mfe"] / a["mfe"]) / (b["z01"] - a["z01"]))
+            near.append(points[j])
+            if len(near) > BRANCH_SLOPE_POINTS:
+                break
         j += step
-    return None
+    if len(near) < 2:
+        return None
+    z = np.array([p["z01"] for p in near])
+    return float(np.polyfit(z - z[0], np.log([p["mfe"] for p in near]), 1)[0])
 
 
 def branches(losses: dict, rows: list[dict]) -> dict:

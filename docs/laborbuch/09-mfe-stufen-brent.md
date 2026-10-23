@@ -212,10 +212,12 @@ Paar benachbarter voller Rekonstruktionen auf verschiedenen Ästen höchstens 2 
 um wie viel die MFE auf dem oberen Ast über der auf dem unteren liegt (`branches`), so
 gerechnet und am selben $z_{01}$ (`offset_ppm`): Auf einem Ast steigt die MFE um bis zu
 42 ppm pro µm (bei 84,1 mm; nahe am Minimum um 1–10 ppm), über 1 µm also um so viel wie der
-Versatz fern vom Fokus. Abgezogen wird deshalb die Steigung auf beiden Ästen mal dem Abstand,
-gemittelt aus den Sekanten zur nächsten vollen Rekonstruktion auf demselben Ast höchstens
-250 µm unter und über dem Paar (`slope_ppm_per_um`). Weiter auseinander taugt das Paar nicht:
-Über 0,2 mm biegt sich die MFE so stark wie der Versatz. Bei 81,9 mm (oberer Ast) liegt sie
+Versatz fern vom Fokus. Abgezogen wird deshalb die Steigung auf beiden Ästen mal dem Abstand
+(`slope_ppm_per_um`), gemittelt über die beiden Seiten des Paares: auf jeder die Gerade durch
+seine Rekonstruktion dort und die nächsten zwei auf demselben Ast höchstens 250 µm entfernt.
+Zwei statt einer, weil nahe an einem Wechsel einzelne Rekonstruktionen um 150 ppm neben der
+Geraden durch ihre Nachbarn liegen (79,15 mm, 5.4, Punkt 2) ‹TODO prüfen mit 79,164›. Weiter auseinander taugt das
+Paar nicht: Über 0,2 mm biegt sich die MFE so stark wie der Versatz. Bei 81,9 mm (oberer Ast) liegt sie
 389 ppm unter der Geraden durch ihre Nachbarn auf dem unteren Ast bei 81,7 und 82,1 mm, aber
 205 ppm über der Parabel durch 81,5, 81,7 und 82,1 mm.
 
