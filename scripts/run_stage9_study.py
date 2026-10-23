@@ -1389,6 +1389,52 @@ def width_bins(runs, nm, brent, idx, widths: dict, bins: int = 3) -> list[dict]:
     return out
 
 
+def search_pair(runs: dict, first: str, second: str) -> dict:
+    """Two searches sample by sample on the samples both ran (``runs[method][index]``, rows of
+    ``results.csv``): the error of ``first`` minus that of ``second``, who lands within 100 um
+    (exact McNemar test), how far apart they end, and the reconstructions ``first`` needs
+    more."""
+    idx = sorted(set(runs[first]) & set(runs[second]))
+    a = np.array([runs[second][i]["abs_error_um"] for i in idx])
+    b = np.array([runs[first][i]["abs_error_um"] for i in idx])
+    apart = np.abs([runs[first][i]["z01_est"] - runs[second][i]["z01_est"] for i in idx]) * 1e6
+    only = int(np.sum((a <= 100) & (b > 100))), int(np.sum((a > 100) & (b <= 100)))
+    counts = np.array(
+        [[runs[m][i]["n_reconstructions"] for m in (first, second)] for i in idx], dtype=float
+    )
+    extra = counts[:, 0] - counts[:, 1]
+    return {
+        "n_samples": len(idx),
+        "abs_error_difference_um": {
+            "mean": float((b - a).mean()),
+            "mean_ci": ci(b - a),
+            "median": float(np.median(b - a)),
+        },
+        "within_100um": {
+            "both": int(np.sum((a <= 100) & (b <= 100))),
+            f"only_{second}": only[0],
+            f"only_{first}": only[1],
+            "neither": int(np.sum((a > 100) & (b > 100))),
+            "p_mcnemar": binomtest(min(only), sum(only)).pvalue if sum(only) else 1.0,
+        },
+        "results_apart_um": {
+            "median": float(np.median(apart)),
+            "max": float(apart.max()),
+            "same": int(np.sum(apart == 0.0)),
+            "within_xatol": int(np.sum(apart <= XATOL_UM)),
+        },
+        "reconstructions": {
+            "difference": float(extra.mean()),
+            "difference_ci": ci(extra),
+            "relative_fewer": fewer(counts),
+            "relative_fewer_ci": ci(counts, fewer),
+            "fewer": int(np.sum(extra < 0)),
+            "same": int(np.sum(extra == 0)),
+            "more": int(np.sum(extra > 0)),
+        },
+    }
+
+
 def synthetic_comparison(baseline: Path, lanes: Path) -> tuple[dict, list[dict]]:
     """The searches of :data:`SYNTHETIC_METHODS` on the samples of :data:`SYNTHETIC`: errors
     against the truth, reconstructions, the time at the rate of 3 threads, what the 95 %
@@ -1485,49 +1531,11 @@ def synthetic_comparison(baseline: Path, lanes: Path) -> tuple[dict, list[dict]]
                 **paired_savings(runs, nm, brent, idx),
                 "by_width": width_bins(runs, nm, brent, idx, widths[key]),
             }
-    pairs = {}
-    for first, second in PAIRS:
-        if first not in runs or second not in runs:
-            continue
-        idx = sorted(set(runs[first]) & set(runs[second]))
-        a = np.array([runs[second][i]["abs_error_um"] for i in idx])
-        b = np.array([runs[first][i]["abs_error_um"] for i in idx])
-        apart = np.abs([runs[first][i]["z01_est"] - runs[second][i]["z01_est"] for i in idx]) * 1e6
-        only = int(np.sum((a <= 100) & (b > 100))), int(np.sum((a > 100) & (b <= 100)))
-        counts = np.array(
-            [[runs[m][i]["n_reconstructions"] for m in (first, second)] for i in idx], dtype=float
-        )
-        extra = counts[:, 0] - counts[:, 1]
-        pairs[f"{first} vs {second}"] = {
-            "n_samples": len(idx),
-            "abs_error_difference_um": {
-                "mean": float((b - a).mean()),
-                "mean_ci": ci(b - a),
-                "median": float(np.median(b - a)),
-            },
-            "within_100um": {
-                "both": int(np.sum((a <= 100) & (b <= 100))),
-                f"only_{second}": only[0],
-                f"only_{first}": only[1],
-                "neither": int(np.sum((a > 100) & (b > 100))),
-                "p_mcnemar": binomtest(min(only), sum(only)).pvalue if sum(only) else 1.0,
-            },
-            "results_apart_um": {
-                "median": float(np.median(apart)),
-                "max": float(apart.max()),
-                "same": int(np.sum(apart == 0.0)),
-                "within_xatol": int(np.sum(apart <= XATOL_UM)),
-            },
-            "reconstructions": {
-                "difference": float(extra.mean()),
-                "difference_ci": ci(extra),
-                "relative_fewer": fewer(counts),
-                "relative_fewer_ci": ci(counts, fewer),
-                "fewer": int(np.sum(extra < 0)),
-                "same": int(np.sum(extra == 0)),
-                "more": int(np.sum(extra > 0)),
-            },
-        }
+    pairs = {
+        f"{first} vs {second}": search_pair(runs, first, second)
+        for first, second in PAIRS
+        if first in runs and second in runs
+    }
     record = {
         "searches": provenance,
         "seconds_per_reconstruction": rates,

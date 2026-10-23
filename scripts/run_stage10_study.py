@@ -14,8 +14,9 @@ measured holograms.
   sample's own values (``results/objectmodel/loo2-ranges.json``).
 * ``plan``: every job of this stage for ``scripts/run_jobs.py`` (``runs/stage10/plan.json``):
   the leave-one-out sets and their fingerprints, the trainings, predictions and ensembles,
-  the estimates on the measured holograms and the bounded searches (``--parts cpu-4x``: only
-  the jobs on cpu-4x, which do not need the texture fits).
+  the estimates on the measured holograms, the bounded searches, ``texture``, ``spectra``
+  and, once all others are done, ``compare`` (``--parts cpu-4x``: only the jobs on cpu-4x,
+  which do not need the texture fits, and ``compare``).
 * ``ensembles``: the seeds of a CNN family on a test split as one equal-weight mixture of
   their Gaussians (calibrated ``sigma``), in the columns of the NPE predictions
   (``results/stage10/cpu-4x/<family>-ensemble/test``,
@@ -27,6 +28,12 @@ measured holograms.
 * ``search``: Brent's bounded method in the 95 % interval of a family's ensemble on one of the
   synthetic samples (``runs/stage10/search/<family>/<index>``); ``merge`` joins them
   (``results/stage10/baseline/cpu-4x-test-brent-box95-<family>``).
+* ``texture``: the fit set of each measured hologram without texture and with the textures
+  of Stages 6 and 10 against its spectrum (``results/stage10/texture-<sample>.json``);
+  ``spectra``: the measured hologram among the leave-one-out test splits of Stages 6 and 10
+  (``results/stage10/spectra-<sample>.json``).
+* ``compare``: the learned estimates of the four families and the searches side by side
+  (``results/stage10/compare.json`` and the CSVs next to it).
 
 Usage (Laborbuch 10)::
 
@@ -50,29 +57,56 @@ import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
+import h5py
 import numpy as np
 import torch
 import yaml
+from scipy.stats import binomtest
 
-from holofocus.baseline import BaselineConfig, merge_runs, run_baseline
+from holofocus.baseline import BaselineConfig, merge_runs, read_rows, run_baseline
 from holofocus.baseline.runner import Box, file_sha256
-from holofocus.dataset import DatasetConfig
+from holofocus.dataset import DatasetConfig, HologramGenerator, read_labels
 from holofocus.learned import read_predictions
 from holofocus.learned.objectmodel import (
+    BINNING,
+    LEVEL_NAMES,
     LOO_FACTOR,
+    TEXTURE_FITS,
     TEXTURE_FITS_LEVELS,
+    Texture,
+    fit_changes,
+    fit_objective,
     loo_changes,
     loo_ranges,
+    median_features,
 )
 from holofocus.learned.posterior import GaussianMixture, mixture_summaries
-from holofocus.learned.sim2real import MEASURED_MODELS, perturbed_config
-from holofocus.measured import MEASURED_SAMPLES
+from holofocus.learned.sim2real import (
+    FEATURE_NAMES,
+    MEASURED_MODELS,
+    RadialPower,
+    percentile_rank,
+    perturbed_config,
+    spectral_features,
+)
+from holofocus.measured import MEASURED_SAMPLES, load_measured
 from run_stage6_study import LARGE_TRAIN, loo_coverage, matched_config
 from run_stage6_study import cmd_measured as cnn_measured
 from run_stage7_loo_study import cmd_measured as npe_measured
-from run_stage7_loo_study import ensemble_name, run_name
-from run_stage7_study import LEVELS, environment, repo_relative, write_json
-from run_stage8_study import mixture_record, npe_record, paper_references
+from run_stage7_loo_study import ensemble_name, guess_table, run_name
+from run_stage7_study import (
+    LEVELS,
+    cnn_table,
+    environment,
+    npe_table,
+    paired,
+    repo_relative,
+    restrict,
+    write_csv,
+    write_json,
+)
+from run_stage8_study import mixture_record, npe_record, paper_references, shifted
+from run_stage9_study import CNN_INTERVALS, NPE_PREDICTIONS, ci, search_pair, search_summary
 
 REPO = Path(__file__).resolve().parents[1]
 RESULTS = REPO / "results"
@@ -297,6 +331,9 @@ PRIORITY = {
     "measured": 97,
     "fingerprint": 96,
     "merge": 96,
+    "spectra": 96,
+    "compare": 96,
+    "texture": 95,
     "train-cpu4x": 92,
     "train-loo2": 90,
     "msearch": 85,
@@ -539,6 +576,55 @@ def loo2_jobs(holograms: Path) -> list[dict]:
     return jobs
 
 
+SPECTRA_SECONDS = 0.1
+"""Seconds of ``spectra`` per hologram of a test split, with a margin (the test splits of
+Stages 6 and 10 are equally large)."""
+
+
+def texture_jobs(holograms: Path) -> list[dict]:
+    jobs = []
+    for name in PROBES:
+        textures = dict.fromkeys((UNTEXTURED, TEXTURE_FITS[name], TEXTURE_FITS_LEVELS[name]))
+        jobs.append(
+            job(
+                f"texture:{name}",
+                f"python scripts/run_stage10_study.py --threads {{threads}} texture "
+                f"--holograms {holograms} --samples {name}",
+                [f"results/stage10/texture-{name}.json"],
+                memory_gb=round(GENERATION_GB[name] + 0.3, 2),
+                priority=PRIORITY["texture"] + PROBE_FIRST[name],
+                seconds=round(len(textures) * FIT_SAMPLES * GENERATION_SECONDS[name] + 60),
+            )
+        )
+        n = len(SPECTRA_SETS) * loo2_config(name).splits["test"]
+        jobs.append(
+            job(
+                f"spectra:{name}",
+                f"python scripts/run_stage10_study.py spectra --holograms {holograms} "
+                f"--samples {name}",
+                [f"results/stage10/spectra-{name}.json"],
+                needs=[f"gen:loo2-{name}/test"],
+                memory_gb=0.8,
+                priority=PRIORITY["spectra"],
+                seconds=round(n * SPECTRA_SECONDS + 60),
+            )
+        )
+    return jobs
+
+
+def compare_job(jobs: list[dict]) -> dict:
+    """``compare`` once every job of the plan that it reads is done."""
+    return job(
+        "compare",
+        "python scripts/run_stage10_study.py compare",
+        ["results/stage10/compare.json"],
+        needs=[j["name"] for j in jobs if j["name"].split(":", 1)[0] not in ("texture", "spectra")],
+        memory_gb=1.0,
+        priority=PRIORITY["compare"],
+        seconds=300,
+    )
+
+
 def cmd_plan(args) -> None:
     if "loo2" in args.parts and args.holograms is None:
         raise SystemExit("the loo2 part needs --holograms")
@@ -546,7 +632,8 @@ def cmd_plan(args) -> None:
     if "cpu-4x" in args.parts:
         jobs += cpu4x_jobs()
     if "loo2" in args.parts:
-        jobs += loo2_jobs(args.holograms)
+        jobs += loo2_jobs(args.holograms) + texture_jobs(args.holograms)
+    jobs.append(compare_job(jobs))
     plan = {
         "what": "Stage 10 (Laborbuch 10): scripts/run_stage10_study.py plan",
         "budget": {
@@ -761,6 +848,755 @@ def cmd_merge(args) -> None:
         merge_runs(done, Path(merged_search(family)))
 
 
+# --- the texture at high frequencies -------------------------------------------------------
+
+FIT_SAMPLES = 16
+"""Test samples of a fit set, as in the texture fits."""
+POWER_FROM_F2 = 0.02
+"""Lower end (``f^2``) of the power that ``texture`` sums: the lower end of the mid band."""
+PROFILE_BINS = 256
+"""``texture`` and ``spectra`` keep the radial log power averaged over this many bins of
+``f^2`` (8 of the 2048 of :class:`~holofocus.learned.sim2real.RadialPower` each)."""
+UNTEXTURED = Texture(0.0, 0.0, 2.0)
+"""The untextured setting of the texture fits (the slope does not matter)."""
+QUANTILES = (5, 50, 95)
+
+
+def binned(log_power: np.ndarray) -> np.ndarray:
+    """The last axis of a radial log power averaged over :data:`PROFILE_BINS` bins."""
+    v = np.asarray(log_power, dtype=float)
+    return v.reshape(*v.shape[:-1], PROFILE_BINS, -1).mean(axis=-1)
+
+
+def rounded(values) -> list[float]:
+    return [round(float(v), 4) for v in values]
+
+
+def measured_spectrum(holograms: Path, name: str) -> tuple[RadialPower, np.ndarray, dict]:
+    """Radial power, radial log power and spectral features (at ``Fr`` of [2]) of the
+    measured hologram binned 4x."""
+    sample = MEASURED_SAMPLES[name]
+    hologram = load_measured(holograms, sample, BINNING).numpy()
+    radial = RadialPower(tuple(hologram.shape))
+    fresnel_number = sample.geometry(BINNING, sample.z01_nm).fresnel_number
+    return radial, radial(hologram), spectral_features(radial, hologram, fresnel_number)
+
+
+def fit_set(name: str, texture: Texture, radial: RadialPower, n: int):
+    """Spectral features and radial log power of the first ``n`` test samples of the fit set
+    of ``name`` with ``texture``, the samples of ``run_stage6_study.py fit``."""
+    config = perturbed_config(matched_config(name), fit_changes(name, texture), f"fit-{name}")
+    generator = HologramGenerator(config, device="cpu")
+    features, profiles = [], []
+    for i in range(n):
+        sample = generator.sample("test", i)
+        features.append(spectral_features(radial, sample.hologram, sample.labels["fresnel_number"]))
+        profiles.append(radial(sample.hologram))
+    return features, np.array(profiles)
+
+
+def summed_power(log_power: np.ndarray, f2: np.ndarray) -> float:
+    return float(np.exp(log_power[f2 >= POWER_FROM_F2]).sum())
+
+
+def recorded_objective(path: Path, texture: Texture) -> float | None:
+    """The objective of ``texture`` in a texture-fit record, if it was tried there."""
+    if not path.exists():
+        return None
+    record = json.loads(path.read_text())
+    key = dataclasses.asdict(texture)
+    return next((e["objective"] for e in record["settings"] if e["texture"] == key), None)
+
+
+def cmd_texture(args) -> None:
+    """Part 1 of Laborbuch 10: the fit sets of each measured hologram without texture, with
+    the texture of Stage 6 and with that of the objective with levels, against the measured
+    spectrum (``results/stage10/texture-<sample>.json``)."""
+    for name in args.samples:
+        radial, measured_power, measured = measured_spectrum(args.holograms, name)
+        settings = {
+            "untextured": UNTEXTURED,
+            "stage6": TEXTURE_FITS[name],
+            "stage10": TEXTURE_FITS_LEVELS[name],
+        }
+        simulated = {t: fit_set(name, t, radial, args.n) for t in dict.fromkeys(settings.values())}
+        f2 = radial.f2
+        median_power = {t: np.median(p, axis=0) for t, (_, p) in simulated.items()}
+        base = summed_power(median_power[UNTEXTURED], f2)
+        excess = summed_power(measured_power, f2) - base
+        record = {
+            "sample": name,
+            "n": args.n,
+            "what": "median radial log power and spectral features of the first test samples of "
+            "the fit sets (detector and bulk object of the measured hologram) with each texture",
+            "power_from_f2": POWER_FROM_F2,
+            "measured": measured,
+            "f2": rounded(binned(f2)),
+            "measured_log_power": rounded(binned(measured_power)),
+            "measured_excess_over_untextured": excess / base,
+            "settings": {},
+        }
+        for key, texture in settings.items():
+            features, _ = simulated[texture]
+            median = median_features(features)
+            power = summed_power(median_power[texture], f2)
+            entry = {
+                "texture": dataclasses.asdict(texture),
+                "median": median,
+                "objective": fit_objective(median, measured),
+                "objective_levels": fit_objective(median, measured, levels=True),
+                "recorded_objective": recorded_objective(
+                    RESULTS / "objectmodel" / f"fit-{name}.json", texture
+                ),
+                "recorded_objective_levels": recorded_objective(
+                    RESULTS / "objectmodel" / "levels" / f"fit-{name}.json", texture
+                ),
+                "level_differences": {k: median[k] - measured[k] for k in LEVEL_NAMES},
+                "power_to_measured": power / summed_power(measured_power, f2),
+                "texture_power_to_measured_excess": (power - base) / excess
+                if texture.amplitude > 0 and excess > 0
+                else None,
+                "log_power": rounded(binned(median_power[texture])),
+            }
+            record["settings"][key] = entry
+            d = entry["level_differences"]
+            ratio = entry["texture_power_to_measured_excess"]
+            print(
+                f"{name} {key} {texture}: objective {entry['objective']:.2f}, with levels "
+                f"{entry['objective_levels']:.2f}; levels "
+                + "/".join(f"{d[k]:+.2f}" for k in LEVEL_NAMES)
+                + f" nat; power x{entry['power_to_measured']:.2f} of the measured"
+                + ("" if ratio is None else f", texture x{ratio:.1f} of the measured excess")
+            )
+        write_json(STAGE10 / f"texture-{name}.json", {**record, **environment()})
+
+
+LEVEL_FEATURES = ("level_mid", "level_upper")
+"""The levels of :func:`~holofocus.learned.sim2real.spectral_features` that are not in
+:data:`~holofocus.learned.sim2real.FEATURE_NAMES`."""
+
+
+def split_spectra(path: Path, radial: RadialPower, limit: int | None):
+    """Spectral features and radial log power of the holograms of a split file."""
+    labels = read_labels(path)
+    n = len(labels["dz01"]) if limit is None else min(limit, len(labels["dz01"]))
+    features, profiles = [], []
+    with h5py.File(path, "r") as fh:
+        for i in range(n):
+            hologram = np.asarray(fh["hologram"][i])
+            features.append(spectral_features(radial, hologram, float(labels["fresnel_number"][i])))
+            profiles.append(radial(hologram))
+    return features, np.array(profiles)
+
+
+def split_record(
+    features: list[dict], profiles: np.ndarray, measured: dict, measured_power: np.ndarray
+) -> dict:
+    """5/50/95 % of every feature and of the radial log power over a split, and where the
+    measured hologram lies among the split: percentiles of its features and, bin by bin, of
+    its radial log power."""
+    bands = np.array([f["ctf_bands"] for f in features], dtype=float)
+    out = {"n": len(features), "features": {}, "measured_percentile": {}}
+    for name in (*FEATURE_NAMES, *LEVEL_FEATURES):
+        values = np.array([f[name] for f in features], dtype=float)
+        values = values[np.isfinite(values)]
+        out["features"][name] = {f"p{q:02d}": float(np.percentile(values, q)) for q in QUANTILES}
+        out["measured_percentile"][name] = percentile_rank(values, measured[name])
+    out["ctf_bands"] = {f"p{q:02d}": np.nanpercentile(bands, q, axis=0).tolist() for q in QUANTILES}
+    out["ctf_bands_percentile"] = [
+        percentile_rank(bands[:, k], v) for k, v in enumerate(measured["ctf_bands"])
+    ]
+    per_bin = binned(profiles)
+    out["log_power"] = {f"p{q:02d}": rounded(np.percentile(per_bin, q, axis=0)) for q in QUANTILES}
+    out["measured_log_power_percentile"] = [
+        round(percentile_rank(column, value), 1)
+        for column, value in zip(per_bin.T, binned(measured_power), strict=True)
+    ]
+    return out
+
+
+SPECTRA_SETS = {
+    "loo": ("data/loo-{}/test.h5", "leave-one-out test split of Stage 6 (TEXTURE_FITS)"),
+    "loo2": ("data/loo2-{}/test.h5", "leave-one-out test split of Stage 10 (TEXTURE_FITS_LEVELS)"),
+}
+
+
+def cmd_spectra(args) -> None:
+    """The measured hologram among the leave-one-out test splits of Stages 6 and 10, without
+    training (``results/stage10/spectra-<sample>.json``)."""
+    for name in args.samples:
+        radial, measured_power, measured = measured_spectrum(args.holograms, name)
+        record = {
+            "sample": name,
+            "measured": measured,
+            "f2": rounded(binned(radial.f2)),
+            "measured_log_power": rounded(binned(measured_power)),
+            "sets": {},
+        }
+        for key, (pattern, what) in SPECTRA_SETS.items():
+            path = Path(pattern.format(name))
+            if not path.exists():
+                print(f"{name} {key}: {path} missing, skipped")
+                continue
+            features, profiles = split_spectra(path, radial, args.limit)
+            entry = split_record(features, profiles, measured, measured_power)
+            record["sets"][key] = {"what": what, "source": str(path), **entry}
+            ranks = entry["measured_percentile"]
+            print(
+                f"{name} {key}: measured at "
+                + ", ".join(f"{k} {v:.0f} %" for k, v in ranks.items())
+                + "; CTF bands "
+                + ", ".join(f"{v:.0f} %" for v in entry["ctf_bands_percentile"])
+            )
+        write_json(STAGE10 / f"spectra-{name}.json", {**record, **environment()})
+
+
+# --- compare -------------------------------------------------------------------------------
+
+WITHIN_UM = 100.0
+XATOL_UM = 100.0
+"""Tolerance of the searches in ``z01``: results closer than this are the same."""
+MFE_APART_PPM = 100.0
+"""How far the MFE at the result of a search must lie from that of Brent cold to count as
+another minimum (Laborbuch 09)."""
+LEARNED_PAIRS = (
+    ("polar-cnn", "radial-cnn"),
+    ("image-cnn", "radial-cnn"),
+    ("polar-cnn", "npe"),
+    ("image-cnn", "npe"),
+    ("image-cnn", "polar-cnn"),
+    ("npe", "radial-cnn"),
+)
+"""Ensembles that ``compare`` sets against each other sample by sample: each new input against
+the CNN and the NPE on the radial spectrum, the two new inputs, and the NPE against the CNN."""
+STAGE8_ENSEMBLES = {
+    "radial-cnn/stage8": ("cnn-loo-ensemble", "radial spectrum, CNN ensemble of Stage 8 (loo)"),
+    "npe/stage8": ("npe-loo-ensemble", "radial spectrum, NPE ensemble of Stage 8 (loo)"),
+}
+"""The two ensembles of Stage 8 on the measured holograms, trained on the leave-one-out sets of
+Stage 6 (``results/measured/<folder>``)."""
+
+
+def method_key(family: str, seed: int | None) -> str:
+    return f"{family}/ensemble" if seed is None else f"{family}/seed-{seed}"
+
+
+def share(hits) -> dict:
+    """Count, share and 95 % Wilson interval."""
+    hits = np.asarray(hits, dtype=bool)
+    k, n = int(hits.sum()), int(hits.size)
+    interval = binomtest(k, n).proportion_ci(method="wilson")
+    return {"k": k, "n": n, "share": k / n, "ci": [float(interval.low), float(interval.high)]}
+
+
+def mcnemar(first, second) -> dict:
+    """Paired hits of two methods and the exact McNemar test."""
+    a, b = np.asarray(first, dtype=bool), np.asarray(second, dtype=bool)
+    only = int(np.sum(a & ~b)), int(np.sum(~a & b))
+    return {
+        "both": int(np.sum(a & b)),
+        "only_first": only[0],
+        "only_second": only[1],
+        "neither": int(np.sum(~a & ~b)),
+        "p": float(binomtest(min(only), sum(only)).pvalue) if sum(only) else 1.0,
+    }
+
+
+def learned_metrics(table: dict[str, np.ndarray]) -> dict:
+    """Share within 100 um, MAE and the coverage of the 95 % interval, with 95 % intervals
+    (Wilson for shares, bootstrap for the MAE); the 68 % coverage, widths and NLL."""
+    err = np.abs(table["error_um"])
+    out = {
+        "n": int(err.size),
+        "within_100um": share(err <= WITHIN_UM),
+        "mae_um": float(err.mean()),
+        "mae_um_ci": ci(err),
+        "median_abs_um": float(np.median(err)),
+        "bias_um": float(table["error_um"].mean()),
+    }
+    if "covered_95" in table:
+        out.update(
+            coverage_95=share(table["covered_95"]),
+            coverage_68=share(table["covered_68"]),
+            width_95_median_um=float(np.median(table["width_95_um"])),
+            width_68_median_um=float(np.median(table["width_68_um"])),
+            nll=float(-table["log_density_um"].mean()),
+        )
+    return out
+
+
+def prediction_paths(family: str, which: str) -> dict[str, Path]:
+    """The predictions of the seeds and the ensemble of ``family`` on cpu-4x or on the
+    leave-one-out test split of a probe."""
+    paths = {}
+    for seed in SEEDS:
+        folder = (
+            cpu4x_predictions(family, seed)
+            if which == "cpu-4x"
+            else (f"{loo2_run(family, which, seed)}/test")
+        )
+        paths[method_key(family, seed)] = Path(folder) / "predictions.csv"
+    folder = cpu4x_ensemble(family) if which == "cpu-4x" else loo2_ensemble(family, which)
+    paths[method_key(family, None)] = Path(folder) / "predictions.csv"
+    return paths
+
+
+def learned_tables(which: str) -> tuple[dict[str, dict], dict[str, str]]:
+    """Every seed and ensemble with predictions on the split, and the guess."""
+    tables, sources, rows = {}, {}, None
+    for family, f in FAMILIES.items():
+        for method, path in prediction_paths(family, which).items():
+            if not path.exists():
+                continue
+            rows = read_predictions(path)
+            single_cnn = not f.npe and not method.endswith("/ensemble")
+            tables[method] = cnn_table(rows) if single_cnn else npe_table(rows)
+            sources[method] = repo_relative(path)
+    if rows is not None:
+        tables["guess"] = guess_table(rows)
+    first = next(iter(tables.values()), None)
+    for method, t in tables.items():
+        if not np.array_equal(t["index"], first["index"]) or (
+            np.abs(t["z01_true"] - first["z01_true"]).max() > 1e-12
+        ):
+            raise ValueError(f"{which}: {method} was not evaluated on the same samples")
+    return tables, sources
+
+
+def learned_set(tables: dict[str, dict]) -> dict:
+    record = {
+        "methods": {m: learned_metrics(t) for m, t in tables.items()},
+        "seeds": {},
+        "paired": {},
+    }
+    for family in FAMILIES:
+        seeds = [record["methods"].get(method_key(family, k)) for k in SEEDS]
+        seeds = [s for s in seeds if s is not None]
+        if len(seeds) > 1:
+            record["seeds"][family] = {
+                "n_seeds": len(seeds),
+                "within_100um": [min(s["within_100um"]["share"] for s in seeds),
+                                 max(s["within_100um"]["share"] for s in seeds)],
+                "mae_um": [min(s["mae_um"] for s in seeds), max(s["mae_um"] for s in seeds)],
+                "coverage_95": [min(s["coverage_95"]["share"] for s in seeds),
+                                max(s["coverage_95"]["share"] for s in seeds)],
+            }  # fmt: skip
+    comparisons = [(method_key(a, None), method_key(b, None)) for a, b in LEARNED_PAIRS]
+    comparisons += [(method_key(f, None), method_key(f, 0)) for f in FAMILIES]
+    for first, second in comparisons:
+        if first not in tables or second not in tables:
+            continue
+        a, b = tables[first], tables[second]
+        entry = paired(a, b)
+        entry["within_100um_mcnemar"] = mcnemar(
+            np.abs(a["error_um"]) <= WITHIN_UM, np.abs(b["error_um"]) <= WITHIN_UM
+        )
+        entry["coverage_95_mcnemar"] = mcnemar(a["covered_95"], b["covered_95"])
+        record["paired"][f"{first} vs {second}"] = entry
+    return record
+
+
+def learned_row(set_name: str, method: str, m: dict) -> dict:
+    row = {
+        "set": set_name,
+        "method": method,
+        "n": m["n"],
+        "within_100um": m["within_100um"]["share"],
+        "within_100um_low": m["within_100um"]["ci"][0],
+        "within_100um_high": m["within_100um"]["ci"][1],
+        "mae_um": m["mae_um"],
+        "mae_um_low": m["mae_um_ci"][0],
+        "mae_um_high": m["mae_um_ci"][1],
+    }
+    if "coverage_95" in m:
+        row.update(
+            coverage_95=m["coverage_95"]["share"],
+            coverage_95_low=m["coverage_95"]["ci"][0],
+            coverage_95_high=m["coverage_95"]["ci"][1],
+            truth_outside_95=m["n"] - m["coverage_95"]["k"],
+            coverage_68=m["coverage_68"]["share"],
+            width_95_median_um=m["width_95_median_um"],
+            nll=m["nll"],
+        )
+    return row
+
+
+def learned_comparison() -> tuple[dict, list[dict]]:
+    """The learned estimates of every family on the test split of cpu-4x, on its 48 samples of
+    the Stage 3 baseline, on each leave-one-out test split and on all four together."""
+    out, rows, pooled = {}, [], {}
+    tables, sources = learned_tables("cpu-4x")
+    sets = []
+    if tables:
+        sets.append(("cpu-4x-test", tables, sources))
+        baseline = {m: restrict(t, SYNTHETIC) for m, t in tables.items()}
+        sets.append(("cpu-4x-baseline", baseline, sources))
+    for number, name in enumerate(PROBES):
+        tables, sources = learned_tables(name)
+        if not tables:
+            continue
+        sets.append((f"loo2-{name}", tables, sources))
+        for method, t in tables.items():
+            pooled.setdefault(method, []).append(shifted(t, 100000 * number))
+    complete = {m: parts for m, parts in pooled.items() if len(parts) == len(PROBES)}
+    if complete:
+        tables = {
+            m: {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
+            for m, parts in complete.items()
+        }
+        sets.append(("loo2-pooled", tables, None))
+    for set_name, tables, sources in sets:
+        record = learned_set(tables)
+        if sources is not None:
+            record["predictions"] = sources
+        out[set_name] = record
+        rows += [learned_row(set_name, m, v) for m, v in record["methods"].items()]
+    return out, rows
+
+
+def nm_cold_z01(name: str) -> float | None:
+    path = MEASURED / "b1-p4" / f"{name}.json"
+    return float(json.loads(path.read_text())["result"]["z01"]) if path.exists() else None
+
+
+def measured_records(name: str) -> dict[str, tuple[Path, dict]]:
+    """Estimate and 95 % interval of every seed and ensemble on the measured hologram of
+    ``name``, and of the two ensembles of Stage 8."""
+    found = {}
+    for family, f in FAMILIES.items():
+        if f.npe:
+            path = Path("results/stage10/loo2/npe/measured") / f"{name}.json"
+            if path.exists():
+                runs = json.loads(path.read_text())["runs"]
+                for seed in SEEDS:
+                    run = runs.get("npe" if seed == 0 else f"npe-seed{seed}")
+                    if run is not None:
+                        found[method_key(family, seed)] = (path, run)
+        else:
+            for seed in SEEDS:
+                path = Path(f"results/stage10/loo2/{family}/seed-{seed}/measured/{name}.json")
+                if path.exists():
+                    found[method_key(family, seed)] = (path, json.loads(path.read_text()))
+        path = Path(measured_ensemble(family)) / f"{name}.json"
+        if path.exists():
+            found[method_key(family, None)] = (path, json.loads(path.read_text()))
+    for method, (folder, _) in STAGE8_ENSEMBLES.items():
+        path = MEASURED / folder / f"{name}.json"
+        if path.exists():
+            found[method] = (path, json.loads(path.read_text()))
+    return found
+
+
+def estimate_entry(path: Path, record: dict, refs: dict[str, float]) -> dict:
+    i95 = record["intervals"]["95"]
+    z01, lower, upper = record["z01_est"], i95["lower"], i95["upper"]
+    entry = {
+        "record": repo_relative(path),
+        "z01_est": z01,
+        "lower_95": lower,
+        "upper_95": upper,
+        "width_95_um": (upper - lower) * 1e6,
+    }
+    for key, value in refs.items():
+        entry[f"minus_{key}_um"] = (z01 - value) * 1e6
+        entry[f"{key}_inside_95"] = bool(lower <= value <= upper)
+    return entry
+
+
+def measured_summary(entries: list[dict]) -> dict:
+    """Over the probes: share within 100 um of each reference, the mean distance (MAE) and
+    how often the 95 % interval holds the reference."""
+    out = {"n": len(entries)}
+    for key in ("paper2_nm", "nm_cold"):
+        if not all(f"minus_{key}_um" in e for e in entries):
+            continue
+        d = np.abs([e[f"minus_{key}_um"] for e in entries])
+        out[key] = {
+            "within_100um": share(d <= WITHIN_UM),
+            "mae_um": float(d.mean()),
+            "inside_95": share([e[f"{key}_inside_95"] for e in entries]),
+        }
+    out["width_95_median_um"] = float(np.median([e["width_95_um"] for e in entries]))
+    return out
+
+
+def measured_learned() -> tuple[dict, list[dict]]:
+    samples, rows, by_method = {}, [], {}
+    for name in PROBES:
+        refs = {"paper2_nm": MEASURED_SAMPLES[name].z01_nm}
+        cold = nm_cold_z01(name)
+        if cold is not None:
+            refs["nm_cold"] = cold
+        entries = {m: estimate_entry(p, r, refs) for m, (p, r) in measured_records(name).items()}
+        if not entries:
+            continue
+        samples[name] = {"references": refs, "methods": entries}
+        for method, e in entries.items():
+            by_method.setdefault(method, []).append(e)
+            rows.append(
+                {
+                    "sample": name,
+                    "method": method,
+                    **{k: v for k, v in e.items() if k != "record"},
+                }
+            )
+    summaries = {m: measured_summary(es) for m, es in by_method.items()}
+    return {"samples": samples, "summaries": summaries}, rows
+
+
+SYNTHETIC_SEARCHES = {
+    "nm-cold": ("results/baseline/cpu-4x-test", None, "Nelder-Mead in Omega_z (Stage 3)"),
+    "brent-cold": ("results/baseline/cpu-4x-test-brent", None, "Brent in Omega_z (Stage 9)"),
+    "brent-box95-cnn-stage9": (
+        "results/baseline/cpu-4x-test-brent-box95-cnn",
+        repo_relative(CNN_INTERVALS),
+        "Brent in the 95 % interval of the CNN of Stage 4, one seed (Stage 9)",
+    ),
+    "brent-box95-npe-stage9": (
+        "results/baseline/cpu-4x-test-brent-box95-npe-ensemble",
+        repo_relative(NPE_PREDICTIONS),
+        "Brent in the 95 % interval of the ensemble of the five NPE seeds of Stage 7 (Stage 9)",
+    ),
+    **{
+        f"brent-box95-{family}": (
+            merged_search(family),
+            f"{cpu4x_ensemble(family)}/predictions.csv",
+            f"Brent in the 95 % interval of the ensemble of three seeds: {f.label}",
+        )
+        for family, f in FAMILIES.items()
+    },
+}
+"""The searches on the 48 synthetic samples: folder, the CSV of the 95 % intervals (``None``:
+``Omega_z``) and what it is."""
+SEARCH_PAIRS = (
+    *((f"brent-box95-{f}", "brent-cold") for f in FAMILIES),
+    *((f"brent-box95-{f}", "nm-cold") for f in FAMILIES),
+    ("brent-box95-polar-cnn", "brent-box95-radial-cnn"),
+    ("brent-box95-image-cnn", "brent-box95-radial-cnn"),
+    ("brent-box95-polar-cnn", "brent-box95-npe"),
+    ("brent-box95-image-cnn", "brent-box95-npe"),
+    ("brent-box95-radial-cnn", "brent-box95-cnn-stage9"),
+    ("brent-box95-npe", "brent-box95-npe-stage9"),
+    ("brent-cold", "nm-cold"),
+)
+"""Each search in an interval against Brent cold and against Nelder-Mead cold, the new inputs
+against the radial spectrum, and the ensembles of this stage against the intervals of
+Stage 9 (one CNN, five NPE seeds)."""
+
+
+def synthetic_searches() -> tuple[dict, list[dict]]:
+    runs, boxes, provenance = {}, {}, {}
+    for method, (folder, intervals, what) in SYNTHETIC_SEARCHES.items():
+        path = Path(folder) / "results.csv"
+        if not path.exists():
+            continue
+        runs[method] = {r["index"]: r for r in read_rows(path) if r["index"] in SYNTHETIC}
+        provenance[method] = {"folder": folder, "what": what, "intervals": intervals}
+        if intervals is not None:
+            boxes[method] = Box.from_csv(intervals)
+    confidence = BaselineConfig.from_yaml(BRENT).search.confidence
+    brent = runs.get("brent-cold", {})
+    summaries, inside, bounds = {}, {}, {}
+    for method, by_index in runs.items():
+        s = search_summary(list(by_index.values()), None)
+        if method in boxes:
+            bounds[method] = {
+                i: boxes[method].bounds(i, r["z01_guess"] - confidence, r["z01_guess"] + confidence)
+                for i, r in by_index.items()
+            }
+            inside[method] = {
+                i: lo <= by_index[i]["z01_true"] <= hi for i, (lo, hi) in bounds[method].items()
+            }
+            s["truth_outside"] = sorted(i for i, v in inside[method].items() if not v)
+            s["mae_um_truth_inside"] = float(
+                np.mean([by_index[i]["abs_error_um"] for i, v in inside[method].items() if v])
+            )
+            s["width_um_median"] = float(
+                np.median([(hi - lo) * 1e6 for lo, hi in bounds[method].values()])
+            )
+        if method not in ("nm-cold", "brent-cold") and brent:
+            ppm = np.array(
+                [(r["mfe_est"] / brent[i]["mfe_est"] - 1.0) * 1e6 for i, r in by_index.items()]
+            )
+            s["mfe_vs_brent_cold_ppm"] = {
+                "median": float(np.median(ppm)),
+                "higher": int(np.sum(ppm > MFE_APART_PPM)),
+                "lower": int(np.sum(ppm < -MFE_APART_PPM)),
+            }
+        summaries[method] = s
+    pairs = {
+        f"{a} vs {b}": search_pair(runs, a, b) for a, b in SEARCH_PAIRS if a in runs and b in runs
+    }
+    rows = []
+    for i in SYNTHETIC:
+        first = next((by_index[i] for by_index in runs.values() if i in by_index), None)
+        if first is None:
+            continue
+        row = {"index": i, "z01_true": first["z01_true"], "z01_guess": first["z01_guess"]}
+        for method, by_index in runs.items():
+            r = by_index.get(i)
+            row[f"{method}_error_um"] = None if r is None else r["error_um"]
+            row[f"{method}_n_reconstructions"] = None if r is None else r["n_reconstructions"]
+            if method in bounds:
+                lo, hi = bounds[method].get(i, (None, None))
+                row[f"{method}_width_um"] = None if lo is None else (hi - lo) * 1e6
+                row[f"{method}_truth_inside"] = None if lo is None else int(inside[method][i])
+        rows.append(row)
+    record = {"searches": provenance, "summaries": summaries, "pairs": pairs}
+    return record, rows
+
+
+MEASURED_SEARCHES = {
+    "nm-cold": ("b1-p4", "Nelder-Mead in Omega_z (Stage 3)"),
+    "brent-cold": ("brent-b1-p4", "Brent in Omega_z (Stage 9)"),
+    "brent-box95-cnn-stage8": (
+        "brent-box95-cnn-loo-ensemble-b1-p4",
+        "Brent in the 95 % interval of the CNN ensemble of Stage 8 (Stage 9)",
+    ),
+    "brent-box95-npe-stage8": (
+        "brent-box95-npe-loo-ensemble-b1-p4",
+        "Brent in the 95 % interval of the NPE ensemble of Stage 8 (Stage 9)",
+    ),
+    **{
+        f"brent-box95-{family}": (
+            Path(measured_search(family)).name,
+            f"Brent in the 95 % interval of the ensemble trained on loo2: {f.label}",
+        )
+        for family, f in FAMILIES.items()
+    },
+}
+"""The searches on the measured holograms with binning 1 and padding 4
+(``results/measured/<folder>``)."""
+
+
+def measured_searches() -> tuple[dict, list[dict]]:
+    out, rows = {}, []
+    for name in PROBES:
+        records = {}
+        for method, (folder, _) in MEASURED_SEARCHES.items():
+            path = MEASURED / folder / f"{name}.json"
+            if path.exists():
+                records[method] = (path, json.loads(path.read_text()))
+        if "nm-cold" not in records:
+            continue
+        cold = records["nm-cold"][1]["result"]
+        brent = records.get("brent-cold", (None, None))[1]
+        paper2 = MEASURED_SAMPLES[name].z01_nm
+        entries = {}
+        for method, (path, r) in records.items():
+            res = r["result"]
+            lower, upper = res["bounds"]
+            e = {
+                "record": repo_relative(path),
+                "sha256": file_sha256(path),
+                "threads": r["threads"],
+                "z01": res["z01"],
+                "minus_paper2_nm_um": (res["z01"] - paper2) * 1e6,
+                "minus_nm_cold_um": (res["z01"] - cold["z01"]) * 1e6,
+                "same_as_nm_cold": bool(abs(res["z01"] - cold["z01"]) * 1e6 <= XATOL_UM),
+                "within_100um_of_paper2_nm": bool(abs(res["z01"] - paper2) * 1e6 <= WITHIN_UM),
+                "n_reconstructions": res["n_reconstructions"],
+                "seconds": res["seconds"],
+                "bounds": [lower, upper],
+                "width_mm": (upper - lower) * 1e3,
+                "paper2_nm_inside": bool(lower <= paper2 <= upper),
+                "nm_cold_inside": bool(lower <= cold["z01"] <= upper),
+                "mfe": res["mfe"],
+            }
+            if brent is not None and method != "nm-cold":
+                e["mfe_vs_brent_cold_ppm"] = (res["mfe"] / brent["result"]["mfe"] - 1.0) * 1e6
+            entries[method] = e
+            rows.append(
+                {
+                    "sample": name,
+                    "method": method,
+                    **{k: v for k, v in e.items() if k not in ("record", "sha256", "bounds")},
+                    "bounds_mm": "-".join(f"{b * 1e3:.4f}" for b in e["bounds"]),
+                }
+            )
+        out[name] = {"paper2_nm": paper2, "searches": entries}
+    totals = {}
+    for method in MEASURED_SEARCHES:
+        found = [s["searches"][method] for s in out.values() if method in s["searches"]]
+        if not found:
+            continue
+        d = np.abs([e["minus_paper2_nm_um"] for e in found])
+        totals[method] = {
+            "samples": [k for k, s in out.items() if method in s["searches"]],
+            "n_reconstructions": int(sum(e["n_reconstructions"] for e in found)),
+            "within_100um_of_paper2_nm": share(d <= WITHIN_UM),
+            "mae_vs_paper2_nm_um": float(d.mean()),
+            "same_as_nm_cold": int(sum(e["same_as_nm_cold"] for e in found)),
+            "paper2_nm_inside": int(sum(e["paper2_nm_inside"] for e in found)),
+        }
+    for method, t in totals.items():
+        for cold in ("nm-cold", "brent-cold"):
+            if method == cold or cold not in totals or t["samples"] != totals[cold]["samples"]:
+                continue
+            n, c = t["n_reconstructions"], totals[cold]["n_reconstructions"]
+            t[f"fewer_than_{cold}"] = {"saved": c - n, "relative": 1.0 - n / c}
+    return {"samples": out, "totals": totals}, rows
+
+
+def cmd_compare(args) -> None:
+    """Parts 2 and 3 of Laborbuch 10: the learned estimates of the four families (seeds and
+    ensembles) on the synthetic samples, the leave-one-out test splits and the measured
+    holograms, and Brent in the 95 % interval of each ensemble against Nelder-Mead and Brent
+    cold (``results/stage10/compare.json`` and the CSVs next to it)."""
+    learned, learned_rows = learned_comparison()
+    measured, measured_rows = measured_learned()
+    synthetic, synthetic_rows = synthetic_searches()
+    searches, search_rows = measured_searches()
+    record = {
+        "what": "learned estimates of four inputs and Brent in their 95 % intervals, on the "
+        "synthetic samples, the leave-one-out test splits and the measured holograms",
+        "within_um": WITHIN_UM,
+        "families": {k: dataclasses.asdict(f) for k, f in FAMILIES.items()},
+        "learned": learned,
+        "measured": measured,
+        "searches": {"synthetic": synthetic, "measured": searches},
+    }
+    args.out.mkdir(parents=True, exist_ok=True)
+    write_json(args.out / "compare.json", {**record, **environment()})
+    for file, rows in (
+        ("learned.csv", learned_rows),
+        ("measured.csv", measured_rows),
+        ("searches-synthetic.csv", synthetic_rows),
+        ("searches-measured.csv", search_rows),
+    ):
+        if rows:
+            columns = list(dict.fromkeys(k for row in rows for k in row))
+            write_csv(args.out / file, [{k: row.get(k) for k in columns} for row in rows])
+    for set_name, s in learned.items():
+        for method, m in s["methods"].items():
+            if not (method.endswith("/ensemble") or method == "radial-cnn/seed-0"):
+                continue
+            cov = m.get("coverage_95")
+            print(
+                f"{set_name} {method}: within 100 um {m['within_100um']['share']:.2f}, MAE "
+                f"{m['mae_um']:.0f} um"
+                + ("" if cov is None else f", 95 % coverage {cov['k']}/{cov['n']}")
+            )
+    for method, m in measured["summaries"].items():
+        p = m["paper2_nm"]
+        print(
+            f"measured {method}: within 100 um of [2] {p['within_100um']['k']}/{m['n']}, MAE "
+            f"{p['mae_um']:.0f} um, [2] in the 95 % interval {p['inside_95']['k']}/{m['n']}"
+        )
+    for method, s in synthetic["summaries"].items():
+        print(
+            f"synthetic search {method}: MAE {s['mae_um']:.0f} um, within 100 um "
+            f"{s['within_um']['100']:.2f}, {s['reconstructions']:.2f} reconstructions"
+            + (f", truth outside {len(s['truth_outside'])}" if "truth_outside" in s else "")
+        )
+    for method, t in searches["totals"].items():
+        within = t["within_100um_of_paper2_nm"]
+        print(
+            f"measured search {method}: {t['n_reconstructions']} reconstructions on "
+            f"{len(t['samples'])} probes, within 100 um of [2] {within['k']}/{within['n']}"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--threads", type=int, help="torch CPU threads")
@@ -812,6 +1648,22 @@ def main() -> None:
     mg = sub.add_parser("merge", help="join the searches of each family")
     mg.add_argument("--families", **families)
     mg.set_defaults(func=cmd_merge)
+
+    tx = sub.add_parser("texture", help="the fit sets with the textures of Stages 6 and 10")
+    tx.add_argument("--holograms", type=Path, required=True)
+    tx.add_argument("--samples", **samples)
+    tx.add_argument("--n", type=int, default=FIT_SAMPLES, help="test samples per texture")
+    tx.set_defaults(func=cmd_texture)
+
+    sp = sub.add_parser("spectra", help="the measured holograms among the leave-one-out splits")
+    sp.add_argument("--holograms", type=Path, required=True)
+    sp.add_argument("--samples", **samples)
+    sp.add_argument("--limit", type=int, help="first holograms of each split only")
+    sp.set_defaults(func=cmd_spectra)
+
+    co = sub.add_parser("compare", help="the learned estimates and the searches side by side")
+    co.add_argument("--out", type=Path, default=STAGE10)
+    co.set_defaults(func=cmd_compare)
 
     args = parser.parse_args()
     if args.threads:
