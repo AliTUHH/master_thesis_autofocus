@@ -309,7 +309,8 @@ def tooth_loss_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     neighbours = [p for p in pairs if p["kind"] == "neighbours" and p["numerics"] == [1, 1]]
     across = [p for p in neighbours if switched(p)]
     if across:
-        nearest = min(across, key=spacing_nm)
+        lowest = min((p for p in scans if p["numerics"] == 1), key=lambda p: p["mfe"])["z01"]
+        nearest = min(across, key=lambda p: (spacing_nm(p), abs(sum(p["z01"]) / 2 - lowest)))
         chosen.append(
             (
                 nearest,

@@ -340,7 +340,7 @@ neu (`box95-npe-ensemble`, `box95-cnn`), mit den Enden des Intervalls als Anfang
 **E6 – Die Modelle auf den synthetischen Samples.** „Die Modelle, die auf diesen Daten trainiert
 sind“, sind auf cpu-4x das NPE-Ensemble von Etappe 7 (fünf Seeds) und das Gauß-CNN von Etappe 4.
 Ein CNN-Ensemble gibt es auf cpu-4x nicht; es neu zu trainieren lag außerhalb dieser Etappe
-(6, Punkt ‹TODO›). Das einzelne CNN steht deshalb für das CNN, mit seinem nachkalibrierten
+(6, Punkt 8). Das einzelne CNN steht deshalb für das CNN, mit seinem nachkalibrierten
 $\hat\sigma$.
 
 **E7 – Was „sparen“ heißt.** Pro Sample und Verfahren: Rekonstruktionen kalt minus
@@ -493,15 +493,17 @@ denselben Farben.*
    Wechsel unterscheidet sie sich um 2,5·10⁻⁶ RMS, so wenig wie zwischen Nachbarn auf demselben
    Ast (1,9·10⁻⁶).
 3. **Die MFE folgt der ersten Stufe.** Jeder volle Scan liegt auf dem Ast, den seine erste
-   Stufe trifft: mit einem Thread bis 80,716 mm auf dem unteren, von 80,717 bis 80,900 mm auf
-   dem oberen und bei 80,910 mm wieder auf dem unteren. Am ersten Wechsel springt die MFE über
-   1 µm von 222 auf 877 ppm über ihrer kleinsten; von 80,900 nach 80,910 mm fällt sie von 3293
-   auf 3021 ppm, während sie auf beiden Ästen sonst um 5–10 ppm pro µm steigt, und dahinter
-   steigt sie auf dem unteren Ast weiter, an den Punkten der Suchen in 80,923–81,091 mm von
-   3086 auf 4520 ppm (Abb. 2). Ein zweites Minimum gibt es hinter dem Fenster nicht. Das Objekt
-   springt mit: Seine Phase ändert sich von 80,716 nach 80,717 mm um 3,4 mrad RMS, auf
-   demselben Ast über 2–3 µm um 0,5–1,0 mrad, und von 80,900 nach 80,910 mm um 6,0 mrad, auf
-   demselben Ast über 10 µm um 2,8 mrad (`steps-objects.json`). Mit der Numerik von vorher ebenso:
+   Stufe trifft: mit einem Thread bis 80,716 mm auf dem unteren, von 80,717 bis 80,901 mm auf
+   dem oberen und ab 80,902 mm wieder auf dem unteren. Am ersten Wechsel springt die MFE über
+   1 µm von 222 auf 877 ppm über ihrer kleinsten, am zweiten fällt sie über 1 µm von 3345 auf
+   3025 ppm. Auf beiden Ästen steigt sie sonst um 5–10 ppm pro µm, unmittelbar vor dem zweiten
+   Wechsel um 21 und 52 ppm pro µm (80,890 → 80,900 → 80,901 mm) und dahinter bis 80,910 mm
+   gar nicht; danach steigt sie auf dem unteren Ast weiter, an den Punkten der Suchen in
+   80,923–81,091 mm von 3086 auf 4520 ppm (Abb. 2). Ein zweites Minimum gibt es hinter dem
+   Fenster nicht. Das Objekt springt mit: Seine Phase ändert sich von 80,716 nach 80,717 mm um
+   3,4 mrad RMS, auf demselben Ast über 2–3 µm um 0,5–1,0 mrad, und von 80,901 nach 80,902 mm
+   um 4,0 mrad, auf demselben Ast über 1 µm um 0,3 mrad und über 8 µm um 2,4 mrad
+   (`steps-objects.json`). Mit der Numerik von vorher ebenso:
    80,678 mm liegt 29 ppm über ihrer kleinsten MFE, 80,6926 mm 677 ppm (Laborbuch 08, 5.6,
    Punkt 9). Bei 80,6926 und 80,694 mm treffen die beiden Numeriken verschiedene Äste, und ihre
    MFE unterscheidet sich um 675 und 679 ppm (5.1). Die Stufe ist also der Wechsel der ersten
@@ -540,8 +542,9 @@ die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.
 2. **Die Äste trennen sich am Ende.** Über den ersten Wechsel (80,716 → 80,717 mm) liegt der
    obere Ast nach der ersten Stufe 10,6 % über dem unteren, am Ende der zweiten 324 ppm, am
    kleinsten Verlust der letzten Stufe 34 ppm darunter und am Ende 655 ppm darüber; über den
-   zweiten (80,900 → 80,910 mm, 10 µm auseinander) 9,6 % darüber, 161 ppm darunter, 189 ppm
-   darunter und 271 ppm darüber (`scans` und `last_stage` in `steps.json`). Am selben $z_{01}$
+   zweiten (80,901 → 80,902 mm) 10,6 % und 338 ppm darüber, am kleinsten Verlust der letzten
+   Stufe gleich (1 ppm) und am Ende 319 ppm darüber (`pairs` unter `branches` in
+   `steps.json`). Am selben $z_{01}$
    (80,694 mm) unterscheiden sich die beiden Numeriken bei Iteration 1230 nur um 4·10⁻⁶
    (Abb. 5). Die Stufe der MFE entsteht also in den letzten knapp 300 Iterationen, in denen der
    Verlust auf dem oberen Ast stärker steigt. Der Unterschied schwingt dabei: bei 80,694 mm
@@ -550,8 +553,8 @@ die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.
    kleinsten, der kleinste Verlust der letzten Stufe bei 80,650 mm, und der Verlust am
    zurückgegebenen Objekt fällt von 80,451 bis 80,910 mm um 13 400 ppm, um 20–34 ppm pro µm,
    nur über den ersten Wechsel nicht: Von 80,716 nach 80,717 mm steigt er um 61 ppm, eine Stufe
-   von etwa 90 ppm, ein Siebtel der Stufe der MFE. Über den zweiten fällt er um 263 ppm in
-   10 µm, kaum mehr als davor (203–246 ppm). Sein Minimum liegt bei etwa 81,5 mm, wie die Scans
+   von etwa 90 ppm, ein Siebtel der Stufe der MFE. Über den zweiten (80,901 → 80,902 mm) fällt
+   er um 42 ppm, auf den Ästen daneben um 7–27 ppm pro µm: eine Stufe von etwa 20 ppm. Sein Minimum liegt bei etwa 81,5 mm, wie die Scans
    über $\Omega_z$ zeigen (Scheitel der Parabel durch 80,910, 81,5 und 81,7 mm: 81,49 mm;
    Abb. 2 unten rechts), 0,83 mm über dem der MFE und 0,5–0,6 mm über den Referenzen von [2]
    (80,9 und 81,0 mm); das der MFE liegt 0,24–0,34 mm darunter. Er ist 3,5- bis 3,6-mal so groß
@@ -574,16 +577,19 @@ letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kle
 1. **Keine Stufe in der MFE.** Nach der Regel von E10 hat die MFE von Spinnenhaar, Kaktusnadel
    und Mg-Draht keinen Sprung und keine Umkehr, mit jeder Numerik für sich und mit beiden
    zusammen (`probes` in `steps.json`). Mit beiden zusammen liegen in ±250 µm um das Minimum
-   keine zwei Nachbarn mehr als 42 µm auseinander; mit einer Numerik allein sind 54–90 % von
-   ±250 µm so dicht, die größte Lücke ist 50–138 µm. Um das Minimum ist die MFE der Kaktusnadel
+   keine zwei Nachbarn mehr als 43 µm auseinander; mit einer Numerik allein sind 67–100 % von
+   ±250 µm so dicht, die größte Lücke ist 50–113 µm. Um das Minimum ist die MFE der Kaktusnadel
    am flachsten: 180 µm darunter und darüber (284,755 und 285,116 mm) liegt sie 8 und 12 ppm
    über ihrer kleinsten. Beim Zahn findet die Regel mit Numerik 1 die Stufe bei
-   80,716–80,717 mm (+655 ppm) und eine Umkehr von 80,900 nach 80,910 mm (−272 ppm), mit
-   Numerik 3 die Stufe bei 80,678–80,6926 mm (+648 ppm) und eine Umkehr von 80,869 nach
-   80,893 mm (−138 ppm). Beide Umkehren sind der zweite Wechsel der ersten Stufe, zurück auf den
-   unteren Ast: mit Numerik 1 bei 80,901–80,902 mm (5.2, Punkte 1 und 3), mit Numerik 3 genau
-   zwischen 80,869 und 80,893 mm (−9,6 %), den beiden Punkten der Umkehr. Hinauf wechselt die
-   erste Stufe mit Numerik 3 bei 80,684–80,686 mm, innerhalb ihrer Stufe der MFE.
+   80,716–80,717 mm (+655 ppm), am zweiten Wechsel um das Minimum einen Sprung, der zugleich
+   eine Umkehr ist (80,901–80,902 mm, −320 ppm), und an zwei der Paare fern vom Minimum
+   (5.4, Punkt 2) einen Sprung bei 83,929–83,930 mm (+149 ppm, auf den Ästen daneben 40–44 ppm
+   pro µm) und eine Umkehr bei 81,848–81,849 mm (−75 ppm); mit Numerik 3 die Stufe bei
+   80,678–80,6926 mm (+648 ppm) und eine Umkehr von 80,869 nach 80,893 mm (−138 ppm). Jeder
+   dieser Sprünge und jede Umkehr liegt an einem Wechsel der ersten Stufe; die Umkehr der
+   Numerik 3 genau zwischen ihren beiden Punkten, am Rückwechsel bei 80,869–80,893 mm (−9,6 %).
+   Hinauf wechselt die erste Stufe mit Numerik 3 bei 80,684–80,686 mm, innerhalb ihrer Stufe
+   der MFE.
 2. **Die erste Stufe in ganz $\Omega_z$.** Alle 200 µm in ganz $\Omega_z$ gescannt
    (Abb. 3 unten links), ist die erste Stufe bei Spinnenhaar, Kaktusnadel und Mg-Draht glatt:
    Nachbarn liegen höchstens 0,16 %, 0,02 % und 0,01 % auseinander, kein Punkt liegt auf einem
@@ -599,17 +605,20 @@ letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kle
    Spinnenhaar bei 80,2 mm, bei den drei anderen am unteren Ende von $\Omega_z$.
    Die volle MFE trägt den Ast aber nur am Minimum. An fünf Wechseln, jeder an zwei Punkten
    1 µm auseinander voll gerechnet, liegt sie auf dem oberen Ast am selben $z_{01}$
-   (`offset_ppm`, 3.4) bei 80,716/80,717 mm 649 ppm über der des unteren und bei
-   80,901/80,902 mm ‹TODO› ppm, aber bei 79,143/79,144 mm 47 ppm, bei 81,848/81,849 mm
-   98 ppm und bei 83,929/83,930 mm 99 ppm darunter (`pairs` unter `branches` in `steps.json`;
-   Abb. 3 unten rechts). Dort, 1,2–3,3 mm vom Minimum, liegt die MFE 1,5–8,7 % über ihrer
-   kleinsten, und 100 ppm verschieben keine Suche; am Minimum, wo sie auf 50 µm um 220 ppm
-   steigt, ist der Versatz die Stufe von 5.2. Nach der zweiten Stufe liegt der obere Ast bei
-   79,14, 80,72, 81,85 und 83,93 mm 609, 324, −84 und −367 ppm über dem unteren, am kleinsten
-   Verlust der letzten Stufe 106, −34, −73 und −137 ppm (`losses_upper_over_lower_ppm`, wie
-   gerechnet, ohne die Steigung);
-   beide fallen mit $z_{01}$. Nur am Minimum weicht die MFE davon ab, in den letzten knapp
-   300 Iterationen (5.3, Punkt 2).
+   (`offset_ppm`, 3.4) bei 80,716/80,717 mm 649 ppm und bei 80,901/80,902 mm 331 ppm über
+   der des unteren, aber bei 79,143/79,144 mm 47 ppm, bei 81,848/81,849 mm 98 ppm und bei
+   83,929/83,930 mm 99 ppm darunter (`pairs` unter `branches` in `steps.json`; Abb. 3 unten
+   rechts). Dort, 1,2–3,3 mm vom Minimum, liegt die MFE 1,5–8,7 % über ihrer kleinsten, und
+   100 ppm verschieben keine Suche; am Minimum, wo sie auf 50 µm um 220 ppm steigt, ist der
+   Versatz die Stufe von 5.2. Nach der zweiten Stufe liegt der obere Ast bei 79,14, 80,72,
+   80,90, 81,85 und 83,93 mm 609, 324, 338, −84 und −367 ppm über dem unteren, am kleinsten
+   Verlust der letzten Stufe 106, −34, 1, −73 und −137 ppm (`losses_upper_over_lower_ppm`, wie
+   gerechnet, ohne die Steigung): Beide fallen über $\Omega_z$ mit $z_{01}$ und bleiben
+   zwischen den beiden Wechseln um das Minimum gleich. Die MFE folgt ihnen fern vom Minimum
+   (−5, −73 und −137 ppm wie gerechnet) und weicht nur um das Minimum ab (+655 und +319 ppm),
+   in den letzten knapp 300 Iterationen (5.3, Punkt 2). Das Objekt springt auch fern vom
+   Minimum: Seine Phase ändert sich über die drei Paare dort um 1,7, 5,0 und 6,0 mrad RMS, auf
+   demselben Ast über 20 µm um 4,7–4,9 mrad (79,123–79,164 mm; `steps-objects.json`).
 3. **Die Schulter des Spinnenhaars.** Über dem Minimum (79,49 mm) steigt die MFE bis 79,95 mm
    glatt auf 11 150 ppm, im Mittel um 24 ppm pro µm, danach bis 80,25 mm nur noch um 2–3 ppm
    pro µm (11 930 ppm). Zwischen 80,035 und 80,147 mm liegen sechs Punkte innerhalb von 32 ppm,
@@ -784,7 +793,27 @@ NPE-Ensemble, rechts für das CNN.*
    zeigte die erste Stufe über $\Omega_z$, ein Bruchteil einer vollen Rekonstruktion pro Punkt,
    und für Sample 5 ein dichter Scan um 103,4–104,4 mm; nicht gerechnet.
 
-‹TODO Teil 2›
+7. **Brent gegen ein zweites Minimum.** Kalt fiel Brent beim Spinnenhaar in die Mulde der
+   Schulter, weil es zwischen seinen Klammerpunkten nur ein Minimum voraussetzt (5.5, Punkte 1
+   und 2). Ein Schutz wäre ein grobes Raster vor Brent, etwa fünf Punkte über $\Omega_z$ und
+   Brent zwischen den Nachbarn des besten. Das gelernte Intervall schützte hier, obwohl beide
+   Intervalle die Mulde enthielten (5.5, Punkt 2), aber nur, weil seine ersten Punkte nahe am
+   Minimum lagen. Was ein Raster kostet und was es auf den synthetischen Samples ändert, ist
+   nicht gerechnet. ‹TODO je nach 5.6›
+8. **Ein CNN-Ensemble auf cpu-4x** (E6). Fünf Seeds des Gauß-CNN von Etappe 4 kosteten je
+   etwa 38 min Training auf einem Kern (Laborbuch 04, 5.9), dazu die Nachkalibrierung auf dem
+   Val-Split; keine GPU. Ob das Ensemble auf den synthetischen Samples engere oder besser
+   deckende Intervalle gibt als das einzelne Netz und was die beiden Verfahren darin sparen,
+   ist offen.
+9. **Gleiche Genauigkeit.** Brent hört auf, wenn das Minimum auf etwa ±67 µm eingeschlossen
+   ist, Nelder–Mead, wenn seine zwei Punkte höchstens 100 µm auseinanderliegen (E3). Ein
+   Vergleich bei gleicher Genauigkeit, etwa mit einem `xatol` für Brent, bei dem sein Anteil
+   innerhalb 100 µm dem von Nelder–Mead gleicht, ist nicht gerechnet. ‹TODO je nach 5.6›
+10. **Brent mit Warmstart.** Brent beginnt beim 0,382-Fachen der Breite, nicht an der
+   Schätzung (5.5, Punkt 3; E4). Ein Brent, der an der Schätzung beginnt und die Klammer
+   selbst sucht (`minimize_scalar(method="brent")` mit `bracket`), oder ein Intervall, dessen
+   Punkt beim 0,382-Fachen die Schätzung ist, spart vielleicht mehr; nicht gerechnet.
+11. **Die späteren Stufen nahe an einem Wechsel.** ‹TODO Endphase: 79,15 mm›
 
 ## 7 Nächste Schritte
 
