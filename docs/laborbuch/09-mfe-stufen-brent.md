@@ -345,7 +345,12 @@ Der CI-Schritt von Etappe 9 sucht mit Brent auf drei Samples des Demo-Datensatze
 rechnet mit `synthetic` zwei Punkte der Baseline aus dem Schritt von Etappe 3 nach (MFE und
 Verlust der ersten Stufe bitgleich mit der Suche und mit `stage_losses[0]`) und rechnet
 `steps`, `compare` und alle Abbildungen aus den versionierten Ergebnissen.
-‹TODO: Ergebnis der Tests, ruff, Zeit des CI-Schritts›
+
+376 Tests bestehen, einer wird übersprungen (nur CUDA); `ruff` ist sauber. In `main`
+(`4349d6a`) bestanden 363. Alle Schritte der CI außer der Installation, in einem frischen
+Worktree des Branches nachgestellt, brauchen auf der VM 232 s, der von Etappe 9 22 s; er gibt
+`mfe-points.csv`, `measured.csv` und `synthetic.csv` bitgleich mit den versionierten wieder,
+die Schritte davor ihre CSV-Dateien ebenso.
 
 ## 4 Entscheidungen und Begründung
 
