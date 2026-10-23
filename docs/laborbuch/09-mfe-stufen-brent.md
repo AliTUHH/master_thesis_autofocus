@@ -867,9 +867,10 @@ Fehler gegen die Wahrheit, Rekonstruktionen und Zeit pro Autofokus mit 3 Threads
 4. **Was das Intervall an der Genauigkeit ändert.** Im Mittel wenig: Gepaart ändert das
    NPE-Intervall den Betrag des Fehlers mit Nelder–Mead um −24 µm [−73, +18], mit Brent um
    −29 µm [−82, +15]; fast der ganze Unterschied kommt von den acht Samples von Punkt 3. Die Wahrheit
-   liegt bei 2 der 48 Samples außerhalb des NPE-Intervalls (37 und 42), bei ‹CNN-OUT› außerhalb
-   des Intervalls des CNN (‹CNN-OUT-LIST›); dessen 95-%-Intervall deckt auf diesen 48 Samples nur
-   88 % (Laborbuch 04, 5.7). ‹CNN-ACC›
+   liegt bei 2 der 48 Samples außerhalb des NPE-Intervalls (37 und 42), bei 6 außerhalb des
+   Intervalls des CNN (0, 4, 9, 16, 37 und 47); dessen 95-%-Intervall deckt auf diesen 48
+   Samples nur 88 % (Laborbuch 04, 5.7), bei fast derselben Breite (im Median 934 statt
+   894 µm). ‹CNN-ACC›
 5. **Nelder–Mead noch einmal (E8).** Mit Numerik 1 endet die Suche von Etappe 3 auf allen acht
    Samples der Wiederholung bitgenau am selben $z_{01}$, mit derselben Zahl von
    Rekonstruktionen, auch auf Sample 5 mit seinen zwei Lösungen (5.4, Punkt 5). Die Numerik
