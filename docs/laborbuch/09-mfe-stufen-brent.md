@@ -795,7 +795,72 @@ Wiederholung der kalten Suche (`b1-p4-repeat`, Punkt 6). Alle mit Brent haben Nu
 *Abb. 8 – Verteilung des Fehlers $|z_{01} - z_{01}^\mathrm{wahr}|$ auf den 48 synthetischen
 Samples für jede Suche; senkrecht 100 µm.*
 
-‹TODO›
+Fehler gegen die Wahrheit, Rekonstruktionen und Zeit pro Autofokus mit 3 Threads (E9) auf den
+48 Samples, in Klammern 95-%-Bootstrap-Intervalle (`summaries` unter `synthetic` in
+`compare.json`, pro Sample `synthetic.csv`):
+
+| Suche | MAE, µm | Median, µm | Max, µm | ≤ 100 µm | Rekonstruktionen (Spanne) | min | Wahrheit draußen |
+|---|---|---|---|---|---|---|---|
+| NM kalt (Etappe 3) | 166 [128, 214] | 124 | 799 | 31 % [19, 44] | 11,15 [10,83, 11,44] (9–13) | ‹MIN-NM› | – |
+| Brent kalt | 164 [119, 227] | 134 | 1229 | 35 % [23, 50] | 8,17 [7,79, 8,54] (5–11) | ‹MIN-BR› | – |
+| NM, 95 % NPE-Ensemble | 142 [116, 170] | 139 | 508 | 35 % [23, 50] | 6,67 [6,33, 7,00] (5–9) | ‹MIN-NMN› | 2 |
+| Brent, 95 % NPE-Ensemble | 136 [110, 165] | 123 | 548 | 35 % [23, 50] | 5,81 [5,52, 6,12] (4–9) | ‹MIN-BRN› | 2 |
+| NM, 95 % CNN | ‹CNN-ROW-NM› |
+| Brent, 95 % CNN | ‹CNN-ROW-BR› |
+
+1. **Kalt ist Brent so genau wie Nelder–Mead, mit 27 % weniger Rekonstruktionen.** Brent
+   braucht 8,17 statt 11,15 pro Autofokus. Sample für Sample unterscheidet sich der Betrag des
+   Fehlers im Mittel um −1 µm [−51, +50]; auf 100 µm trifft nur Brent 4 Samples, nur
+   Nelder–Mead 2 (exakter McNemar-Test, $p = 0{,}69$; `accuracy` unter `synthetic`). Auf 45 der
+   48 Samples enden beide höchstens 100 µm auseinander, im Median 17 µm.
+2. **Der Fehler ist der der MFE.** Bei allen vier Suchen (kalt und im NPE-Intervall) liegen
+   85–88 % der Ergebnisse über der Wahrheit, im Median um 120–124 µm: Das ist der Versatz des
+   Minimums der MFE, den in Etappe 3 die Objektfilter der Rekonstruktion erklärten (Laborbuch 03,
+   5.6). Auf 40 der 48 Samples enden alle vier höchstens 100 µm auseinander. Dass nur gut ein
+   Drittel innerhalb 100 µm liegt, liegt deshalb an der MFE, nicht an der Suche, und keine der
+   vier trifft auf 100 µm gesichert mehr Samples als eine andere (McNemar, $p \ge 0{,}69$ für
+   jedes gerechnete Paar).
+3. **Wo die Suchen auseinandergehen.** Auf den übrigen acht Samples (pro Sample in
+   `synthetic.csv`) hat das drei Gründe:
+   - *Nebenminima.* Bei Sample 40, einer Kugel, endet Nelder–Mead kalt in einem Nebenminimum
+     (−799 µm, Laborbuch 03, 5.4), Brent kalt und beide Suchen im Intervall im tiefsten (−16,
+     +49 und −3 µm, MFE 0,85–1,0 % tiefer). Bei Sample 41 enden beide kalten Suchen bei
+     101,25 mm (+730 und +742 µm); das Intervall endet bei 101,00 mm, und die Suchen darin
+     finden tiefere Punkte, Brent bei 100,67 mm (+151 µm, MFE 4,1 % tiefer), Nelder–Mead bei
+     100,71 mm (+190 µm, 1,2 % tiefer). Bei Sample 30, einer Kugel, ist die MFE zerklüftet:
+     Zwischen Punkten 70–140 µm auseinander ändert sie sich um bis zu 19 %. Brent kalt fällt
+     dort in ein Nebenminimum bei 96,93 mm (−1229 µm, MFE 6,1 % höher), Nelder–Mead im
+     Intervall in eines bei 97,89 mm (−276 µm, 11,8 % höher); Nelder–Mead kalt und Brent im
+     Intervall finden das tiefste bei 98,52 mm (+352 und +361 µm).
+   - *Die Grenze des Intervalls.* Bei Sample 19 und 37 liegt das Minimum der MFE außerhalb des
+     Intervalls, bei 37 auch die Wahrheit, und beide Suchen darin enden an seiner Grenze
+     (0–61 µm davon) mit 0,3–1,9 % höherer MFE. Bei 19 liegt die Grenze nahe an der Wahrheit
+     (+12 und −49 statt +290 µm), bei 37 nicht (+508 und +548 statt −12 µm).
+   - *Zwei Niveaus der MFE.* Bei Sample 27 liegen ein Punkt von Nelder–Mead kalt (Numerik 3)
+     und einer von Nelder–Mead im Intervall (Numerik 1) 0,03 µm auseinander, ihre MFE aber um
+     4,6 % (5.4, Punkt 5); nur die Suche im Intervall endet auf dem tieferen Niveau, am selben
+     Ort wie die kalte. Bei Sample 35 liegen alle Punkte ab 97,77 mm 4,5–5,2 % über dem
+     tiefsten (97,69 mm); den und 97,60 mm (1,0 %) rechnet nur Nelder–Mead im Intervall, weil
+     dieses bei 97,60 mm beginnt, und es endet 283 µm unter den anderen Suchen (−109 statt +162
+     bis +173 µm). Ob das eine schmale Senke ist oder eine zweite Lösung, zeigen die Punkte nicht.
+
+   Bei Sample 14 schließlich ist die MFE flach: Die Ergebnisse liegen bis 114 µm auseinander,
+   ihre MFE um höchstens 77 ppm. Das Intervall nützt also, wo es ein Nebenminimum ausschließt
+   (40 für Nelder–Mead, 41 für beide), und schadet, wo es das Minimum der MFE abschneidet (37)
+   oder Nelder–Mead in ein Nebenminimum führt (30). Gemessen am tiefsten Punkt aller Suchen
+   fällt kalt jedes Verfahren auf zwei der 48 Samples in ein Nebenminimum, Brent bei 30 und 41,
+   Nelder–Mead bei 40 und 41.
+4. **Was das Intervall an der Genauigkeit ändert.** Im Mittel wenig: Gepaart ändert das
+   NPE-Intervall den Betrag des Fehlers mit Nelder–Mead um −24 µm [−73, +18], mit Brent um
+   −29 µm [−82, +15]; fast der ganze Unterschied kommt von den acht Samples von Punkt 3. Die Wahrheit
+   liegt bei 2 der 48 Samples außerhalb des NPE-Intervalls (37 und 42), bei ‹CNN-OUT› außerhalb
+   des Intervalls des CNN (‹CNN-OUT-LIST›); dessen 95-%-Intervall deckt auf diesen 48 Samples nur
+   88 % (Laborbuch 04, 5.7). ‹CNN-ACC›
+5. **Nelder–Mead noch einmal (E8).** Mit Numerik 1 endet die Suche von Etappe 3 auf allen acht
+   Samples der Wiederholung bitgenau am selben $z_{01}$, mit derselben Zahl von
+   Rekonstruktionen, auch auf Sample 5 mit seinen zwei Lösungen (5.4, Punkt 5). Die Numerik
+   ändert an der Baseline nichts; die Unterschiede zwischen Brent und Nelder–Mead liegen an den
+   Verfahren.
 
 ### 5.7 Spart ein gelerntes Intervall mit Brent mehr als mit Nelder–Mead?
 
