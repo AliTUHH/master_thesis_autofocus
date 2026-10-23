@@ -1,0 +1,2443 @@
+{
+  "what": "Brent's bounded method next to Nelder-Mead, in Omega_z and in the 95 % intervals of learned models, on the measured holograms and the synthetic samples",
+  "xatol_um": 100.0,
+  "resamples": 10000,
+  "measured_methods": {
+    "nm-cold": {
+      "folder": "b1-p4",
+      "what": "Nelder-Mead in Omega_z (Stage 3)"
+    },
+    "nm-cold-repeat": {
+      "folder": "b1-p4-repeat",
+      "what": "the same again, with the numerics of this stage"
+    },
+    "nm-box95-cnn": {
+      "folder": "box95-cnn-loo-ensemble-b1-p4",
+      "what": "Nelder-Mead in the 95 % interval of the CNN ensemble (Stage 8)"
+    },
+    "nm-box95-npe": {
+      "folder": "box95-npe-loo-ensemble-b1-p4",
+      "what": "Nelder-Mead in the 95 % interval of the NPE ensemble (Stage 8)"
+    },
+    "brent-cold": {
+      "folder": "brent-b1-p4",
+      "what": "Brent in Omega_z"
+    },
+    "brent-box95-cnn": {
+      "folder": "brent-box95-cnn-loo-ensemble-b1-p4",
+      "what": "Brent in the 95 % interval of the CNN ensemble"
+    },
+    "brent-box95-npe": {
+      "folder": "brent-box95-npe-loo-ensemble-b1-p4",
+      "what": "Brent in the 95 % interval of the NPE ensemble"
+    }
+  },
+  "measured": {
+    "samples": {
+      "spider_hair": {
+        "paper2": {
+          "z01_nm": 0.0794,
+          "z01_visual": 0.0794
+        },
+        "seconds_per_reconstruction_3_threads": 214.0998311154101,
+        "searches": {
+          "nm-cold": {
+            "record": "results/measured/b1-p4/spider_hair.json",
+            "sha256": "c839df5f46eeb798b58961b5ab40e0c6b55c965cf2e4b1bcb2d82eb9db631f0c",
+            "git_commit": "1dbdba8",
+            "threads": 3,
+            "numerics": 3,
+            "z01": 0.07948750000000002,
+            "minus_paper2_nm_um": 87.50000000001812,
+            "minus_paper2_visual_um": 87.50000000001812,
+            "minus_nm_cold_um": 0.0,
+            "same_as_nm_cold": true,
+            "mfe": 0.0001382326299790293,
+            "mfe_ppm": 0.0,
+            "n_reconstructions": 13,
+            "n_evaluations": 16,
+            "converged": true,
+            "seconds": 2717.1692843220007,
+            "seconds_per_reconstruction": 209.01097222792305,
+            "minutes_at_3_threads": 46.388296741672185,
+            "bounds": [
+              0.0748,
+              0.08480000000000001
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.0748,
+              0.08480000000000001,
+              0.08480000000000001,
+              0.07980000000000001,
+              0.0748,
+              0.08230000000000001,
+              0.07730000000000001,
+              0.08105000000000001,
+              0.07855000000000001,
+              0.08042500000000001,
+              0.07917500000000001,
+              0.07948750000000002,
+              0.07917500000000001,
+              0.07964375000000001,
+              0.07933125,
+              0.07940937500000002
+            ]
+          },
+          "nm-cold-repeat": {
+            "record": "results/measured/b1-p4-repeat/spider_hair.json",
+            "sha256": "8147fbc75d830dfddae1d353c31a52a57fe910e6ad76ebf4c812c706dd52083a",
+            "git_commit": "14582c8",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.07948750000000002,
+            "minus_paper2_nm_um": 87.50000000001812,
+            "minus_paper2_visual_um": 87.50000000001812,
+            "minus_nm_cold_um": 0.0,
+            "same_as_nm_cold": true,
+            "mfe": 0.0001382330374326557,
+            "mfe_ppm": 0.0,
+            "n_reconstructions": 13,
+            "n_evaluations": 16,
+            "converged": true,
+            "seconds": 2805.6310162820155,
+            "seconds_per_reconstruction": 215.813344687313,
+            "minutes_at_3_threads": 46.388296741672185,
+            "bounds": [
+              0.0748,
+              0.08480000000000001
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.0748,
+              0.08480000000000001,
+              0.08480000000000001,
+              0.07980000000000001,
+              0.0748,
+              0.08230000000000001,
+              0.07730000000000001,
+              0.08105000000000001,
+              0.07855000000000001,
+              0.08042500000000001,
+              0.07917500000000001,
+              0.07948750000000002,
+              0.07917500000000001,
+              0.07964375000000001,
+              0.07933125,
+              0.07940937500000002
+            ]
+          },
+          "nm-box95-cnn": {
+            "record": "results/measured/box95-cnn-loo-ensemble-b1-p4/spider_hair.json",
+            "sha256": "01eda8f38c4683797175b932cc27664380394207ed2fa0799ec4f6e4130dbb23",
+            "git_commit": "901c04e",
+            "threads": 1,
+            "numerics": 1,
+            "z01": 0.07948292125676823,
+            "minus_paper2_nm_um": 82.92125676823136,
+            "minus_paper2_visual_um": 82.92125676823136,
+            "minus_nm_cold_um": -4.578743231786753,
+            "same_as_nm_cold": true,
+            "mfe": 0.00013823351764585823,
+            "mfe_ppm": 3.473939453657593,
+            "n_reconstructions": 8,
+            "n_evaluations": 12,
+            "converged": true,
+            "seconds": 4484.341570961988,
+            "seconds_per_reconstruction": 560.5276396597474,
+            "minutes_at_3_threads": 28.546644148721345,
+            "bounds": [
+              0.07782552683604936,
+              0.08077200580621623
+            ],
+            "width_mm": 2.946478970166866,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.07782552683604936,
+              0.08077200580621623,
+              0.08077200580621623,
+              0.07929876632113281,
+              0.07782552683604937,
+              0.08003538606367451,
+              0.07856214657859109,
+              0.07966707619240365,
+              0.08003538606367451,
+              0.07948292125676823,
+              0.07929876632113282,
+              0.07957499872458595
+            ]
+          },
+          "nm-box95-npe": {
+            "record": "results/measured/box95-npe-loo-ensemble-b1-p4/spider_hair.json",
+            "sha256": "e0a51185a7b3800c3aab4a1b8f0e98f7df845a0847f558020c9b5c7e86bd676b",
+            "git_commit": "901c04e",
+            "threads": 3,
+            "numerics": 3,
+            "z01": 0.07948225613812725,
+            "minus_paper2_nm_um": 82.25613812724852,
+            "minus_paper2_visual_um": 82.25613812724852,
+            "minus_nm_cold_um": -5.243861872769595,
+            "same_as_nm_cold": true,
+            "mfe": 0.00013823338667862117,
+            "mfe_ppm": 5.4741025472537785,
+            "n_reconstructions": 8,
+            "n_evaluations": 10,
+            "converged": true,
+            "seconds": 1701.8364872029924,
+            "seconds_per_reconstruction": 212.7242888935034,
+            "minutes_at_3_threads": 28.546644148721345,
+            "bounds": [
+              0.07878052166634594,
+              0.08018399060990855
+            ],
+            "width_mm": 1.403468943562608,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.07878052166634594,
+              0.08018399060990855,
+              0.08018399060990855,
+              0.07948225613812725,
+              0.07878052166634594,
+              0.0798331233740179,
+              0.07913138890223657,
+              0.07965768975607257,
+              0.07930682252018191,
+              0.0795699729470999
+            ]
+          },
+          "brent-cold": {
+            "record": "results/measured/brent-b1-p4/spider_hair.json",
+            "sha256": "85400a5d5378cc907b74c4c6e9bb112ae684a9fb6421ee8ca9aa6ed2740dbe95",
+            "git_commit": "e809b07",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.0801136151441824,
+            "minus_paper2_nm_um": 713.6151441824029,
+            "minus_paper2_visual_um": 713.6151441824029,
+            "minus_nm_cold_um": 626.1151441823848,
+            "same_as_nm_cold": false,
+            "mfe": 0.00013984768884256482,
+            "mfe_ppm": 11680.6476939042,
+            "n_reconstructions": 6,
+            "n_evaluations": 6,
+            "converged": true,
+            "seconds": 1317.694385049981,
+            "seconds_per_reconstruction": 219.60962745650127,
+            "minutes_at_3_threads": 21.40998311154101,
+            "bounds": [
+              0.0748,
+              0.08480000000000001
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.07861966011250107,
+              0.08098033988749896,
+              0.08243932022500211,
+              0.0801136151441824,
+              0.08006542846565516,
+              0.08014694966579268
+            ]
+          },
+          "brent-box95-cnn": {
+            "record": "results/measured/brent-box95-cnn-loo-ensemble-b1-p4/spider_hair.json",
+            "sha256": "365f49e4bc1e34aabed1f6643c8f13d579cf0e01de2501e5424f5d978ebd997d",
+            "git_commit": "7a0f7ed",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.07949737936877789,
+            "minus_paper2_nm_um": 97.37936877789177,
+            "minus_paper2_visual_um": 97.37936877789177,
+            "minus_nm_cold_um": 9.879368777873655,
+            "same_as_nm_cold": true,
+            "mfe": 0.00013823476911056787,
+            "mfe_ppm": 12.527236211701265,
+            "n_reconstructions": 8,
+            "n_evaluations": 8,
+            "converged": true,
+            "seconds": 1699.1573784119973,
+            "seconds_per_reconstruction": 212.38631754350718,
+            "minutes_at_3_threads": 28.546644148721345,
+            "bounds": [
+              0.07782552683604936,
+              0.08077200580621623
+            ],
+            "width_mm": 2.946478970166866,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.07895098165551631,
+              0.07964655098674928,
+              0.08007643647498326,
+              0.07969978596413368,
+              0.07938086714375032,
+              0.0794640448568023,
+              0.07949737936877789,
+              0.07953071388124791
+            ]
+          },
+          "brent-box95-npe": {
+            "record": "results/measured/brent-box95-npe-loo-ensemble-b1-p4/spider_hair.json",
+            "sha256": "c306427a499bd6c3fb94ee0802b61acb9ebdb84338ae54259cd7a8c17e28e79b",
+            "git_commit": "ccaf6dd",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.0794915965828147,
+            "minus_paper2_nm_um": 91.59658281469862,
+            "minus_paper2_visual_um": 91.59658281469862,
+            "minus_nm_cold_um": 4.096582814680505,
+            "same_as_nm_cold": true,
+            "mfe": 0.00013823315384797752,
+            "mfe_ppm": 0.8421671402469855,
+            "n_reconstructions": 6,
+            "n_evaluations": 6,
+            "converged": true,
+            "seconds": 1252.858097527991,
+            "seconds_per_reconstruction": 208.80609842216168,
+            "minutes_at_3_threads": 21.40998311154101,
+            "bounds": [
+              0.07878052166634594,
+              0.08018399060990855
+            ],
+            "width_mm": 1.403468943562608,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.07931659910063195,
+              0.07964791317562253,
+              0.07985267653491794,
+              0.0794915965828147,
+              0.07945826207043045,
+              0.07952493109519894
+            ]
+          }
+        },
+        "savings": {
+          "nm-cold - nm-box95-cnn": {
+            "saved": 5,
+            "relative": 0.3846153846153846
+          },
+          "nm-cold-repeat - nm-box95-cnn": {
+            "saved": 5,
+            "relative": 0.3846153846153846
+          },
+          "brent-cold - brent-box95-cnn": {
+            "saved": -2,
+            "relative": -0.33333333333333326
+          },
+          "nm-cold - nm-box95-npe": {
+            "saved": 5,
+            "relative": 0.3846153846153846
+          },
+          "nm-cold-repeat - nm-box95-npe": {
+            "saved": 5,
+            "relative": 0.3846153846153846
+          },
+          "brent-cold - brent-box95-npe": {
+            "saved": 0,
+            "relative": 0.0
+          }
+        }
+      },
+      "tooth": {
+        "paper2": {
+          "z01_nm": 0.0809,
+          "z01_visual": 0.081
+        },
+        "seconds_per_reconstruction_3_threads": 213.68673680286082,
+        "searches": {
+          "nm-cold": {
+            "record": "results/measured/b1-p4/tooth.json",
+            "sha256": "f95a55c2e49ae43d75eddf9d40c4ae6d7f0a5a46a5f13d43a375bc585f914873",
+            "git_commit": "a5e3ec1",
+            "threads": 3,
+            "numerics": 3,
+            "z01": 0.08063437500000001,
+            "minus_paper2_nm_um": -265.6249999999916,
+            "minus_paper2_visual_um": -365.62499999999443,
+            "minus_nm_cold_um": 0.0,
+            "same_as_nm_cold": true,
+            "mfe": 0.00031603986280970275,
+            "mfe_ppm": 39.23150094298222,
+            "n_reconstructions": 11,
+            "n_evaluations": 18,
+            "converged": true,
+            "seconds": 2170.128857969001,
+            "seconds_per_reconstruction": 197.2812258064534,
+            "minutes_at_3_threads": 39.17590174719115,
+            "bounds": [
+              0.0779,
+              0.0879
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.07790000000000001,
+              0.0879,
+              0.07790000000000001,
+              0.0829,
+              0.0879,
+              0.0804,
+              0.07790000000000001,
+              0.08165,
+              0.07915000000000001,
+              0.081025,
+              0.08165,
+              0.0807125,
+              0.0804,
+              0.08086875,
+              0.08055625000000001,
+              0.0804,
+              0.0804,
+              0.08063437500000001
+            ]
+          },
+          "nm-cold-repeat": {
+            "record": "results/measured/b1-p4-repeat/tooth.json",
+            "sha256": "1ba1eb3751399f3c97b0d451e97043d21303aa9dc543b6a126f9d8e3c8fd0403",
+            "git_commit": "14582c8",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.08063437500000001,
+            "minus_paper2_nm_um": -265.6249999999916,
+            "minus_paper2_visual_um": -365.62499999999443,
+            "minus_nm_cold_um": 0.0,
+            "same_as_nm_cold": true,
+            "mfe": 0.000316029618261382,
+            "mfe_ppm": 76.07385942853817,
+            "n_reconstructions": 11,
+            "n_evaluations": 16,
+            "converged": true,
+            "seconds": 2385.3537274789996,
+            "seconds_per_reconstruction": 216.8458187150007,
+            "minutes_at_3_threads": 39.17590174719115,
+            "bounds": [
+              0.0779,
+              0.0879
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.07790000000000001,
+              0.0879,
+              0.07790000000000001,
+              0.0829,
+              0.0879,
+              0.0804,
+              0.07790000000000001,
+              0.08165,
+              0.07915000000000001,
+              0.081025,
+              0.08165,
+              0.0807125,
+              0.0804,
+              0.08086875,
+              0.08055625000000001,
+              0.08063437500000001
+            ]
+          },
+          "nm-box95-cnn": {
+            "record": "results/measured/box95-cnn-loo-ensemble-b1-p4/tooth.json",
+            "sha256": "31c0cf9016a80b5357db7bb505bdda4546847066383d21f75b76eb73e0958e73",
+            "git_commit": "901c04e",
+            "threads": 1,
+            "numerics": 1,
+            "z01": 0.0806362264064632,
+            "minus_paper2_nm_um": -263.773593536798,
+            "minus_paper2_visual_um": -363.77359353680083,
+            "minus_nm_cold_um": 1.8514064631935945,
+            "same_as_nm_cold": true,
+            "mfe": 0.00031602694070897996,
+            "mfe_ppm": 67.60074191358711,
+            "n_reconstructions": 12,
+            "n_evaluations": 14,
+            "converged": true,
+            "seconds": 7082.662174285011,
+            "seconds_per_reconstruction": 590.2168752931708,
+            "minutes_at_3_threads": 42.73734736057216,
+            "bounds": [
+              0.0788336998988999,
+              0.0824387529140265
+            ],
+            "width_mm": 3.6050530151265914,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.0788336998988999,
+              0.0824387529140265,
+              0.0824387529140265,
+              0.0806362264064632,
+              0.07883369989889992,
+              0.08153748966024486,
+              0.07973496315268155,
+              0.08108685803335404,
+              0.08018559477957238,
+              0.08086154221990861,
+              0.0804109105930178,
+              0.08074888431318591,
+              0.0805235684997405,
+              0.08069255535982456
+            ]
+          },
+          "nm-box95-npe": {
+            "record": "results/measured/box95-npe-loo-ensemble-b1-p4/tooth.json",
+            "sha256": "a75df931b4fdce9d7d9b1181da2fda25568894683abd3d7a0dc57c4eab165359",
+            "git_commit": "901c04e",
+            "threads": 3,
+            "numerics": 3,
+            "z01": 0.08067773239774684,
+            "minus_paper2_nm_um": -222.2676022531622,
+            "minus_paper2_visual_um": -322.2676022531651,
+            "minus_nm_cold_um": 43.35739774682934,
+            "same_as_nm_cold": true,
+            "mfe": 0.0003160365449730307,
+            "mfe_ppm": 28.73293026794954,
+            "n_reconstructions": 12,
+            "n_evaluations": 14,
+            "converged": true,
+            "seconds": 2587.784925073007,
+            "seconds_per_reconstruction": 215.6423750202448,
+            "minutes_at_3_threads": 42.73734736057216,
+            "bounds": [
+              0.0785949184481544,
+              0.08263431519887915
+            ],
+            "width_mm": 4.039396750724747,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.0785949184481544,
+              0.08263431519887915,
+              0.08263431519887915,
+              0.08061461682351677,
+              0.0785949184481544,
+              0.08162446601119797,
+              0.07960476763583557,
+              0.08111954141735737,
+              0.08010969222967618,
+              0.08086707912043707,
+              0.08036215452659647,
+              0.08074084797197692,
+              0.08048838567505662,
+              0.08067773239774684
+            ]
+          },
+          "brent-cold": {
+            "record": "results/measured/brent-b1-p4/tooth.json",
+            "sha256": "0de836b2fe657c84c2a38ff7c565facc3cc18e251cbb959e16a6dca26c41d258",
+            "git_commit": "e809b07",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.08065991466502447,
+            "minus_paper2_nm_um": -240.0853349755344,
+            "minus_paper2_visual_um": -340.0853349755373,
+            "minus_nm_cold_um": 25.539665024457147,
+            "same_as_nm_cold": true,
+            "mfe": 0.0003160066553391516,
+            "mfe_ppm": 3.407666826715783,
+            "n_reconstructions": 10,
+            "n_evaluations": 10,
+            "converged": true,
+            "seconds": 2142.0927196590055,
+            "seconds_per_reconstruction": 214.20475434759865,
+            "minutes_at_3_threads": 35.61445613381014,
+            "bounds": [
+              0.0779,
+              0.0879
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.08171966011250106,
+              0.08408033988749895,
+              0.08026067977499791,
+              0.08088641062014806,
+              0.08092919087831693,
+              0.08085271899528072,
+              0.08062658013580568,
+              0.08048681863447296,
+              0.08065991466502447,
+              0.08069324919473767
+            ]
+          },
+          "brent-box95-cnn": {
+            "record": "results/measured/brent-box95-cnn-loo-ensemble-b1-p4/tooth.json",
+            "sha256": "89ffb23a8691440a3089f3de6a861c1aa8c6c924749160a87bc2136e37aa950b",
+            "git_commit": "7a0f7ed",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.08065071602954406,
+            "minus_paper2_nm_um": -249.28397045594076,
+            "minus_paper2_visual_um": -349.28397045594363,
+            "minus_nm_cold_um": 16.341029544050812,
+            "same_as_nm_cold": true,
+            "mfe": 0.00031601201044395566,
+            "mfe_ppm": 20.35390185683994,
+            "n_reconstructions": 8,
+            "n_evaluations": 8,
+            "converged": true,
+            "seconds": 1705.397621193988,
+            "seconds_per_reconstruction": 213.16871925812302,
+            "minutes_at_3_threads": 28.491564907048108,
+            "bounds": [
+              0.0788336998988999,
+              0.0824387529140265
+            ],
+            "width_mm": 3.6050530151265914,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.08021070761943298,
+              0.08106174519349343,
+              0.08158771533996605,
+              0.0809226561823285,
+              0.08065071602954406,
+              0.08048264777221743,
+              0.08068511397615787,
+              0.08061738149996729
+            ]
+          },
+          "brent-box95-npe": {
+            "record": "results/measured/brent-box95-npe-loo-ensemble-b1-p4/tooth.json",
+            "sha256": "14ee8dbd4e8b5f8821607876ce9435fc7ba69b68f29bc447a36d86f74c286c85",
+            "git_commit": "ccaf6dd",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.08069130191619252,
+            "minus_paper2_nm_um": -208.698083807482,
+            "minus_paper2_visual_um": -308.69808380748486,
+            "minus_nm_cold_um": 56.92691619250956,
+            "same_as_nm_cold": true,
+            "mfe": 0.00031602694070897996,
+            "mfe_ppm": 67.60074191358711,
+            "n_reconstructions": 8,
+            "n_evaluations": 8,
+            "converged": true,
+            "seconds": 1697.1752844619914,
+            "seconds_per_reconstruction": 212.1439055746232,
+            "minutes_at_3_threads": 28.491564907048108,
+            "bounds": [
+              0.0785949184481544,
+              0.08263431519887915
+            ],
+            "width_mm": 4.039396750724747,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.08013783071288537,
+              0.0810914029341482,
+              0.08168074297761635,
+              0.08093515518211337,
+              0.08063060433493026,
+              0.08044238156006851,
+              0.08069130191619252,
+              0.08072463644637126
+            ]
+          }
+        },
+        "savings": {
+          "nm-cold - nm-box95-cnn": {
+            "saved": -1,
+            "relative": -0.09090909090909083
+          },
+          "nm-cold-repeat - nm-box95-cnn": {
+            "saved": -1,
+            "relative": -0.09090909090909083
+          },
+          "brent-cold - brent-box95-cnn": {
+            "saved": 2,
+            "relative": 0.19999999999999996
+          },
+          "nm-cold - nm-box95-npe": {
+            "saved": -1,
+            "relative": -0.09090909090909083
+          },
+          "nm-cold-repeat - nm-box95-npe": {
+            "saved": -1,
+            "relative": -0.09090909090909083
+          },
+          "brent-cold - brent-box95-npe": {
+            "saved": 2,
+            "relative": 0.19999999999999996
+          }
+        }
+      },
+      "cactus_needle": {
+        "paper2": {
+          "z01_nm": 0.2842,
+          "z01_visual": 0.2842
+        },
+        "seconds_per_reconstruction_3_threads": 220.97583259118738,
+        "searches": {
+          "nm-cold": {
+            "record": "results/measured/b1-p4/cactus_needle.json",
+            "sha256": "c442ce485027bc06ed71ed51f6e87093ffcca250d9999c2464619c281881d2a0",
+            "git_commit": "3f7f87e",
+            "threads": 3,
+            "numerics": 3,
+            "z01": 0.28492812500000003,
+            "minus_paper2_nm_um": 728.1250000000239,
+            "minus_paper2_visual_um": 728.1250000000239,
+            "minus_nm_cold_um": 0.0,
+            "same_as_nm_cold": true,
+            "mfe": 0.00022955279564484954,
+            "mfe_ppm": 0.19017740071625155,
+            "n_reconstructions": 13,
+            "n_evaluations": 16,
+            "converged": true,
+            "seconds": 2725.3731902309955,
+            "seconds_per_reconstruction": 209.64099219046273,
+            "minutes_at_3_threads": 47.87809706142393,
+            "bounds": [
+              0.2811,
+              0.2911
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.2811,
+              0.2911,
+              0.2811,
+              0.2861,
+              0.2911,
+              0.2836,
+              0.2886,
+              0.28485000000000005,
+              0.2836,
+              0.28547500000000003,
+              0.284225,
+              0.28516250000000004,
+              0.2845375,
+              0.28500625,
+              0.28469375,
+              0.28492812500000003
+            ]
+          },
+          "nm-cold-repeat": {
+            "record": "results/measured/b1-p4-repeat/cactus_needle.json",
+            "sha256": "f784eadf611f68aa8b060e6efae28d62a96caca2d92d0e8e5c492eaecbad18a5",
+            "git_commit": "23ecc6d",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.28492812500000003,
+            "minus_paper2_nm_um": 728.1250000000239,
+            "minus_paper2_visual_um": 728.1250000000239,
+            "minus_nm_cold_um": 0.0,
+            "same_as_nm_cold": true,
+            "mfe": 0.0002295548329129815,
+            "mfe_ppm": 0.44374344243536257,
+            "n_reconstructions": 13,
+            "n_evaluations": 16,
+            "converged": true,
+            "seconds": 2835.1141755569843,
+            "seconds_per_reconstruction": 218.08192237884774,
+            "minutes_at_3_threads": 47.87809706142393,
+            "bounds": [
+              0.2811,
+              0.2911
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.2811,
+              0.2911,
+              0.2811,
+              0.2861,
+              0.2911,
+              0.2836,
+              0.2886,
+              0.28485000000000005,
+              0.2836,
+              0.28547500000000003,
+              0.284225,
+              0.28516250000000004,
+              0.2845375,
+              0.28500625,
+              0.28469375,
+              0.28492812500000003
+            ]
+          },
+          "nm-box95-cnn": {
+            "record": "results/measured/box95-cnn-loo-ensemble-b1-p4/cactus_needle.json",
+            "sha256": "1d31d931a6b6d602719d5eef56fc185765930e53905a8374edff95014848a625",
+            "git_commit": "901c04e",
+            "threads": 1,
+            "numerics": 1,
+            "z01": 0.2849324624645151,
+            "minus_paper2_nm_um": 732.4624645150824,
+            "minus_paper2_visual_um": 732.4624645150824,
+            "minus_nm_cold_um": 4.337464515058453,
+            "same_as_nm_cold": true,
+            "mfe": 0.0002295547310495749,
+            "mfe_ppm": 0.0,
+            "n_reconstructions": 12,
+            "n_evaluations": 16,
+            "converged": true,
+            "seconds": 6484.99278723498,
+            "seconds_per_reconstruction": 540.4097826004969,
+            "minutes_at_3_threads": 44.19516651823748,
+            "bounds": [
+              0.2829541684621778,
+              0.2899881026927104
+            ],
+            "width_mm": 7.033934230532612,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.2829541684621778,
+              0.2899881026927104,
+              0.2829541684621778,
+              0.2864711355774441,
+              0.2899881026927104,
+              0.28471265201981094,
+              0.2829541684621778,
+              0.28559189379862754,
+              0.28383341024099434,
+              0.2851522729092193,
+              0.2842730311304026,
+              0.2849324624645151,
+              0.28515227290921924,
+              0.28482255724216304,
+              0.28504236768686714,
+              0.28487750985333904
+            ]
+          },
+          "nm-box95-npe": {
+            "record": "results/measured/box95-npe-loo-ensemble-b1-p4/cactus_needle.json",
+            "sha256": "7128b8f906702b5a6d0fc8a191f807610aa388285faaa24dd0faf35a0052ee22",
+            "git_commit": "901c04e",
+            "threads": 3,
+            "numerics": 3,
+            "z01": 0.2849562332030126,
+            "minus_paper2_nm_um": 756.2332030126017,
+            "minus_paper2_visual_um": 756.2332030126017,
+            "minus_nm_cold_um": 28.10820301257788,
+            "same_as_nm_cold": true,
+            "mfe": 0.00022955299937166274,
+            "mfe_ppm": 1.0776719370220178,
+            "n_reconstructions": 10,
+            "n_evaluations": 16,
+            "converged": true,
+            "seconds": 2108.512875854998,
+            "seconds_per_reconstruction": 210.84612147720472,
+            "minutes_at_3_threads": 36.82930543186456,
+            "bounds": [
+              0.2822506099179333,
+              0.29012151401998226
+            ],
+            "width_mm": 7.870904102048937,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.2822506099179333,
+              0.29012151401998226,
+              0.2822506099179333,
+              0.2861860619689578,
+              0.29012151401998226,
+              0.2842183359434456,
+              0.2822506099179334,
+              0.2852021989562017,
+              0.2861860619689578,
+              0.28471026744982364,
+              0.28421833594344553,
+              0.2849562332030126,
+              0.28520219895620164,
+              0.2848332503264181,
+              0.2850792160796071,
+              0.28489474176471535
+            ]
+          },
+          "brent-cold": {
+            "record": "results/measured/brent-b1-p4/cactus_needle.json",
+            "sha256": "eaf6ba1c9b0c6a9e7eabe76bf7989abc139b9bc37e9626b1c570cb133a4504e5",
+            "git_commit": "72c432a",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.2848863225531262,
+            "minus_paper2_nm_um": 686.3225531261729,
+            "minus_paper2_visual_um": 686.3225531261729,
+            "minus_nm_cold_um": -41.802446873850926,
+            "same_as_nm_cold": true,
+            "mfe": 0.00022955478925723583,
+            "mfe_ppm": 0.2535676815185184,
+            "n_reconstructions": 5,
+            "n_evaluations": 5,
+            "converged": true,
+            "seconds": 1116.5695336580102,
+            "seconds_per_reconstruction": 223.310869765206,
+            "minutes_at_3_threads": 18.41465271593228,
+            "bounds": [
+              0.2811,
+              0.2911
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.284919660112501,
+              0.28728033988749896,
+              0.2834606797749979,
+              0.2848863225531262,
+              0.28485298499424583
+            ]
+          },
+          "brent-box95-cnn": {
+            "record": "results/measured/brent-box95-cnn-loo-ensemble-b1-p4/cactus_needle.json",
+            "sha256": "b7769ba373ae9743cac8768f2f00639f73778b51ddc4bea702c37aa8d4c62b0a",
+            "git_commit": "7a0f7ed",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.2849225986307161,
+            "minus_paper2_nm_um": 722.5986307161091,
+            "minus_paper2_visual_um": 722.5986307161091,
+            "minus_nm_cold_um": -5.5263692839147005,
+            "same_as_nm_cold": true,
+            "mfe": 0.0002295547747053206,
+            "mfe_ppm": 0.1901757611388888,
+            "n_reconstructions": 6,
+            "n_evaluations": 6,
+            "converged": true,
+            "seconds": 1311.8556852860202,
+            "seconds_per_reconstruction": 218.6407954171688,
+            "minutes_at_3_threads": 22.09758325911874,
+            "bounds": [
+              0.2829541684621778,
+              0.2899881026927104
+            ],
+            "width_mm": 7.033934230532612,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.2856408922636099,
+              0.28730137889127827,
+              0.2846146550898462,
+              0.2849225986307161,
+              0.28488926107129764,
+              0.28495593619013454
+            ]
+          },
+          "brent-box95-npe": {
+            "record": "results/measured/brent-box95-npe-loo-ensemble-b1-p4/cactus_needle.json",
+            "sha256": "e0f937f25468ef09e63763b6769a3111bd61444f4286b58d915e55fb3ebfc97f",
+            "git_commit": "ccaf6dd",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.28494458997814515,
+            "minus_paper2_nm_um": 744.5899781451382,
+            "minus_paper2_visual_um": 744.5899781451382,
+            "minus_nm_cold_um": 16.464978145114273,
+            "same_as_nm_cold": true,
+            "mfe": 0.00022955476015340537,
+            "mfe_ppm": 0.1267838407592592,
+            "n_reconstructions": 6,
+            "n_evaluations": 6,
+            "converged": true,
+            "seconds": 1793.9423224839848,
+            "seconds_per_reconstruction": 298.9881074870015,
+            "minutes_at_3_threads": 22.09758325911874,
+            "bounds": [
+              0.2822506099179333,
+              0.29012151401998226
+            ],
+            "width_mm": 7.870904102048937,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.28525702776272505,
+              0.28711509617519054,
+              0.28410867833039877,
+              0.284911252418895,
+              0.28494458997814515,
+              0.28497792753788975
+            ]
+          }
+        },
+        "savings": {
+          "nm-cold - nm-box95-cnn": {
+            "saved": 1,
+            "relative": 0.07692307692307687
+          },
+          "nm-cold-repeat - nm-box95-cnn": {
+            "saved": 1,
+            "relative": 0.07692307692307687
+          },
+          "brent-cold - brent-box95-cnn": {
+            "saved": -1,
+            "relative": -0.19999999999999996
+          },
+          "nm-cold - nm-box95-npe": {
+            "saved": 3,
+            "relative": 0.23076923076923073
+          },
+          "nm-cold-repeat - nm-box95-npe": {
+            "saved": 3,
+            "relative": 0.23076923076923073
+          },
+          "brent-cold - brent-box95-npe": {
+            "saved": -1,
+            "relative": -0.19999999999999996
+          }
+        }
+      },
+      "magnesium_wire": {
+        "paper2": {
+          "z01_nm": 0.4708,
+          "z01_visual": 0.4707
+        },
+        "seconds_per_reconstruction_3_threads": 216.0994742807869,
+        "searches": {
+          "nm-cold": {
+            "record": "results/measured/b1-p4/magnesium_wire.json",
+            "sha256": "6e068110dc3d66379046ed09dcb2439052896045fea0e60ed676e5eb5e005a5b",
+            "git_commit": "3f7f87e",
+            "threads": 3,
+            "numerics": 3,
+            "z01": 0.471228125,
+            "minus_paper2_nm_um": 428.1250000000014,
+            "minus_paper2_visual_um": 528.1249999999905,
+            "minus_nm_cold_um": 0.0,
+            "same_as_nm_cold": true,
+            "mfe": 0.0011739188339561224,
+            "mfe_ppm": 0.297504443524943,
+            "n_reconstructions": 12,
+            "n_evaluations": 16,
+            "converged": true,
+            "seconds": 2548.227050362999,
+            "seconds_per_reconstruction": 212.34926010016594,
+            "minutes_at_3_threads": 43.219894856157374,
+            "bounds": [
+              0.4674,
+              0.4774
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.4674,
+              0.4774,
+              0.4674,
+              0.4724,
+              0.4774,
+              0.4699,
+              0.4749,
+              0.47114999999999996,
+              0.4699,
+              0.471775,
+              0.47052499999999997,
+              0.47146249999999995,
+              0.47083749999999996,
+              0.47130625,
+              0.47146249999999995,
+              0.471228125
+            ]
+          },
+          "nm-cold-repeat": {
+            "record": "results/measured/b1-p4-repeat/magnesium_wire.json",
+            "sha256": "52f8f7bb8624c255873fe0c5f6bd4923df835421dff730f41a6b356fc297ac04",
+            "git_commit": "c1ffb00",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.471228125,
+            "minus_paper2_nm_um": 428.1250000000014,
+            "minus_paper2_visual_um": 528.1249999999905,
+            "minus_nm_cold_um": 0.0,
+            "same_as_nm_cold": true,
+            "mfe": 0.0011739259352907538,
+            "mfe_ppm": 0.5950054646763903,
+            "n_reconstructions": 13,
+            "n_evaluations": 16,
+            "converged": true,
+            "seconds": 2982.0326684660104,
+            "seconds_per_reconstruction": 229.3819888063053,
+            "minutes_at_3_threads": 46.82155276083716,
+            "bounds": [
+              0.4674,
+              0.4774
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.4674,
+              0.4774,
+              0.4674,
+              0.4724,
+              0.4774,
+              0.4699,
+              0.4749,
+              0.47114999999999996,
+              0.4699,
+              0.471775,
+              0.47052499999999997,
+              0.47146249999999995,
+              0.47083749999999996,
+              0.47130625,
+              0.47099375,
+              0.471228125
+            ]
+          },
+          "nm-box95-cnn": {
+            "record": "results/measured/box95-cnn-loo-ensemble-b1-p4/magnesium_wire.json",
+            "sha256": "8ef2651221eda2fe97719c3200106fd539ce7aacbc0eaaf82f8633d71a3b93a3",
+            "git_commit": "901c04e",
+            "threads": 1,
+            "numerics": 1,
+            "z01": 0.47123688959042953,
+            "minus_paper2_nm_um": 436.88959042953445,
+            "minus_paper2_visual_um": 536.8895904295234,
+            "minus_nm_cold_um": 8.764590429533037,
+            "same_as_nm_cold": true,
+            "mfe": 0.001173926517367363,
+            "mfe_ppm": 1.090843351869708,
+            "n_reconstructions": 9,
+            "n_evaluations": 14,
+            "converged": true,
+            "seconds": 4967.685313925991,
+            "seconds_per_reconstruction": 551.9619762574471,
+            "minutes_at_3_threads": 32.41492114211803,
+            "bounds": [
+              0.4674,
+              0.4732466888997023
+            ],
+            "width_mm": 5.846688899702301,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.4674,
+              0.4732466888997023,
+              0.4732466888997023,
+              0.47032334444985113,
+              0.4674,
+              0.4717850166747767,
+              0.47324668889970223,
+              0.4710541805623139,
+              0.47032334444985113,
+              0.47141959861854527,
+              0.47068876250608255,
+              0.47123688959042953,
+              0.4714195986185452,
+              0.47114553507637175
+            ]
+          },
+          "nm-box95-npe": {
+            "record": "results/measured/box95-npe-loo-ensemble-b1-p4/magnesium_wire.json",
+            "sha256": "93996b3b61db67591efc4cb6f784dd6cdb48bd1070a093036a65b0449a913759",
+            "git_commit": "901c04e",
+            "threads": 3,
+            "numerics": 3,
+            "z01": 0.47122949851532686,
+            "minus_paper2_nm_um": 429.4985153268649,
+            "minus_paper2_visual_um": 529.4985153268539,
+            "minus_nm_cold_um": 1.3735153268634726,
+            "same_as_nm_cold": true,
+            "mfe": 0.001173918484710157,
+            "mfe_ppm": 0.0,
+            "n_reconstructions": 12,
+            "n_evaluations": 16,
+            "converged": true,
+            "seconds": 2549.8282128039864,
+            "seconds_per_reconstruction": 212.4775020645005,
+            "minutes_at_3_threads": 43.219894856157374,
+            "bounds": [
+              0.4676355689501188,
+              0.4754325686848073
+            ],
+            "width_mm": 7.796999734688503,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.4676355689501188,
+              0.4754325686848073,
+              0.4676355689501188,
+              0.47153406881746307,
+              0.4754325686848073,
+              0.46958481888379094,
+              0.47348331875113525,
+              0.47055944385062703,
+              0.47250869378429916,
+              0.4710467563340451,
+              0.4705594438506271,
+              0.4712904125757541,
+              0.47153406881746307,
+              0.47116858445489956,
+              0.4714122406966086,
+              0.47122949851532686
+            ]
+          },
+          "brent-cold": {
+            "record": "results/measured/brent-b1-p4/magnesium_wire.json",
+            "sha256": "7a0a5188611d788436ed8d44ce6d2547b30bdef3edf08b281b7ee21128d1376a",
+            "git_commit": "d66bed7",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.4711863197898506,
+            "minus_paper2_nm_um": 386.31978985059766,
+            "minus_paper2_visual_um": 486.31978985058663,
+            "minus_nm_cold_um": -41.80521014940375,
+            "same_as_nm_cold": true,
+            "mfe": 0.0011739253532141447,
+            "mfe_ppm": 0.09916757748307248,
+            "n_reconstructions": 9,
+            "n_evaluations": 9,
+            "converged": true,
+            "seconds": 1965.8043850290123,
+            "seconds_per_reconstruction": 218.4203256079992,
+            "minutes_at_3_threads": 32.41492114211803,
+            "bounds": [
+              0.4674,
+              0.4774
+            ],
+            "width_mm": 10.000000000000009,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.471219660112501,
+              0.47358033988749887,
+              0.46976067977499786,
+              0.47128153529505473,
+              0.4711863197898506,
+              0.47064177375989874,
+              0.4709783217148478,
+              0.4711068715947941,
+              0.4711529794676947
+            ]
+          },
+          "brent-box95-cnn": {
+            "record": "results/measured/brent-box95-cnn-loo-ensemble-b1-p4/magnesium_wire.json",
+            "sha256": "17793bd9b029bf0c0f27999d164543a669122e2cf7e8f498aca417cf322954b0",
+            "git_commit": "79e6a59",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.47124507514353414,
+            "minus_paper2_nm_um": 445.07514353414604,
+            "minus_paper2_visual_um": 545.075143534135,
+            "minus_nm_cold_um": 16.95014353414459,
+            "same_as_nm_cold": true,
+            "mfe": 0.0011739269830286503,
+            "mfe_ppm": 1.4875136615799534,
+            "n_reconstructions": 6,
+            "n_evaluations": 6,
+            "converged": true,
+            "seconds": 1267.2480316979927,
+            "seconds_per_reconstruction": 211.20600769133307,
+            "minutes_at_3_threads": 21.609947428078687,
+            "bounds": [
+              0.4674,
+              0.4732466888997023
+            ],
+            "width_mm": 5.846688899702301,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.46963323643803956,
+              0.4710134524616627,
+              0.47186647287607913,
+              0.47124507514353414,
+              0.4712117348205068,
+              0.4712784154665615
+            ]
+          },
+          "brent-box95-npe": {
+            "record": "results/measured/brent-box95-npe-loo-ensemble-b1-p4/magnesium_wire.json",
+            "sha256": "d9f033307f87308adb2693c7f9b33da63499acf0978c77b4b883964d65639f48",
+            "git_commit": "00f08ab",
+            "threads": 3,
+            "numerics": 1,
+            "z01": 0.4712248223649824,
+            "minus_paper2_nm_um": 424.8223649824245,
+            "minus_paper2_visual_um": 524.8223649824135,
+            "minus_nm_cold_um": -3.3026350175768826,
+            "same_as_nm_cold": true,
+            "mfe": 0.0011739252367988229,
+            "mfe_ppm": 0.0,
+            "n_reconstructions": 7,
+            "n_evaluations": 7,
+            "converged": true,
+            "seconds": 1496.464166167978,
+            "seconds_per_reconstruction": 213.7786229535746,
+            "minutes_at_3_threads": 25.211605332758474,
+            "bounds": [
+              0.4676355689501188,
+              0.4754325686848073
+            ],
+            "width_mm": 7.796999734688503,
+            "paper2_nm_inside": true,
+            "nm_cold_inside": true,
+            "evaluated": [
+              0.4706137578384959,
+              0.47245437979643023,
+              0.46947619090805315,
+              0.47125816268820386,
+              0.4712248223649824,
+              0.47113785391258894,
+              0.4711914820422554
+            ]
+          }
+        },
+        "savings": {
+          "nm-cold - nm-box95-cnn": {
+            "saved": 3,
+            "relative": 0.25
+          },
+          "nm-cold-repeat - nm-box95-cnn": {
+            "saved": 4,
+            "relative": 0.3076923076923077
+          },
+          "brent-cold - brent-box95-cnn": {
+            "saved": 3,
+            "relative": 0.33333333333333337
+          },
+          "nm-cold - nm-box95-npe": {
+            "saved": 0,
+            "relative": 0.0
+          },
+          "nm-cold-repeat - nm-box95-npe": {
+            "saved": 1,
+            "relative": 0.07692307692307687
+          },
+          "brent-cold - brent-box95-npe": {
+            "saved": 2,
+            "relative": 0.2222222222222222
+          }
+        }
+      }
+    },
+    "totals": {
+      "nm-cold": {
+        "samples": [
+          "spider_hair",
+          "tooth",
+          "cactus_needle",
+          "magnesium_wire"
+        ],
+        "n_reconstructions": 49,
+        "minutes_at_3_threads": 176.66219040644464,
+        "within_100um_of_paper2_nm": 1,
+        "same_as_nm_cold": 4,
+        "max_abs_minus_nm_cold_um": 0.0
+      },
+      "nm-cold-repeat": {
+        "samples": [
+          "spider_hair",
+          "tooth",
+          "cactus_needle",
+          "magnesium_wire"
+        ],
+        "n_reconstructions": 50,
+        "minutes_at_3_threads": 180.26384831112443,
+        "within_100um_of_paper2_nm": 1,
+        "same_as_nm_cold": 4,
+        "max_abs_minus_nm_cold_um": 0.0
+      },
+      "nm-box95-cnn": {
+        "samples": [
+          "spider_hair",
+          "tooth",
+          "cactus_needle",
+          "magnesium_wire"
+        ],
+        "n_reconstructions": 41,
+        "minutes_at_3_threads": 147.89407916964902,
+        "within_100um_of_paper2_nm": 1,
+        "same_as_nm_cold": 4,
+        "max_abs_minus_nm_cold_um": 8.764590429533037
+      },
+      "nm-box95-npe": {
+        "samples": [
+          "spider_hair",
+          "tooth",
+          "cactus_needle",
+          "magnesium_wire"
+        ],
+        "n_reconstructions": 42,
+        "minutes_at_3_threads": 151.33319179731544,
+        "within_100um_of_paper2_nm": 1,
+        "same_as_nm_cold": 4,
+        "max_abs_minus_nm_cold_um": 43.35739774682934
+      },
+      "brent-cold": {
+        "samples": [
+          "spider_hair",
+          "tooth",
+          "cactus_needle",
+          "magnesium_wire"
+        ],
+        "n_reconstructions": 30,
+        "minutes_at_3_threads": 107.85401310340146,
+        "within_100um_of_paper2_nm": 0,
+        "same_as_nm_cold": 3,
+        "max_abs_minus_nm_cold_um": 626.1151441823848
+      },
+      "brent-box95-cnn": {
+        "samples": [
+          "spider_hair",
+          "tooth",
+          "cactus_needle",
+          "magnesium_wire"
+        ],
+        "n_reconstructions": 28,
+        "minutes_at_3_threads": 100.74573974296688,
+        "within_100um_of_paper2_nm": 1,
+        "same_as_nm_cold": 4,
+        "max_abs_minus_nm_cold_um": 16.95014353414459
+      },
+      "brent-box95-npe": {
+        "samples": [
+          "spider_hair",
+          "tooth",
+          "cactus_needle",
+          "magnesium_wire"
+        ],
+        "n_reconstructions": 27,
+        "minutes_at_3_threads": 97.21073661046633,
+        "within_100um_of_paper2_nm": 1,
+        "same_as_nm_cold": 4,
+        "max_abs_minus_nm_cold_um": 56.92691619250956
+      }
+    }
+  },
+  "synthetic": {
+    "searches": {
+      "nm-cold": {
+        "folder": "results/baseline/cpu-4x-test",
+        "what": "Nelder-Mead in Omega_z (Stage 3)",
+        "search": {
+          "confidence": 0.005,
+          "xatol": 0.0001,
+          "fatol": 1000000.0,
+          "max_evaluations": null
+        },
+        "box": null,
+        "threads": [
+          3
+        ]
+      },
+      "nm-cold-repeat": {
+        "folder": "results/baseline/cpu-4x-test-repeat",
+        "what": "the same on 8 samples, numerics of this stage",
+        "search": {
+          "confidence": 0.005,
+          "xatol": 0.0001,
+          "fatol": 1000000.0,
+          "max_evaluations": null
+        },
+        "box": null,
+        "threads": [
+          3
+        ]
+      },
+      "brent-cold": {
+        "folder": "results/baseline/cpu-4x-test-brent",
+        "what": "Brent in Omega_z",
+        "search": {
+          "confidence": 0.005,
+          "xatol": 0.0001,
+          "fatol": 1000000.0,
+          "max_evaluations": null,
+          "method": "brent"
+        },
+        "box": null,
+        "threads": [
+          1,
+          3
+        ]
+      },
+      "nm-box95-npe": {
+        "folder": "results/baseline/cpu-4x-test-box95-npe-ensemble",
+        "what": "Nelder-Mead in the 95 % interval of the NPE ensemble",
+        "search": {
+          "confidence": 0.005,
+          "xatol": 0.0001,
+          "fatol": 1000000.0,
+          "max_evaluations": null
+        },
+        "box": {
+          "source": "results/npe/npe-nsf-ensemble/test/predictions.csv",
+          "sha256": "1a51d9627e44041ac7116051e72c1eef00138ec1ad66c789193709be9510fa9f",
+          "level": "95"
+        },
+        "threads": [
+          1,
+          3
+        ]
+      },
+      "brent-box95-npe": {
+        "folder": "results/baseline/cpu-4x-test-brent-box95-npe-ensemble",
+        "what": "Brent in the 95 % interval of the NPE ensemble",
+        "search": {
+          "confidence": 0.005,
+          "xatol": 0.0001,
+          "fatol": 1000000.0,
+          "max_evaluations": null,
+          "method": "brent"
+        },
+        "box": {
+          "source": "results/npe/npe-nsf-ensemble/test/predictions.csv",
+          "sha256": "1a51d9627e44041ac7116051e72c1eef00138ec1ad66c789193709be9510fa9f",
+          "level": "95"
+        },
+        "threads": [
+          1,
+          3
+        ]
+      },
+      "nm-box95-cnn": {
+        "folder": "results/baseline/cpu-4x-test-box95-cnn",
+        "what": "Nelder-Mead in the 95 % interval of the CNN",
+        "search": {
+          "confidence": 0.005,
+          "xatol": 0.0001,
+          "fatol": 1000000.0,
+          "max_evaluations": null
+        },
+        "box": {
+          "source": "results/stage9/intervals-cnn-test.csv",
+          "sha256": "402df316a98cef2a37699aba900dc8d9e1a91dfac72ec06a3df11d032f5e4c41",
+          "level": "95"
+        },
+        "threads": [
+          1,
+          3
+        ]
+      },
+      "brent-box95-cnn": {
+        "folder": "results/baseline/cpu-4x-test-brent-box95-cnn",
+        "what": "Brent in the 95 % interval of the CNN",
+        "search": {
+          "confidence": 0.005,
+          "xatol": 0.0001,
+          "fatol": 1000000.0,
+          "max_evaluations": null,
+          "method": "brent"
+        },
+        "box": {
+          "source": "results/stage9/intervals-cnn-test.csv",
+          "sha256": "402df316a98cef2a37699aba900dc8d9e1a91dfac72ec06a3df11d032f5e4c41",
+          "level": "95"
+        },
+        "threads": [
+          1,
+          3
+        ]
+      }
+    },
+    "seconds_per_reconstruction": {
+      "1": 84.5254106769379,
+      "3": 31.865452759615298
+    },
+    "summaries": {
+      "nm-cold": {
+        "n_samples": 48,
+        "mae_um": 165.6034391837487,
+        "mae_um_ci": [
+          127.53668650128282,
+          213.52793009944492
+        ],
+        "median_abs_um": 124.33584386714602,
+        "p90_abs_um": 288.53570614558595,
+        "max_abs_um": 799.4088477877581,
+        "within_um": {
+          "50": 0.14583333333333334,
+          "100": 0.3125,
+          "250": 0.8333333333333334,
+          "1000": 1.0
+        },
+        "within_100um_ci": [
+          0.1875,
+          0.4375
+        ],
+        "reconstructions": 11.145833333333334,
+        "reconstructions_ci": [
+          10.833333333333334,
+          11.4375
+        ],
+        "reconstructions_range": [
+          9,
+          13
+        ],
+        "converged": 1.0,
+        "minutes_at_3_threads": 5.9194504258313145
+      },
+      "nm-cold-repeat": {
+        "n_samples": 8,
+        "mae_um": 152.37384800470022,
+        "mae_um_ci": [
+          124.22353697955079,
+          180.435250458218
+        ],
+        "median_abs_um": 147.68986884219208,
+        "p90_abs_um": 201.03106353225735,
+        "max_abs_um": 216.7134573075602,
+        "within_um": {
+          "50": 0.0,
+          "100": 0.125,
+          "250": 1.0,
+          "1000": 1.0
+        },
+        "within_100um_ci": [
+          0.0,
+          0.375
+        ],
+        "reconstructions": 11.5,
+        "reconstructions_ci": [
+          10.875,
+          12.125
+        ],
+        "reconstructions_range": [
+          10,
+          13
+        ],
+        "converged": 1.0,
+        "minutes_at_3_threads": 6.107545112259599,
+        "mfe_vs_nm_cold_ppm": {
+          "median": 1.1221141538175772,
+          "higher": 0,
+          "lower": 0
+        }
+      },
+      "brent-cold": {
+        "n_samples": 48,
+        "mae_um": 164.47556723942455,
+        "mae_um_ci": [
+          118.98535557059871,
+          227.25766435230665
+        ],
+        "median_abs_um": 133.73207951046516,
+        "p90_abs_um": 265.46248343166934,
+        "max_abs_um": 1228.6755598677062,
+        "within_um": {
+          "50": 0.1875,
+          "100": 0.3541666666666667,
+          "250": 0.875,
+          "1000": 0.9791666666666666
+        },
+        "within_100um_ci": [
+          0.22916666666666666,
+          0.5
+        ],
+        "reconstructions": 8.166666666666666,
+        "reconstructions_ci": [
+          7.791666666666667,
+          8.541666666666666
+        ],
+        "reconstructions_range": [
+          5,
+          11
+        ],
+        "converged": 1.0,
+        "minutes_at_3_threads": 4.337242181169859,
+        "mfe_vs_nm_cold_ppm": {
+          "median": -11.88928999018568,
+          "higher": 3,
+          "lower": 6
+        }
+      },
+      "nm-box95-npe": {
+        "n_samples": 48,
+        "mae_um": 141.8508499255967,
+        "mae_um_ci": [
+          115.88683761307948,
+          169.68509970454195
+        ],
+        "median_abs_um": 139.02725158202594,
+        "p90_abs_um": 250.52246839171465,
+        "max_abs_um": 507.8318513241503,
+        "within_um": {
+          "50": 0.16666666666666666,
+          "100": 0.3541666666666667,
+          "250": 0.8958333333333334,
+          "1000": 1.0
+        },
+        "within_100um_ci": [
+          0.22916666666666666,
+          0.5
+        ],
+        "reconstructions": 6.666666666666667,
+        "reconstructions_ci": [
+          6.333333333333333,
+          7.0
+        ],
+        "reconstructions_range": [
+          5,
+          9
+        ],
+        "converged": 1.0,
+        "minutes_at_3_threads": 3.5406058621794774,
+        "mfe_vs_nm_cold_ppm": {
+          "median": -4.044545391657106,
+          "higher": 5,
+          "lower": 8
+        },
+        "truth_outside": 2,
+        "mae_um_truth_inside": 132.03343926903813
+      },
+      "brent-box95-npe": {
+        "n_samples": 48,
+        "mae_um": 135.77511541164148,
+        "mae_um_ci": [
+          110.247913756138,
+          164.9125453391902
+        ],
+        "median_abs_um": 122.9899281921798,
+        "p90_abs_um": 243.82012808316517,
+        "max_abs_um": 548.0846334354472,
+        "within_um": {
+          "50": 0.1875,
+          "100": 0.3541666666666667,
+          "250": 0.8958333333333334,
+          "1000": 1.0
+        },
+        "within_100um_ci": [
+          0.22916666666666666,
+          0.5
+        ],
+        "reconstructions": 5.8125,
+        "reconstructions_ci": [
+          5.520833333333333,
+          6.125
+        ],
+        "reconstructions_range": [
+          4,
+          9
+        ],
+        "converged": 1.0,
+        "minutes_at_3_threads": 3.0869657360877323,
+        "mfe_vs_nm_cold_ppm": {
+          "median": -4.259993815924901,
+          "higher": 4,
+          "lower": 6
+        },
+        "truth_outside": 2,
+        "mae_um_truth_inside": 124.63808506131606
+      },
+      "nm-box95-cnn": {
+        "n_samples": 48,
+        "mae_um": 171.28451556578898,
+        "mae_um_ci": [
+          126.65782677572359,
+          228.9995438450746
+        ],
+        "median_abs_um": 138.26462418812383,
+        "p90_abs_um": 279.204665555534,
+        "max_abs_um": 1101.8448892200634,
+        "within_um": {
+          "50": 0.1875,
+          "100": 0.3333333333333333,
+          "250": 0.8125,
+          "1000": 0.9791666666666666
+        },
+        "within_100um_ci": [
+          0.20833333333333334,
+          0.4791666666666667
+        ],
+        "reconstructions": 6.791666666666667,
+        "reconstructions_ci": [
+          6.4375,
+          7.146354166666659
+        ],
+        "reconstructions_range": [
+          5,
+          10
+        ],
+        "converged": 1.0,
+        "minutes_at_3_threads": 3.606992222095343,
+        "mfe_vs_nm_cold_ppm": {
+          "median": 0.36814978154886546,
+          "higher": 11,
+          "lower": 7
+        },
+        "truth_outside": 6,
+        "mae_um_truth_inside": 154.71877794916614
+      },
+      "brent-box95-cnn": {
+        "n_samples": 48,
+        "mae_um": 160.58295396634685,
+        "mae_um_ci": [
+          120.11093284824828,
+          214.25140467582074
+        ],
+        "median_abs_um": 130.34488599134033,
+        "p90_abs_um": 273.0953339779505,
+        "max_abs_um": 1150.8094311740713,
+        "within_um": {
+          "50": 0.16666666666666666,
+          "100": 0.3541666666666667,
+          "250": 0.8333333333333334,
+          "1000": 0.9791666666666666
+        },
+        "within_100um_ci": [
+          0.22916666666666666,
+          0.5
+        ],
+        "reconstructions": 5.625,
+        "reconstructions_ci": [
+          5.416666666666667,
+          5.833333333333333
+        ],
+        "reconstructions_range": [
+          5,
+          8
+        ],
+        "converged": 1.0,
+        "minutes_at_3_threads": 2.9873861962139343,
+        "mfe_vs_nm_cold_ppm": {
+          "median": -8.583987966992446,
+          "higher": 9,
+          "lower": 7
+        },
+        "truth_outside": 6,
+        "mae_um_truth_inside": 135.01003522852534
+      }
+    },
+    "savings": {
+      "npe": {
+        "searches": [
+          "nm-cold",
+          "nm-box95-npe",
+          "brent-cold",
+          "brent-box95-npe"
+        ],
+        "width_um": {
+          "median": 894.4285189012787,
+          "range": [
+            417.88252295694997,
+            3805.6901767154204
+          ]
+        },
+        "truth_inside": 46,
+        "n_samples": 48,
+        "nm": {
+          "cold": 11.145833333333334,
+          "box": 6.666666666666667,
+          "saved": 4.479166666666667,
+          "saved_ci": [
+            4.041666666666667,
+            4.916666666666667
+          ],
+          "relative": 0.4018691588785047,
+          "relative_ci": [
+            0.367816091954023,
+            0.4347846031112884
+          ],
+          "fewer": 48,
+          "same": 0,
+          "more": 0
+        },
+        "brent": {
+          "cold": 8.166666666666666,
+          "box": 5.8125,
+          "saved": 2.3541666666666665,
+          "saved_ci": [
+            1.8958333333333333,
+            2.7916666666666665
+          ],
+          "relative": 0.28826530612244894,
+          "relative_ci": [
+            0.23896103896103893,
+            0.3315940113031696
+          ],
+          "fewer": 44,
+          "same": 1,
+          "more": 3
+        },
+        "brent_minus_nm": {
+          "saved": -2.125,
+          "saved_ci": [
+            -2.7083333333333335,
+            -1.5625
+          ],
+          "relative": -0.11360385275605578,
+          "relative_ci": [
+            -0.16437913512879185,
+            -0.06619428961926832
+          ]
+        },
+        "by_width": [
+          {
+            "width_um": [
+              417.88252295694997,
+              746.1785272045579
+            ],
+            "n_samples": 16,
+            "nm": {
+              "cold": 11.1875,
+              "box": 5.4375,
+              "saved": 5.75,
+              "relative": 0.5139664804469274
+            },
+            "brent": {
+              "cold": 8.25,
+              "box": 5.4375,
+              "saved": 2.8125,
+              "relative": 0.34090909090909094
+            }
+          },
+          {
+            "width_um": [
+              778.7837106159462,
+              969.6048714881999
+            ],
+            "n_samples": 16,
+            "nm": {
+              "cold": 11.1875,
+              "box": 7.125,
+              "saved": 4.0625,
+              "relative": 0.36312849162011174
+            },
+            "brent": {
+              "cold": 7.9375,
+              "box": 5.375,
+              "saved": 2.5625,
+              "relative": 0.3228346456692913
+            }
+          },
+          {
+            "width_um": [
+              991.599105230237,
+              3805.6901767154204
+            ],
+            "n_samples": 16,
+            "nm": {
+              "cold": 11.0625,
+              "box": 7.4375,
+              "saved": 3.625,
+              "relative": 0.327683615819209
+            },
+            "brent": {
+              "cold": 8.3125,
+              "box": 6.625,
+              "saved": 1.6875,
+              "relative": 0.20300751879699253
+            }
+          }
+        ]
+      },
+      "cnn": {
+        "searches": [
+          "nm-cold",
+          "nm-box95-cnn",
+          "brent-cold",
+          "brent-box95-cnn"
+        ],
+        "width_um": {
+          "median": 933.7622533927836,
+          "range": [
+            529.035600861455,
+            1827.3498479963735
+          ]
+        },
+        "truth_inside": 42,
+        "n_samples": 48,
+        "nm": {
+          "cold": 11.145833333333334,
+          "box": 6.791666666666667,
+          "saved": 4.354166666666667,
+          "saved_ci": [
+            3.8541666666666665,
+            4.854166666666667
+          ],
+          "relative": 0.39065420560747666,
+          "relative_ci": [
+            0.35130111524163576,
+            0.4285714285714286
+          ],
+          "fewer": 47,
+          "same": 1,
+          "more": 0
+        },
+        "brent": {
+          "cold": 8.166666666666666,
+          "box": 5.625,
+          "saved": 2.5416666666666665,
+          "saved_ci": [
+            2.125,
+            2.9583333333333335
+          ],
+          "relative": 0.3112244897959183,
+          "relative_ci": [
+            0.27005347593582896,
+            0.3490158092442408
+          ],
+          "fewer": 44,
+          "same": 3,
+          "more": 1
+        },
+        "brent_minus_nm": {
+          "saved": -1.8125,
+          "saved_ci": [
+            -2.5416666666666665,
+            -1.1041666666666667
+          ],
+          "relative": -0.07942971581155833,
+          "relative_ci": [
+            -0.14143368394248076,
+            -0.021224614420766817
+          ]
+        },
+        "by_width": [
+          {
+            "width_um": [
+              529.035600861455,
+              784.9100858863534
+            ],
+            "n_samples": 16,
+            "nm": {
+              "cold": 11.5,
+              "box": 5.5,
+              "saved": 6.0,
+              "relative": 0.5217391304347826
+            },
+            "brent": {
+              "cold": 7.9375,
+              "box": 5.3125,
+              "saved": 2.625,
+              "relative": 0.3307086614173228
+            }
+          },
+          {
+            "width_um": [
+              796.1623841164222,
+              1132.7597392115085
+            ],
+            "n_samples": 16,
+            "nm": {
+              "cold": 10.9375,
+              "box": 7.375,
+              "saved": 3.5625,
+              "relative": 0.32571428571428573
+            },
+            "brent": {
+              "cold": 8.3125,
+              "box": 5.375,
+              "saved": 2.9375,
+              "relative": 0.3533834586466166
+            }
+          },
+          {
+            "width_um": [
+              1141.3495114688255,
+              1827.3498479963735
+            ],
+            "n_samples": 16,
+            "nm": {
+              "cold": 11.0,
+              "box": 7.5,
+              "saved": 3.5,
+              "relative": 0.31818181818181823
+            },
+            "brent": {
+              "cold": 8.25,
+              "box": 6.1875,
+              "saved": 2.0625,
+              "relative": 0.25
+            }
+          }
+        ]
+      }
+    },
+    "pairs": {
+      "brent-cold vs nm-cold": {
+        "n_samples": 48,
+        "abs_error_difference_um": {
+          "mean": -1.1278719443241059,
+          "mean_ci": [
+            -50.7252756654399,
+            50.24690448239804
+          ],
+          "median": -3.5899017860191407
+        },
+        "within_100um": {
+          "both": 13,
+          "only_nm-cold": 2,
+          "only_brent-cold": 4,
+          "neither": 29,
+          "p_mcnemar": 0.6875
+        },
+        "results_apart_um": {
+          "median": 16.753364200948475,
+          "max": 1581.1394418457496,
+          "same": 0,
+          "within_xatol": 45
+        },
+        "reconstructions": {
+          "difference": -2.9791666666666665,
+          "difference_ci": [
+            -3.5,
+            -2.4583333333333335
+          ],
+          "relative_fewer": 0.2672897196261683,
+          "relative_fewer_ci": [
+            0.2241012804572126,
+            0.3088235294117647
+          ],
+          "fewer": 44,
+          "same": 2,
+          "more": 2
+        }
+      },
+      "brent-box95-npe vs nm-box95-npe": {
+        "n_samples": 48,
+        "abs_error_difference_um": {
+          "mean": -6.075734513955215,
+          "mean_ci": [
+            -14.290633294871594,
+            2.5641017555990446
+          ],
+          "median": -2.758275192991931
+        },
+        "within_100um": {
+          "both": 15,
+          "only_nm-box95-npe": 2,
+          "only_brent-box95-npe": 2,
+          "neither": 29,
+          "p_mcnemar": 1.0
+        },
+        "results_apart_um": {
+          "median": 26.225161886425653,
+          "max": 637.1759451365422,
+          "same": 0,
+          "within_xatol": 46
+        },
+        "reconstructions": {
+          "difference": -0.8541666666666666,
+          "difference_ci": [
+            -1.2291666666666667,
+            -0.4791666666666667
+          ],
+          "relative_fewer": 0.12812500000000004,
+          "relative_fewer_ci": [
+            0.07523510971786829,
+            0.17771084337349397
+          ],
+          "fewer": 29,
+          "same": 9,
+          "more": 10
+        }
+      },
+      "brent-box95-cnn vs nm-box95-cnn": {
+        "n_samples": 48,
+        "abs_error_difference_um": {
+          "mean": -10.701561599442124,
+          "mean_ci": [
+            -44.85612575725887,
+            10.522637184759663
+          ],
+          "median": 8.419332476777846
+        },
+        "within_100um": {
+          "both": 13,
+          "only_nm-box95-cnn": 3,
+          "only_brent-box95-cnn": 4,
+          "neither": 28,
+          "p_mcnemar": 1.0
+        },
+        "results_apart_um": {
+          "median": 22.271023554981674,
+          "max": 700.0840199201803,
+          "same": 0,
+          "within_xatol": 46
+        },
+        "reconstructions": {
+          "difference": -1.1666666666666667,
+          "difference_ci": [
+            -1.6041666666666667,
+            -0.75
+          ],
+          "relative_fewer": 0.17177914110429449,
+          "relative_fewer_ci": [
+            0.11392405063291144,
+            0.22514619883040943
+          ],
+          "fewer": 32,
+          "same": 9,
+          "more": 7
+        }
+      },
+      "nm-box95-npe vs nm-cold": {
+        "n_samples": 48,
+        "abs_error_difference_um": {
+          "mean": -23.75258925815197,
+          "mean_ci": [
+            -72.60196805118508,
+            17.519165850220993
+          ],
+          "median": -3.4824693099094866
+        },
+        "within_100um": {
+          "both": 12,
+          "only_nm-cold": 3,
+          "only_nm-box95-npe": 5,
+          "neither": 28,
+          "p_mcnemar": 0.7265625
+        },
+        "results_apart_um": {
+          "median": 27.730731592685853,
+          "max": 848.7575585960639,
+          "same": 0,
+          "within_xatol": 41
+        },
+        "reconstructions": {
+          "difference": -4.479166666666667,
+          "difference_ci": [
+            -4.916666666666667,
+            -4.041666666666667
+          ],
+          "relative_fewer": 0.4018691588785047,
+          "relative_fewer_ci": [
+            0.367816091954023,
+            0.4347846031112884
+          ],
+          "fewer": 48,
+          "same": 0,
+          "more": 0
+        }
+      },
+      "brent-box95-npe vs nm-cold": {
+        "n_samples": 48,
+        "abs_error_difference_um": {
+          "mean": -29.828323772107186,
+          "mean_ci": [
+            -80.61839608232042,
+            13.186719391007024
+          ],
+          "median": -10.47216198032941
+        },
+        "within_100um": {
+          "both": 12,
+          "only_nm-cold": 3,
+          "only_brent-box95-npe": 5,
+          "neither": 28,
+          "p_mcnemar": 0.7265625
+        },
+        "results_apart_um": {
+          "median": 25.49217474334675,
+          "max": 796.5164374656164,
+          "same": 0,
+          "within_xatol": 44
+        },
+        "reconstructions": {
+          "difference": -5.333333333333333,
+          "difference_ci": [
+            -5.770833333333333,
+            -4.875
+          ],
+          "relative_fewer": 0.47850467289719634,
+          "relative_fewer_ci": [
+            0.44528301886792454,
+            0.5082568807339449
+          ],
+          "fewer": 47,
+          "same": 1,
+          "more": 0
+        }
+      },
+      "nm-box95-cnn vs nm-cold": {
+        "n_samples": 48,
+        "abs_error_difference_um": {
+          "mean": 5.681076382040316,
+          "mean_ci": [
+            -40.01472276424248,
+            62.28301587567132
+          ],
+          "median": -17.296153726385768
+        },
+        "within_100um": {
+          "both": 11,
+          "only_nm-cold": 4,
+          "only_nm-box95-cnn": 5,
+          "neither": 28,
+          "p_mcnemar": 1.0
+        },
+        "results_apart_um": {
+          "median": 35.83298270735253,
+          "max": 1059.903952271596,
+          "same": 0,
+          "within_xatol": 41
+        },
+        "reconstructions": {
+          "difference": -4.354166666666667,
+          "difference_ci": [
+            -4.854166666666667,
+            -3.8541666666666665
+          ],
+          "relative_fewer": 0.39065420560747666,
+          "relative_fewer_ci": [
+            0.35130111524163576,
+            0.4285714285714286
+          ],
+          "fewer": 47,
+          "same": 1,
+          "more": 0
+        }
+      },
+      "brent-box95-cnn vs nm-cold": {
+        "n_samples": 48,
+        "abs_error_difference_um": {
+          "mean": -5.020485217401813,
+          "mean_ci": [
+            -65.6370319302888,
+            60.92988696177486
+          ],
+          "median": -11.698226873621543
+        },
+        "within_100um": {
+          "both": 10,
+          "only_nm-cold": 5,
+          "only_brent-box95-cnn": 7,
+          "neither": 26,
+          "p_mcnemar": 0.7744140625
+        },
+        "results_apart_um": {
+          "median": 27.688791758885557,
+          "max": 1108.8684942256039,
+          "same": 0,
+          "within_xatol": 38
+        },
+        "reconstructions": {
+          "difference": -5.520833333333333,
+          "difference_ci": [
+            -5.916666666666667,
+            -5.125
+          ],
+          "relative_fewer": 0.4953271028037384,
+          "relative_fewer_ci": [
+            0.4693486590038315,
+            0.5200729927007299
+          ],
+          "fewer": 48,
+          "same": 0,
+          "more": 0
+        }
+      },
+      "brent-box95-npe vs brent-cold": {
+        "n_samples": 48,
+        "abs_error_difference_um": {
+          "mean": -28.70045182778308,
+          "mean_ci": [
+            -82.26160317150773,
+            14.943176205181159
+          ],
+          "median": -8.564898539148444
+        },
+        "within_100um": {
+          "both": 15,
+          "only_brent-cold": 2,
+          "only_brent-box95-npe": 2,
+          "neither": 29,
+          "p_mcnemar": 1.0
+        },
+        "results_apart_um": {
+          "median": 13.136796840430842,
+          "max": 1589.787422098546,
+          "same": 0,
+          "within_xatol": 44
+        },
+        "reconstructions": {
+          "difference": -2.3541666666666665,
+          "difference_ci": [
+            -2.7916666666666665,
+            -1.8958333333333333
+          ],
+          "relative_fewer": 0.28826530612244894,
+          "relative_fewer_ci": [
+            0.23896103896103893,
+            0.3315940113031696
+          ],
+          "fewer": 44,
+          "same": 1,
+          "more": 3
+        }
+      },
+      "brent-box95-cnn vs brent-cold": {
+        "n_samples": 48,
+        "abs_error_difference_um": {
+          "mean": -3.892613273077707,
+          "mean_ci": [
+            -67.25236273496922,
+            61.58159269517761
+          ],
+          "median": -4.296755272518979
+        },
+        "within_100um": {
+          "both": 14,
+          "only_brent-cold": 3,
+          "only_brent-box95-cnn": 3,
+          "neither": 28,
+          "p_mcnemar": 1.0
+        },
+        "results_apart_um": {
+          "median": 11.771862421523782,
+          "max": 1608.6440359795868,
+          "same": 0,
+          "within_xatol": 38
+        },
+        "reconstructions": {
+          "difference": -2.5416666666666665,
+          "difference_ci": [
+            -2.9583333333333335,
+            -2.125
+          ],
+          "relative_fewer": 0.3112244897959183,
+          "relative_fewer_ci": [
+            0.27005347593582896,
+            0.3490158092442408
+          ],
+          "fewer": 44,
+          "same": 3,
+          "more": 1
+        }
+      },
+      "nm-cold-repeat vs nm-cold": {
+        "n_samples": 8,
+        "abs_error_difference_um": {
+          "mean": 0.0,
+          "mean_ci": [
+            0.0,
+            0.0
+          ],
+          "median": 0.0
+        },
+        "within_100um": {
+          "both": 1,
+          "only_nm-cold": 0,
+          "only_nm-cold-repeat": 0,
+          "neither": 7,
+          "p_mcnemar": 1.0
+        },
+        "results_apart_um": {
+          "median": 0.0,
+          "max": 0.0,
+          "same": 8,
+          "within_xatol": 8
+        },
+        "reconstructions": {
+          "difference": 0.0,
+          "difference_ci": [
+            0.0,
+            0.0
+          ],
+          "relative_fewer": 0.0,
+          "relative_fewer_ci": [
+            0.0,
+            0.0
+          ],
+          "fewer": 0,
+          "same": 8,
+          "more": 0
+        }
+      }
+    }
+  }
+}

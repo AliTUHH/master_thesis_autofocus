@@ -763,6 +763,29 @@ Doppelte. Mit nur einer CPU (Zeile `host` im Log) dauert es etwa dreimal so lang
 `--sbatch --cpus-per-task=8` angeben. Das Ergebnis steht in `bias-35.json`; `run` kopiert
 nichts nach DUST.
 
+### 8.4 Etappe 9: die Numerik der MFE (Laborbuch 09)
+
+Etappe 9 braucht keine GPU. Für die Läufe hier gilt aber:
+
+- Seit Etappe 9 gibt eine Rekonstruktion auf der CPU mit jeder Threadzahl die Bits eines Laufs
+  mit einem Thread (Laborbuch 09, 3.1), auf derselben CPU und mit derselben Version von torch.
+  Auf der GPU und auf einer anderen CPU (anderer Befehlssatz, andere Pfade in MKL) gilt das
+  nicht, und die Läufe der VM, gegen die 6.4 prüft, liefen mit 3 Threads und der Numerik von
+  vor Etappe 9. MFE-Werte verschiedener Geräte oder Maschinen unterscheiden sich deshalb um
+  einige bis einige zehn ppm, und wo die Rekonstruktion zwei Lösungen hat, um mehr (Zahn etwa
+  680 ppm, synthetisches Sample 5 2–3 %); zu vergleichen sind die Lagen, nicht die MFE-Werte
+  (Laborbuch 09, E2 und 5.1).
+- Beim Zahn trifft die erste Stufe des Plans je nach $z_{01}$ eine von zwei Lösungen, in ganz
+  $\Omega_z$, und wo sie wechselt, hängt an der Numerik (Laborbuch 09, 5.2 und 5.4): um das
+  Minimum mit einem Thread bei 80,716/80,717 und 80,901/80,902 mm, mit 3 Threads vor Etappe 9
+  bei 80,684–80,686 und 80,869–80,893 mm. Am ersten Wechsel springt die volle MFE um etwa
+  650 ppm; mehr als 1 mm vom Minimum unterscheidet sie sich auf den beiden Lösungen nur um
+  50–100 ppm, bei 1,5–9 % über ihrer kleinsten. Auf der GPU können die Wechsel woanders
+  liegen; geprüft ist das nicht, denn `scripts/run_stage9_study.py scan` rechnet nur auf der
+  CPU (Laborbuch 09, 6, Punkt 5). Eine Suche auf der GPU kann deshalb beim Zahn andere Punkte
+  auswerten als auf der CPU; mit den beiden Numeriken der CPU ordnete die kalte Suche dort ein
+  Paar von Punkten verschieden und endete am selben $z_{01}$ (Laborbuch 09, 5.5, Punkt 6).
+
 ## 9 Ergebnisse sichern und zurückgeben
 
 Jeder Job außer `run` kopiert am Ende sein Laufverzeichnis ohne HDF5-Dateien nach DUST, an
@@ -864,7 +887,9 @@ Auf der VM geprüft (4 CPU-Kerne, ohne SLURM und ohne GPU, mit `--device cpu`):
   sich um bis zu 1,1·10⁻⁴ relativ unterschieden: Die ASRM auf der CPU ist zwischen zwei Läufen
   nicht bitgleich. Die Schätzung von Sample 0 war trotzdem jedes Mal dieselbe. Abweichungen
   dieser Größe sind also keine Besonderheit der GPU; die Schwelle des Vergleichs mit der CPU
-  im gpu-check liegt bei 10⁻³.
+  im gpu-check liegt bei 10⁻³. Mit wie vielen Threads die drei liefen, ist nicht festgehalten.
+  Etappe 9 fand, dass eine Rekonstruktion mit derselben Threadzahl bitgleich wiederkommt und
+  nur zwischen Threadzahlen abweicht, und seit Etappe 9 auch das nicht mehr (8.4).
 
 Nur auf Maxwell zu prüfen (**PRÜFEN**, Abschnitt 2 und gpu-check):
 

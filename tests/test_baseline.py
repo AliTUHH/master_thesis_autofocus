@@ -18,7 +18,7 @@ from holofocus.baseline.results import (
     read_traces,
     summarize,
 )
-from holofocus.baseline.runner import WarmStart, phase_rmse, select_indices
+from holofocus.baseline.runner import Box, WarmStart, phase_rmse, select_indices
 from holofocus.dataset import DatasetConfig, write_split
 from holofocus.dataset.storage import read_labels
 
@@ -347,3 +347,108 @@ def test_cli_warm_start(split_file, tmp_path, capsys):
     first, second = trace["initial_simplex"]
     assert trace["evaluations"][0]["z01"] == pytest.approx(first)
     assert abs(second - first) == pytest.approx(5e-4)
+
+
+def test_search_method_in_the_configs():
+    paper, brent, box = (
+        BaselineConfig.from_yaml(ROOT / "configs" / "baseline" / f"{name}.yaml")
+        for name in ("paper2-cpu", "paper2-cpu-brent", "paper2-cpu-box")
+    )
+    assert (paper.search.method, brent.search.method, box.search.method) == (
+        "nelder-mead",
+        "brent",
+        "nelder-mead",
+    )
+    assert brent.reconstruction == box.reconstruction == paper.reconstruction
+    assert dataclasses.replace(brent.search, method="nelder-mead") == box.search == paper.search
+    assert (brent.evaluate_truth, box.evaluate_truth) == (False, False)
+    assert "method" not in paper.to_dict()["search"]
+    assert brent.to_dict()["search"]["method"] == "brent"
+    ci, ci_brent = (
+        BaselineConfig.from_yaml(ROOT / "configs" / "baseline" / f"{name}.yaml")
+        for name in ("ci", "ci-brent")
+    )
+    assert ci_brent.reconstruction == ci.reconstruction
+    assert dataclasses.replace(ci_brent.search, method="nelder-mead") == ci.search
+    assert (ci_brent.search.method, ci_brent.evaluate_truth) == ("brent", False)
+    assert BaselineConfig.from_dict(yaml.safe_load(brent.to_yaml())) == brent
+    with pytest.raises(ValueError):
+        BaselineConfig.from_dict({**TINY, "search": {"method": "golden"}})
+
+
+def _intervals(path, split_file, below=1e-3, above=2e-3):
+    labels = read_labels(split_file)
+    rows = [f"{i},{float(z - below)!r},{float(z + above)!r}" for i, z in enumerate(labels["z01"])]
+    path.write_text("\n".join(["index,z01_lower_95,z01_upper_95", *rows]) + "\n")
+    return labels
+
+
+def test_box_bounds(tmp_path):
+    path = tmp_path / "intervals.csv"
+    path.write_text(
+        "index,z01_lower_95,z01_upper_95,z01_lower_68,z01_upper_68\n"
+        "0,0.099,0.101,0.0995,0.1005\n1,0.104,0.106,0.1045,0.1055\n2,0.106,0.107,0.1062,0.1068\n"
+    )
+    box = Box.from_csv(path)
+    assert box.bounds(0, 0.095, 0.105) == (0.099, 0.101)
+    assert box.bounds(1, 0.095, 0.105) == (0.104, 0.105)
+    with pytest.raises(ValueError, match="misses"):
+        box.bounds(2, 0.095, 0.105)
+    assert Box.from_csv(path, "68").bounds(0, 0.095, 0.105) == (0.0995, 0.1005)
+    identity = box.identity()
+    assert identity["level"] == "95" and len(identity["sha256"]) == 64
+    with pytest.raises(ValueError, match="columns"):
+        Box.from_csv(path, "90")
+
+
+def test_run_baseline_with_brent_in_a_box(split_file, tmp_path):
+    intervals = tmp_path / "intervals.csv"
+    labels = _intervals(intervals, split_file)
+    brent = BaselineConfig.from_dict(
+        {**TINY, "search": {**TINY["search"], "method": "brent"}, "evaluate_truth": False}
+    )
+    box = Box.from_csv(intervals)
+    out = tmp_path / "brent-box"
+    assert run_baseline(brent, split_file, out, limit=2, box=box, log=None)["n_samples"] == 2
+    info = yaml.safe_load((out / "run.yaml").read_text())
+    assert info["box"] == box.identity() and info["config"]["search"]["method"] == "brent"
+    for trace in read_traces(out / "traces.jsonl"):
+        guess = labels["z01_guess"][trace["index"]]
+        bounds = box.bounds(trace["index"], guess - 5e-3, guess + 5e-3)
+        assert trace["bounds"] == pytest.approx(list(bounds))
+        assert trace["method"] == "brent" and trace["initial_simplex"] is None
+        assert all(bounds[0] <= e["z01"] <= bounds[1] for e in trace["evaluations"])
+    assert all(row["mfe_true"] is None for row in read_rows(out / "results.csv"))
+    with pytest.raises(ValueError, match="another config"):
+        run_baseline(brent, split_file, out, limit=2, log=None)
+    nelder_mead = tmp_path / "nm-box"
+    config = BaselineConfig.from_dict(TINY)
+    estimates = tmp_path / "estimates.csv"
+    _estimates(estimates, split_file, offset=2.5e-3)
+    warm = WarmStart.from_csv(estimates, half_width=5e-4)
+    run_baseline(config, split_file, nelder_mead, indices=[0], box=box, warm_start=warm, log=None)
+    trace = read_traces(nelder_mead / "traces.jsonl")[0]
+    guess = labels["z01_guess"][0]
+    bounds = box.bounds(0, guess - 5e-3, guess + 5e-3)
+    assert trace["initial_simplex"] == pytest.approx(list(warm.simplex(0, *bounds)))
+    assert trace["initial_simplex"][1] == pytest.approx(bounds[1])
+    assert "method" not in trace
+    partial = tmp_path / "partial.csv"
+    partial.write_text("index,z01_lower_95,z01_upper_95\n0,0.099,0.101\n")
+    with pytest.raises(ValueError, match="no interval"):
+        run_baseline(brent, split_file, tmp_path / "p", box=Box.from_csv(partial), log=None)
+
+
+def test_cli_box(split_file, tmp_path, capsys):
+    config = tmp_path / "tiny-brent.yaml"
+    config.write_text(yaml.safe_dump({**TINY, "search": {**TINY["search"], "method": "brent"}}))
+    intervals = tmp_path / "intervals.csv"
+    _intervals(intervals, split_file)
+    out = tmp_path / "cli-box"
+    args = ["run", str(config), "--data", str(split_file), "--out", str(out), "--indices", "2"]
+    assert main([*args, "--box", str(intervals), "--box-level", "95"]) == 0
+    capsys.readouterr()
+    assert yaml.safe_load((out / "run.yaml").read_text())["box"]["level"] == "95"
+    assert read_traces(out / "traces.jsonl")[0]["method"] == "brent"
+    assert main([*args, "--box", str(intervals), "--box-level", "68"]) == 1
+    assert "no columns" in capsys.readouterr().err

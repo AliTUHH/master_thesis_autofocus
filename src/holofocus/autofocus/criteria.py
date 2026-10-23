@@ -26,11 +26,20 @@ import torch
 
 from ..asrm import FWHM_TO_SIGMA
 from ..constraints import project_wavefield
+from ..device import one_thread
 from ..propagation import FresnelPropagator
 
 
 def _crop(array: torch.Tensor, fov: tuple[slice, slice] | None) -> torch.Tensor:
     return array if fov is None else array[..., fov[0], fov[1]]
+
+
+def _mean_square(
+    modulus: torch.Tensor, sqrt_hologram: torch.Tensor, fov: tuple[slice, slice] | None
+) -> float:
+    squares = (_crop(modulus, fov) - _crop(sqrt_hologram, fov)).square()
+    with one_thread():
+        return float(squares.mean())
 
 
 def model_fit_error(
@@ -49,7 +58,7 @@ def model_fit_error(
         shape, fresnel_number_hat, psi_projected.device, psi_projected.dtype
     )
     modulus = propagator(psi_projected).abs()
-    return float((_crop(modulus, fov) - _crop(sqrt_hologram, fov)).square().mean())
+    return _mean_square(modulus, sqrt_hologram, fov)
 
 
 def model_fit_error_eq14(
@@ -69,7 +78,7 @@ def model_fit_error_eq14(
     to_detector = FresnelPropagator(shape, fresnel_number, device, dtype)
     projected = project_wavefield(defocus(psi_exit))
     modulus = defocus.inverse()(to_detector(projected)).abs()
-    return float((_crop(modulus, fov) - _crop(sqrt_hologram, fov)).square().mean())
+    return _mean_square(modulus, sqrt_hologram, fov)
 
 
 def prefilter(image: torch.Tensor, fwhm: float = 4.0) -> torch.Tensor:

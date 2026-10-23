@@ -8,7 +8,8 @@
   of ``Omega_z``. With ``--box DIR`` the central interval ``intervals[<level>]`` of
   ``DIR/<sample>.json`` (cut to ``Omega_z``) replaces ``Omega_z``, and the search starts from
   its ends, or with ``--warm-start`` from the estimate moved inside it (Stage 8,
-  ``scripts/run_stage8_study.py sources``).
+  ``scripts/run_stage8_study.py sources``). ``--method brent`` searches with Brent's bounded
+  method instead of Nelder-Mead, in ``Omega_z`` or in the interval of ``--box`` (Stage 9).
 * ``curves``: focus curves with one ASRM reconstruction per sampling point ([2] Fig. 8), for
   samples of a synthetic split (``synthetic-<index>.json``, with the phase error against the
   ground truth) or for measured holograms centred on the visually determined focus of [2]
@@ -27,6 +28,8 @@ All commands skip outputs that exist already. Usage::
     python scripts/run_stage3_experiments.py --threads 3 measured --holograms DIR --binning 1 \\
         --padding 4 --box results/measured/npe-loo-ensemble --revisit-tolerance 1e-9 \\
         --out results/measured/box95-npe-loo-ensemble-b1-p4
+    python scripts/run_stage3_experiments.py --threads 3 measured --holograms DIR --binning 1 \\
+        --padding 4 --method brent --revisit-tolerance 1e-9 --out results/measured/brent-b1-p4
     python scripts/run_stage3_experiments.py curves --data data/cpu-4x/test.h5 --indices 1 5 \\
         --out results/focus-curves
     python scripts/run_stage3_experiments.py curves --holograms DIR --samples spider_hair \\
@@ -55,6 +58,7 @@ import torch
 
 from holofocus.asrm import ASRMSettings, stage_grid
 from holofocus.autofocus import find_focus, reconstruction_focus_curve, symmetric_offsets
+from holofocus.autofocus.search import METHODS
 from holofocus.baseline import BaselineConfig
 from holofocus.baseline.runner import WarmStart, file_sha256
 from holofocus.dataset import HologramGenerator, read_config, read_labels
@@ -197,6 +201,7 @@ def cmd_measured(args) -> None:
             bounds=bounds,
             revisit_tolerance=args.revisit_tolerance,
             log=lambda msg: print(f"  {msg}", flush=True),
+            method=args.method,
         )
         np.save(args.out / f"{name}-phase.npy", result.reconstruction.obj.real.numpy())
         record = {
@@ -235,6 +240,8 @@ def cmd_measured(args) -> None:
             record["box"] = box
         if args.revisit_tolerance:
             record["revisit_tolerance"] = args.revisit_tolerance
+        if args.method != "nelder-mead":
+            record["method"] = args.method
         write_json(target, record)
         print(
             f"{name}: z01 = {result.z01 * 1e3:.3f} mm ([2]: {sample.z01_nm * 1e3:.1f} mm), "
@@ -456,6 +463,12 @@ def main() -> None:
         type=float,
         default=0.0,
         help="probing points closer than this to an earlier one count as repeated (metres)",
+    )
+    measured.add_argument(
+        "--method",
+        choices=METHODS,
+        default="nelder-mead",
+        help="search over z01: Nelder-Mead of [2] (default) or Brent's bounded method",
     )
     measured.add_argument("--out", type=Path, required=True)
     measured.set_defaults(func=cmd_measured)

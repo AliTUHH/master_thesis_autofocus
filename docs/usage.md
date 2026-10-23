@@ -800,6 +800,186 @@ results/measured/{warm,box95}-{cnn,npe}-loo-ensemble-b1-p4/  the searches
 results/measured/warmstart.{json,csv}    all searches against the full one
 ```
 
+## Stage 9: steps of the MFE, Brent next to Nelder–Mead
+
+Two parts (Laborbuch 09), both on the CPU.
+
+**The MFE and the thread count.** Since Stage 9 a reconstruction gives the bits of a run with
+one thread for every `torch.set_num_threads` (`holofocus.device.one_thread`: the products of
+complex arrays, the norm of `Im(y)` and the loss run on one thread; about 6 % slower with 3
+threads). Reconstructions made before with one thread keep their MFE bit for bit; those made
+with 3 threads (most searches on the measured holograms, the Stage 3 baseline) differ by a few
+to a few tens of ppm; where the two numerics reach different solutions of the reconstruction,
+by about 700 ppm (the tooth at its step) and by 2–3 % (two points of synthetic sample 5).
+Compare MFE values of older runs only within one thread count; `steps` labels every
+reconstruction with its numerics.
+
+**Brent's bounded method.** `find_focus(..., method="brent")` searches with
+`scipy.optimize.minimize_scalar(method="bounded")` instead of Nelder–Mead, in the same interval,
+with the same `xatol`. In a baseline config it is `search: {method: brent}`
+(`configs/baseline/paper2-cpu-brent.yaml`), for the measured holograms
+`run_stage3_experiments.py measured --method brent`. `holofocus-baseline run --box CSV
+[--box-level 95]` searches every sample inside its own interval, cut to `Omega_z`: the CSV has
+the columns `index`, `z01_lower_<level>` and `z01_upper_<level>` in metres, like the
+`predictions.csv` of an NPE.
+
+```bash
+holofocus-baseline run configs/baseline/paper2-cpu-brent.yaml --data data/cpu-4x/test.h5 \
+    --out runs/baseline/cpu-4x-test-brent-box --limit 48 \
+    --box results/npe/npe-nsf-ensemble/test/predictions.csv
+```
+
+`scripts/run_stage9_study.py`:
+
+- `sources`: the central 68 and 95 % intervals of the Stage 4 CNN on the cpu-4x test split
+  (`results/stage9/intervals-cnn-test.csv`); the NPE ensemble has them in its predictions.
+- `queue` and `merge`: the 248 searches on the 48 synthetic baseline samples (Brent cold, Brent
+  and Nelder–Mead in the 95 % intervals of the NPE ensemble and of the CNN, and the Stage 3
+  search again on 8 samples), taken one at a time by any number of lanes; `merge` writes them
+  to `results/baseline/cpu-4x-test-<search>` and which lane ran what to
+  `results/stage9/lanes.csv`.
+- `scan`: reconstructions of a measured hologram at given `z01` (`--z01-mm`, or `--z01` in
+  metres to hit a recorded point exactly) with the settings of the padding-4 searches: MFE,
+  loss history, losses at the ends of the stages, object statistics and the loss at the
+  returned object (`object_loss`: one more iteration of the last stage from the object without
+  momentum; the MFE is the loss at the lookahead of the last iteration) per point. Points
+  already in `results/stage9/scan-<sample>.json` are skipped. The objects go to
+  `results/stage9/scan-<sample>/*.npz` (not tracked). `--stages 1` runs only the first stage
+  of the plan (about 15 s instead of 9 min with one thread; its loss is bit for bit
+  `stage_losses[0]` of the full reconstruction) and keeps the padded arrays; write those scans
+  to `results/stage9/first-stage`.
+- `synthetic`: reconstructions of a synthetic sample (`--index`; the cpu-4x test split unless
+  `--data`) at given `z01` in metres, as the baseline does them (`--config`, by default
+  `configs/baseline/paper2-cpu.yaml`): MFE, loss history, losses at the ends of the stages and
+  the smallest loss of the last stage per point, in `results/stage9/synthetic-<index>.json`;
+  `--stages 1` as for `scan`, written to `results/stage9/first-stage`.
+- `steps`: every padding-4 reconstruction of the measured holograms (all searches and scans)
+  as MFE against `z01`, per probe and numerics, screened for steps (jumps between close
+  neighbours, reversals away from the minimum), with the density of the points about the
+  minimum, the same `z01` with the same and with the other numerics, where the loss histories
+  of two scans part and the scan objects against each other; the loss at the returned object
+  and the smallest loss of the last stage screened the same way; the first-stage scans, their
+  branch (upper where the loss lies more than 5 % over the smallest within 1 mm) and where
+  they switch, with the objects on both sides; for every reconstruction whose first stage is
+  known its branch, and for every pair of neighbouring full reconstructions at most 2 µm apart
+  on different branches the MFE and the losses of the stages upper over lower, as computed and
+  at one `z01` (less the slope of the MFE on both branches; `branches`); on the synthetic
+  samples the Stage 3 search against its repeat with this stage's numerics
+  (`synthetic_repeat`) and, where `synthetic` ran with both numerics, the same `z01` side by
+  side (`synthetic_points`) and the branches of the first stage (`synthetic_first_stage`).
+- `compare`: Brent against Nelder–Mead, cold and in the learned intervals, on the measured
+  holograms (against the references of [2] and the full search) and on the synthetic samples
+  (against the truth): error, share within 100 µm, reconstructions, time at the 3-thread rate,
+  and the reconstructions the interval saves with each method, paired over the samples; two
+  searches paired as well (`pairs`: the difference of the absolute errors with a bootstrap
+  interval, an exact McNemar test on the samples only one of them gets within 100 µm, and the
+  difference of their reconstructions).
+
+The runs of Laborbuch 09, on a 4-core machine (3 threads next to at most one 1-thread run):
+
+```bash
+H=/path/to/Examples/data/holograms      # Zenodo record 10.5281/zenodo.8349365
+m="python scripts/run_stage3_experiments.py --threads 3 measured --holograms $H --binning 1 --padding 4"
+$m --method brent --revisit-tolerance 1e-9 --out results/measured/brent-b1-p4
+for e in cnn npe; do
+    $m --method brent --revisit-tolerance 1e-9 --box results/measured/$e-loo-ensemble \
+        --out results/measured/brent-box95-$e-loo-ensemble-b1-p4
+done
+$m --out results/measured/b1-p4-repeat
+python scripts/run_stage9_study.py sources
+python scripts/run_stage9_study.py --threads 3 queue --lane a    # next to: --threads 1 --lane b
+python scripts/run_stage9_study.py merge
+s="python scripts/run_stage9_study.py --threads 1 scan --holograms $H"
+f="--stages 1 --out results/stage9/first-stage"
+$s --sample tooth --z01-mm 80.451 80.56 80.6 80.62 80.65 80.665 80.68 80.694 80.696 80.698 \
+    80.702 80.71 80.713 80.716 80.717 80.719 80.722 80.725 80.825 80.87 80.88 80.89 80.9 \
+    80.901 80.902 80.91                       # about the step, and both sides of each switch
+$s --sample spider_hair --z01-mm 79.272 79.48 79.6 79.62 79.64 79.66 79.68 79.7 79.8 79.95 80.11
+$s --sample cactus_needle --z01-mm 284.755 285.116  # where the searches leave gaps (E11)
+$s --sample tooth $f --z01-mm $(seq -f %.3f 80.500 0.010 81.100) \
+    $(seq -f %.3f 80.700 0.001 80.730) $(seq -f %.3f 80.900 0.001 80.920)
+$s --sample spider_hair $f --z01-mm $(seq -f %.1f 74.8 0.2 84.8)     # all of Omega_z
+$s --sample tooth $f --z01-mm $(seq -f %.1f 77.9 0.2 87.9)
+$s --sample cactus_needle $f --z01-mm $(seq -f %.1f 281.1 0.2 291.1)
+$s --sample magnesium_wire $f --z01-mm $(seq -f %.1f 467.4 0.2 477.4)
+points() {  # the z01 at which the searches with numerics $1 reconstructed the tooth
+    python -c "import csv; print(*sorted({r['z01'] for r in csv.DictReader(open(
+        'results/stage9/mfe-points.csv')) if r['sample'] == 'tooth' and r['numerics'] == '$1'
+        and not r['source'].startswith('scan')}))"
+}
+$s --sample tooth $f --z01 $(points 1)        # the first stage at every point of the searches
+$s --sample tooth --z01-mm 81.5 81.7 81.9 82.1 82.3 82.5 83.7 83.9 84.1 84.3 84.5 \
+    --out results/stage9/omega                # the full MFE across the branches of that grid
+$s --sample tooth $f --z01-mm 79.200 79.150 79.125 79.138 79.144 79.141 79.143 81.800 81.850 \
+    81.825 81.838 81.844 81.847 81.849 81.848 84.000 83.950 83.925 83.938 83.931 83.928 83.929 \
+    83.930                                    # three switches of that grid, halved to 1 um
+$s --sample tooth --z01-mm 79.123 79.143 79.144 79.164 81.848 81.849 83.929 83.930 \
+    --out results/stage9/omega
+python scripts/run_stage9_study.py --threads 3 scan --holograms $H --sample tooth \
+    --z01-mm 79.15 --out results/stage9/threads-3     # a point of the searches, with its history
+Z5="0.104375 0.10359375 0.103125 0.10375"   # synthetic sample 5, where the numerics differ by 2-3 %
+F5="$(python -c "print(*[round(0.095 + k * 2e-4, 7) for k in range(51)])")
+    $(python -c "print(*[round(0.1033 + k * 2.5e-5, 8) for k in range(49)])") 0.1 0.1025 0.10375
+    0.104375 0.103125 0.1040625 0.1034375 0.10390625 0.10359375 0.103828125"
+python scripts/run_stage9_study.py --threads 3 synthetic --index 5 --z01 $Z5
+python scripts/run_stage9_study.py --threads 3 synthetic --index 5 --z01 $F5 --stages 1 \
+    --out results/stage9/first-stage          # Omega_z, 103.3-104.5 mm, the points of its searches
+Z27="0.096171875 0.09617184868636408 0.0961188401002897"  # sample 27: two searches 0.03 um apart
+python scripts/run_stage9_study.py --threads 3 synthetic --index 27 --z01 $Z27
+python scripts/run_stage9_study.py --threads 3 synthetic --index 27 --z01 $Z27 --stages 1 \
+    --out results/stage9/first-stage
+python scripts/run_stage9_study.py steps
+python scripts/run_stage9_study.py compare
+python scripts/make_stage9_figures.py
+```
+
+Every record lists its points, so all of them can be computed again from it, into another
+directory (points already in the record there are skipped; add `--stages 1` for the records in
+`first-stage/`, and use `synthetic --index <index>` for `synthetic-<index>.json`):
+
+```bash
+r=results/stage9/scan-tooth.json
+python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth --out /tmp/again \
+    --z01 $(python -c "import json; print(*[repr(p['z01']) for p in json.load(open('$r'))['points']])")
+```
+
+The scans with the library of before Stage 9 run in a checkout of `4349d6a`:
+
+```bash
+git worktree add /tmp/before 4349d6a && cp scripts/run_stage9_study.py /tmp/before/scripts/
+b() { (cd /tmp/before && PYTHONPATH=src python scripts/run_stage9_study.py --threads 3 "$@"); }
+o3=results/stage9/threads-3-4349d6a
+f3=results/stage9/first-stage/threads-3-4349d6a
+b scan --holograms $H --sample tooth --z01 0.08069255535982456 0.080694 0.07915000000000001 --out $o3
+b scan --holograms $H --sample tooth --stages 1 --out $f3 \
+    --z01-mm $(seq -f %.3f 80.660 0.002 80.700) $(seq -f %.3f 80.500 0.050 80.900)
+b scan --holograms $H --sample tooth --stages 1 --out $f3 --z01 $(points 3)
+D=$PWD/data/cpu-4x/test.h5                  # the synthetic records likewise, with --data
+b synthetic --index 5 --data $D --z01 $Z5 --out $o3
+b synthetic --index 5 --data $D --z01 $F5 --stages 1 --out $f3
+b synthetic --index 27 --data $D --z01 $Z27 --out $o3
+b synthetic --index 27 --data $D --z01 $Z27 --stages 1 --out $f3
+cp -r /tmp/before/$o3 results/stage9/ && cp -r /tmp/before/$f3 results/stage9/first-stage/
+```
+
+The results:
+
+```
+results/stage9/scan-<sample>.json          scans with this stage's library, one thread
+results/stage9/omega/                      full scans of the tooth over Omega_z, one thread
+results/stage9/threads-3/                  the same points with 3 threads (the same bits)
+results/stage9/threads-3-4349d6a/          the same points with the library before, 3 threads
+results/stage9/first-stage/                the first stage only, both numerics (threads-3-4349d6a/)
+results/stage9/synthetic-<index>.json      a synthetic sample at given z01 (also under first-stage/
+                                           and both threads-3-4349d6a/)
+results/stage9/steps.json, mfe-points.csv, steps-objects.json   the screening for steps
+results/stage9/compare.json, measured.csv, synthetic.csv        Brent against Nelder–Mead
+results/stage9/lanes.csv, intervals-cnn-test.{csv,json}
+results/measured/brent-b1-p4/, brent-box95-{cnn,npe}-loo-ensemble-b1-p4/, b1-p4-repeat/
+results/baseline/cpu-4x-test-{brent,brent-box95-npe-ensemble,box95-npe-ensemble,
+                              brent-box95-cnn,box95-cnn,repeat}/
+```
+
 ## GPU runs on DESY Maxwell
 
 `cluster/maxwell/` is a SLURM kit for the A100 nodes of DESY Maxwell; [maxwell-gpu.md](maxwell-gpu.md)

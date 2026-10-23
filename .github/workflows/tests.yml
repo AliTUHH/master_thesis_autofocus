@@ -155,6 +155,34 @@ jobs:
           $study warmstart --out ${{ runner.temp }}/warmstart-ci
           python scripts/make_stage8_figures.py --quick --out ${{ runner.temp }}/figures
 
+      - name: Stage 9 (Brent in the 95 % intervals of the smoke-run CNN, synthetic against the smoke-run baseline; steps, comparison and figures from the committed results)
+        run: |
+          demo=${{ runner.temp }}/demo-dataset
+          root=${{ runner.temp }}/stage9-ci
+          study="python scripts/run_stage9_study.py --threads 2"
+          $study sources --cnn ${{ runner.temp }}/learned-ci/test/predictions.csv --out $root
+          holofocus-baseline run configs/baseline/ci-brent.yaml --data $demo/test.h5 \
+            --out $root/brent-box --limit 3 --box $root/intervals-cnn-test.csv
+          holofocus-baseline summary $root/brent-box
+          t=${{ runner.temp }}/baseline-ci/traces.jsonl
+          z=$(python -c "import json; r = next(r for r in map(json.loads, open('$t')) if r['index'] == 0); print(*[repr(e['z01']) for e in r['evaluations'] if e['reconstructed']][:2])")
+          one="synthetic --index 0 --data $demo/test.h5 --config configs/baseline/ci.yaml --z01 $z"
+          $study $one --out $root
+          $study $one --stages 1 --out $root/first-stage
+          python - $t $root <<'EOF'
+          import json, sys
+          trace = next(r for r in map(json.loads, open(sys.argv[1])) if r["index"] == 0)
+          mfe = {e["z01"]: e["mfe"] for e in trace["evaluations"] if e["reconstructed"]}
+          full = json.load(open(f"{sys.argv[2]}/synthetic-0.json"))["points"]
+          first = json.load(open(f"{sys.argv[2]}/first-stage/synthetic-0.json"))["points"]
+          assert [p["mfe"] for p in full] == [mfe[p["z01"]] for p in full], full
+          assert [p["mfe"] for p in first] == [p["stage_losses"][0] for p in full], first
+          print(f"synthetic: {len(full)} points of the baseline and their first stage, bit for bit")
+          EOF
+          $study steps --out $root/steps
+          $study compare --out $root/compare
+          python scripts/make_stage9_figures.py --quick --out ${{ runner.temp }}/figures
+
       - name: Upload demo dataset
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4

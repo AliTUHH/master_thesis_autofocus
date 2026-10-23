@@ -21,6 +21,8 @@ from holofocus.asrm import (
     stage_grid,
     stage_window,
 )
+from holofocus.autofocus import model_fit_error
+from holofocus.device import one_thread
 from holofocus.forward import object_from_phase, simulate_hologram
 from holofocus.geometry import ConeBeamGeometry
 from holofocus.phantoms import demo_object
@@ -258,3 +260,58 @@ def test_reconstruction_options_precision_and_input_checks(hologram_and_object):
     assert resumed.loss[0] < warm.loss[0]
     with pytest.raises(ValueError):
         asrm_reconstruct(hologram[None], fr, SMALL)
+
+
+def test_one_thread_restores_the_thread_count():
+    threads = torch.get_num_threads()
+    try:
+        torch.set_num_threads(2)
+        with one_thread():
+            assert torch.get_num_threads() == 1
+        assert torch.get_num_threads() == 2
+        with pytest.raises(RuntimeError), one_thread():
+            raise RuntimeError("inside")
+        assert torch.get_num_threads() == 2
+    finally:
+        torch.set_num_threads(threads)
+
+
+def _on(threads, func):
+    before = torch.get_num_threads()
+    torch.set_num_threads(threads)
+    try:
+        return func()
+    finally:
+        torch.set_num_threads(before)
+
+
+def test_reconstruction_gives_the_same_bits_for_every_thread_count():
+    """On 320^2 arrays, 3 threads split complex products into chunks that do not end on a
+    vector and full reductions into other partial sums; both run on one thread."""
+    t = torch.from_numpy(demo_object((160, 160)))
+    obj = object_from_phase(-0.5 * t, delta_beta_ratio=200.0)
+    hologram = simulate_hologram(obj, GEOMETRY.fresnel_number, padded_shape=(640, 640))
+    settings = ASRMSettings(
+        stages=(ASRMStage(25, 0.9, 1, 1.0, 4.0, 2.0, 0.0, 1.0),), padding_factor=2.0, fade_width=5
+    )
+    propagator = FresnelPropagator((320, 320), GEOMETRY.fresnel_number)
+    field = torch.exp(-0.5j * torch.from_numpy(demo_object((320, 320))).to(torch.float32))
+    amplitude = propagator(field).abs() + 1e-3
+    runs = {
+        n: _on(
+            n,
+            lambda: (
+                asrm_reconstruct(hologram, GEOMETRY.fresnel_number, settings),
+                propagator.kernel,
+                propagator(field),
+                model_fit_error(field, amplitude, GEOMETRY.fresnel_number),
+            ),
+        )
+        for n in (1, 2, 3)
+    }
+    for n in (2, 3):
+        result, kernel, propagated, mfe = runs[n]
+        assert result.loss == runs[1][0].loss and result.final_loss == runs[1][0].final_loss
+        assert torch.equal(result.obj, runs[1][0].obj)
+        assert torch.equal(kernel, runs[1][1]) and torch.equal(propagated, runs[1][2])
+        assert mfe == runs[1][3]

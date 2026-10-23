@@ -1,0 +1,92 @@
+config:
+  name: paper2-cpu-brent
+  reconstruction:
+    schedule: paper2
+    stages: null
+    padding_factor: 2.0
+    fade_width: null
+    a0: 1.0
+    update: reference
+    gradient: reference
+    pin_phase: true
+    precision: single
+    device: auto
+  search:
+    confidence: 0.005
+    xatol: 0.0001
+    fatol: 1000000.0
+    max_evaluations: null
+    method: brent
+  evaluate_truth: false
+asrm_settings:
+  stages:
+  - iterations: 700
+    step: 0.9
+    down_sampling: 4
+    momentum: 1.0
+    momentum_fwhm: 8.0
+    phase_fwhm: 2.0
+    absorption_fwhm: 0.0
+    l2_weight: 10.0
+  - iterations: 300
+    step: 1.1
+    down_sampling: 1
+    momentum: 1.0
+    momentum_fwhm: 16.0
+    phase_fwhm: 2.0
+    absorption_fwhm: 8.0
+    l2_weight: 10.0
+  - iterations: 500
+    step: 1.1
+    down_sampling: 1
+    momentum: 1.0
+    momentum_fwhm: 16.0
+    phase_fwhm: 2.0
+    absorption_fwhm: 8.0
+    l2_weight: 1.0
+  padding_factor: 2.0
+  fade_width: 20
+  a0: 1.0
+  update: reference
+  gradient: reference
+  pin_phase: true
+dataset:
+  path: data/cpu-4x/test.h5
+  sha256: 147e633662b32414262f0860f4192a22939e6c06ae41cad22090b0c67efa4519
+  split: test
+  n_samples: 250
+  seed: 20261020
+  generator_commit: 222f75f
+  created_utc: '2026-10-20T21:40:07+00:00'
+dataset_name: cpu-4x
+binning: 4
+holofocus_version: 0.1.0
+git_commit: 07ffb2c
+torch_version: 2.14.1+cpu
+device: cpu
+threads: 3
+host: cursor
+cpu_count: 4
+created_utc: '2026-10-23T07:32:23+00:00'
+merged_from:
+- run: runs/stage9/cpu-4x-test-brent/lane-a
+  n_samples: 40
+  holofocus_version: 0.1.0
+  git_commit: 07ffb2c
+  torch_version: 2.14.1+cpu
+  device: cpu
+  threads: 3
+  host: cursor
+  cpu_count: 4
+  created_utc: '2026-10-23T07:32:23+00:00'
+- run: runs/stage9/cpu-4x-test-brent/lane-b
+  n_samples: 8
+  holofocus_version: 0.1.0
+  git_commit: 6bd59aa
+  torch_version: 2.14.1+cpu
+  device: cpu
+  threads: 1
+  host: cursor
+  cpu_count: 4
+  created_utc: '2026-10-23T08:16:26+00:00'
+merged_utc: '2026-10-23T18:03:29+00:00'

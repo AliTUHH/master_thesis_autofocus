@@ -20,6 +20,14 @@ point ``z01_hat`` is a full ASRM reconstruction (:func:`holofocus.asrm.asrm_reco
   visit for intervals like 95-105 mm, whereas in metres they can differ in the last bit and
   would be reconstructed a second time.
 
+``method="brent"`` replaces Nelder-Mead by Brent's bounded method
+(``scipy.optimize.minimize_scalar(method="bounded")``, Stage 9) in the same interval and
+units: golden-section steps and parabolic interpolation through the MFE values, starting
+inside the interval (at 0.382 of its width) instead of at its ends. It stops when the
+minimum is bracketed to about ``2/3 xatol`` around the best point; ``fatol`` and
+``initial_simplex`` do not apply. A revisited point returns its earlier MFE, which Brent
+fits, instead of the penalty.
+
 :func:`search_points` gives the points the same search probes on a given MFE curve, without
 reconstructing (Stage 8).
 """
@@ -33,6 +41,7 @@ from dataclasses import asdict, dataclass, field
 
 import numpy as np
 import torch
+from scipy.optimize import minimize_scalar
 
 from ..asrm import ASRMResult, ASRMSettings, asrm_reconstruct
 from ..geometry import ConeBeamGeometry
@@ -40,6 +49,7 @@ from .nelder_mead import nelder_mead
 
 PENALTY = sys.float_info.max
 MM_PER_M = 1e3
+METHODS = ("nelder-mead", "brent")
 
 
 @dataclass
@@ -54,10 +64,11 @@ class FocusEvaluation:
 
 @dataclass
 class FocusSearchResult:
-    """Estimate ``z01`` with the probing history of the Nelder-Mead search.
+    """Estimate ``z01`` with the probing history of the search.
 
     ``reconstruction`` is the ASRM result at the estimate (the probing point with the lowest
-    MFE), so the focused object needs no extra reconstruction.
+    MFE), so the focused object needs no extra reconstruction. ``nm_iterations`` counts the
+    iterations of the method (Nelder-Mead or Brent); Brent has no ``initial_simplex``.
     """
 
     z01: float
@@ -70,6 +81,7 @@ class FocusSearchResult:
     evaluations: list[FocusEvaluation] = field(default_factory=list)
     reconstruction: ASRMResult | None = field(default=None, repr=False)
     initial_simplex: tuple[float, float] | None = None
+    method: str = "nelder-mead"
 
     @property
     def n_reconstructions(self) -> int:
@@ -80,8 +92,9 @@ class FocusSearchResult:
         return len(self.evaluations)
 
     def to_dict(self) -> dict:
-        """Numbers and probing history (without the reconstruction), JSON-serializable."""
-        return {
+        """Numbers and probing history (without the reconstruction), JSON-serializable.
+        ``method`` only for Brent, so Nelder-Mead records keep their keys."""
+        record = {
             "z01": self.z01,
             "z01_guess": self.z01_guess,
             "bounds": list(self.bounds),
@@ -94,6 +107,9 @@ class FocusSearchResult:
             "n_reconstructions": self.n_reconstructions,
             "n_evaluations": self.n_evaluations,
         }
+        if self.method != "nelder-mead":
+            record["method"] = self.method
+        return record
 
 
 def find_focus(
@@ -108,6 +124,7 @@ def find_focus(
     bounds: tuple[float, float] | None = None,
     revisit_tolerance: float = 0.0,
     log: Callable[[str], None] | None = None,
+    method: str = "nelder-mead",
 ) -> FocusSearchResult:
     """Estimate ``z01`` of ``hologram`` starting from the guess ``geometry.z01``.
 
@@ -117,7 +134,7 @@ def find_focus(
     ``initial_simplex`` replaces the interval ends as the two starting points; both must lie
     in the search interval, which still bounds the search. A probing point within
     ``revisit_tolerance`` of an earlier one counts as repeated (0: bit-identical only, as in
-    the reference). Lengths in metres.
+    the reference). ``method`` is ``"nelder-mead"`` ([2]) or ``"brent"``. Lengths in metres.
     """
     settings = ASRMSettings() if settings is None else settings
     z01_guess = geometry.z01
@@ -139,20 +156,30 @@ def find_focus(
         return result.final_loss, seconds
 
     start = time.perf_counter()
-    nm, evaluations, start_mm = _search(
-        reconstruct, interval_mm, initial_simplex, xatol, fatol, max_evaluations, revisit_tolerance
+    outcome = _search(
+        reconstruct,
+        interval_mm,
+        initial_simplex,
+        xatol,
+        fatol,
+        max_evaluations,
+        revisit_tolerance,
+        method,
     )
     return FocusSearchResult(
-        z01=float(nm.x[0]) / MM_PER_M,
+        z01=outcome.x_mm / MM_PER_M,
         z01_guess=z01_guess,
         bounds=(lower, upper),
-        mfe=nm.fun,
-        nm_iterations=nm.iterations,
-        converged=nm.converged,
+        mfe=outcome.fun,
+        nm_iterations=outcome.iterations,
+        converged=outcome.converged,
         seconds=time.perf_counter() - start,
-        evaluations=evaluations,
+        evaluations=outcome.evaluations,
         reconstruction=best[0] if best else None,
-        initial_simplex=(start_mm[0] / MM_PER_M, start_mm[1] / MM_PER_M),
+        initial_simplex=None
+        if outcome.start_mm is None
+        else (outcome.start_mm[0] / MM_PER_M, outcome.start_mm[1] / MM_PER_M),
+        method=method,
     )
 
 
@@ -166,16 +193,17 @@ def search_points(
     initial_simplex: tuple[float, float] | None = None,
     bounds: tuple[float, float] | None = None,
     revisit_tolerance: float = 0.0,
+    method: str = "nelder-mead",
 ) -> list[FocusEvaluation]:
     """The points :func:`find_focus` probes from the guess ``z01_guess`` if the MFE at ``z01``
     were ``mfe(z01)``, in order, without reconstructing (``seconds`` 0).
 
-    The search only compares MFE values, so every curve that is symmetric about its minimum
-    and rises on both sides gives the points of a parabola about that minimum. The other
-    arguments as in :func:`find_focus`; lengths in metres.
+    Nelder-Mead only compares MFE values, so every curve that is symmetric about its minimum
+    and rises on both sides gives the points of a parabola about that minimum; Brent's points
+    depend on the values. The other arguments as in :func:`find_focus`; lengths in metres.
     """
     _, interval_mm = _interval(z01_guess, confidence, bounds)
-    _, evaluations, _ = _search(
+    outcome = _search(
         lambda z01: (float(mfe(z01)), 0.0),
         interval_mm,
         initial_simplex,
@@ -183,8 +211,9 @@ def search_points(
         fatol,
         max_evaluations,
         revisit_tolerance,
+        method,
     )
-    return evaluations
+    return outcome.evaluations
 
 
 def _interval(
@@ -202,6 +231,19 @@ def _interval(
     return (lower, upper), (lower * MM_PER_M, upper * MM_PER_M)
 
 
+@dataclass
+class _Outcome:
+    """Best point and value in millimetres, iterations, convergence, probing history and the
+    starting simplex (``None`` for Brent)."""
+
+    x_mm: float
+    fun: float
+    iterations: int
+    converged: bool
+    evaluations: list[FocusEvaluation]
+    start_mm: tuple[float, float] | None
+
+
 def _search(
     evaluate: Callable[[float], tuple[float, float]],
     interval_mm: tuple[float, float],
@@ -210,12 +252,18 @@ def _search(
     fatol: float,
     max_evaluations: int | None,
     revisit_tolerance: float,
-):
-    """Nelder-Mead over ``z01`` in ``interval_mm``; ``evaluate(z01)`` gives ``(mfe, seconds)``
-    of a new point. Returns the optimizer's result, the probing history and the starting
-    points in millimetres."""
+    method: str = "nelder-mead",
+) -> _Outcome:
+    """Nelder-Mead or Brent over ``z01`` in ``interval_mm``; ``evaluate(z01)`` gives
+    ``(mfe, seconds)`` of a new point."""
+    if method not in METHODS:
+        raise ValueError(f"method must be one of {METHODS}, got {method!r}")
     if revisit_tolerance < 0:
         raise ValueError("revisit_tolerance must not be negative")
+    if method == "brent":
+        if initial_simplex is not None:
+            raise ValueError("Brent's method starts inside the interval, not from a simplex")
+        return _brent(evaluate, interval_mm, xatol, max_evaluations, revisit_tolerance)
     lower_mm, upper_mm = interval_mm
     tolerance_mm = revisit_tolerance * MM_PER_M
     if initial_simplex is None:
@@ -255,4 +303,36 @@ def _search(
         fatol=fatol,
         max_evaluations=max_evaluations,
     )
-    return nm, evaluations, start_mm
+    return _Outcome(float(nm.x[0]), nm.fun, nm.iterations, nm.converged, evaluations, start_mm)
+
+
+def _brent(
+    evaluate: Callable[[float], tuple[float, float]],
+    interval_mm: tuple[float, float],
+    xatol: float,
+    max_evaluations: int | None,
+    revisit_tolerance: float,
+) -> _Outcome:
+    tolerance_mm = revisit_tolerance * MM_PER_M
+    evaluations: list[FocusEvaluation] = []
+    seen: list[tuple[float, float]] = []
+
+    def objective(z01_mm: float) -> float:
+        z01_mm = float(z01_mm)
+        z01 = z01_mm / MM_PER_M
+        for s, value in seen:
+            if abs(z01_mm - s) <= tolerance_mm:
+                evaluations.append(FocusEvaluation(z01, value, 0.0, False))
+                return value
+        mfe, seconds = evaluate(z01)
+        seen.append((z01_mm, mfe))
+        evaluations.append(FocusEvaluation(z01, mfe, seconds, True))
+        return mfe
+
+    options = {"xatol": xatol * MM_PER_M}
+    if max_evaluations is not None:
+        options["maxiter"] = max_evaluations
+    brent = minimize_scalar(objective, bounds=interval_mm, method="bounded", options=options)
+    return _Outcome(
+        float(brent.x), float(brent.fun), int(brent.nit), brent.status == 0, evaluations, None
+    )

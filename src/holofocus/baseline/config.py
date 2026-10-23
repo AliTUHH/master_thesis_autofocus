@@ -23,6 +23,7 @@ from typing import Any
 import yaml
 
 from ..asrm import PAPER2_TABLE3, ASRMSettings, ASRMStage, schedule_for_binning
+from ..autofocus.search import METHODS
 from ..yamlconfig import build, plain
 
 SCHEDULES = {"paper2": PAPER2_TABLE3}
@@ -77,16 +78,23 @@ class ReconstructionConfig:
 
 @dataclass(frozen=True)
 class SearchConfig:
-    """Nelder-Mead over ``z01`` ([2] Sec. 3.4): ``Omega_z = guess +- confidence``."""
+    """Nelder-Mead over ``z01`` ([2] Sec. 3.4): ``Omega_z = guess +- confidence``.
+
+    ``method: brent`` searches with Brent's bounded method instead (Stage 9,
+    :func:`~holofocus.autofocus.find_focus`).
+    """
 
     confidence: float = 5.0e-3
     xatol: float = 1.0e-4
     fatol: float = 1.0e6
     max_evaluations: int | None = None
+    method: str = "nelder-mead"
 
     def __post_init__(self) -> None:
         if self.confidence <= 0 or self.xatol <= 0:
             raise ValueError("confidence and xatol must be positive")
+        if self.method not in METHODS:
+            raise ValueError(f"method must be one of {METHODS}, got {self.method!r}")
 
 
 @dataclass(frozen=True)
@@ -112,7 +120,12 @@ class BaselineConfig:
             return cls.from_dict(yaml.safe_load(fh) or {})
 
     def to_dict(self) -> dict[str, Any]:
-        return plain(dataclasses.asdict(self))
+        """Plain values; the search method only if it is not Nelder-Mead, so that runs made
+        before it existed keep their key."""
+        data = plain(dataclasses.asdict(self))
+        if self.search.method == "nelder-mead":
+            del data["search"]["method"]
+        return data
 
     def to_yaml(self) -> str:
         return yaml.safe_dump(self.to_dict(), sort_keys=False)

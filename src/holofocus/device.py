@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 import torch
 
 COMPLEX_DTYPES = {"single": torch.complex64, "double": torch.complex128}
@@ -43,3 +46,26 @@ def complex_dtype_of(dtype: torch.dtype) -> torch.dtype:
     if dtype in (torch.float64, torch.complex128):
         return torch.complex128
     return torch.complex64
+
+
+@contextmanager
+def one_thread() -> Iterator[None]:
+    """Run the enclosed CPU operations on one intra-op thread, then restore the thread count.
+
+    Two kinds of operations give other bits with another ``torch.get_num_threads()``: full
+    reductions, which add one partial sum per thread, and the product of complex arrays,
+    which computes the last elements of every thread's chunk on a scalar path with fused
+    multiply-adds (with 3 threads the chunks of 2^n elements do not end on a vector). On one
+    thread both give the bits of a run with one thread. The FFTs, ``exp``, ``abs`` and the
+    real elementwise operations give the same bits for every thread count (torch 2.14 with
+    MKL, AVX512; Laborbuch 09). The two kinds are memory-bound, so one thread costs little.
+    """
+    threads = torch.get_num_threads()
+    if threads == 1:
+        yield
+        return
+    torch.set_num_threads(1)
+    try:
+        yield
+    finally:
+        torch.set_num_threads(threads)

@@ -15,6 +15,7 @@ werden von den Skripten in `scripts/` erzeugt.
 | 07 | Posterior von `z01` mit Neural Posterior Estimation (sbi) | [07-npe.md](07-npe.md) |
 | 07, Abschnitt 9 | NPE auf dem Objektmodell von Etappe 6 (Leave-one-out-Sätze, Messhologramme) | [07-npe.md](07-npe.md#9-npe-auf-dem-objektmodell-von-etappe-6) |
 | 08 | Fehlspezifikation, faire Ensembles und Warmstart auf den Messhologrammen | [08-fehlspezifikation-warmstart.md](08-fehlspezifikation-warmstart.md) |
+| 09 | Die Stufen der MFE und Brents Verfahren neben Nelder–Mead | [09-mfe-stufen-brent.md](09-mfe-stufen-brent.md) |
 
 Quellen:
 

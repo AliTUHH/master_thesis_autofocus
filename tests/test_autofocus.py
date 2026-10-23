@@ -411,3 +411,114 @@ def test_search_points_are_the_points_of_find_focus(monkeypatch, bounds, simplex
     assert sum(e.reconstructed for e in points) == result.n_reconstructions
     root = search_points(lambda z01: abs(z01 - z_true) ** 0.5, GEOMETRY.z01, **given)
     assert [(e.z01, e.reconstructed) for e in root] == [(e.z01, e.reconstructed) for e in points]
+
+
+def _fake_asrm_on(mfe, probed=None):
+    """ASRM replaced by ``mfe(z01)`` as the final loss, recording the probed ``z01``."""
+
+    def fake_asrm(hologram, fresnel_number, settings):
+        z01 = z01_from_fresnel_number(
+            fresnel_number, GEOMETRY.energy_kev, GEOMETRY.z02, GEOMETRY.pixel_size
+        )
+        if probed is not None:
+            probed.append(z01)
+        return SimpleNamespace(final_loss=mfe(z01))
+
+    return fake_asrm
+
+
+@pytest.mark.parametrize("z_true_mm", [97.17899794176402, 101.34605, 104.6])
+def test_find_focus_with_brent_probes_the_points_of_scipy(monkeypatch, z_true_mm):
+    """Brent's bounded method of scipy in millimetres, from 0.382 of the width of Omega_z."""
+    optimize = pytest.importorskip("scipy.optimize")
+
+    def mfe(z_mm):
+        return abs(z_mm - z_true_mm) + 0.05 * (z_mm - z_true_mm) ** 2
+
+    points = []
+
+    def recorded(z_mm):
+        points.append(float(z_mm))
+        return mfe(float(z_mm))
+
+    reference = optimize.minimize_scalar(
+        recorded, bounds=(95.0, 105.0), method="bounded", options={"xatol": 0.1}
+    )
+    probed = []
+    fake = _fake_asrm_on(lambda z01: mfe(z01 * 1e3), probed)
+    monkeypatch.setattr(search_module, "asrm_reconstruct", fake)
+    result = find_focus(torch.zeros((8, 8)), GEOMETRY, method="brent")
+    np.testing.assert_allclose(np.array(probed) * 1e3, points, rtol=0, atol=1e-9)
+    assert points[0] == pytest.approx(95.0 + 0.5 * (3.0 - 5.0**0.5) * 10.0)
+    assert result.method == "brent" and result.initial_simplex is None
+    assert result.converged and result.nm_iterations == reference.nit == len(points)
+    assert result.z01 * 1e3 == pytest.approx(reference.x, abs=1e-9)
+    assert abs(result.z01 - z_true_mm * 1e-3) < 1e-4
+    assert result.reconstruction.final_loss == result.mfe == min(e.mfe for e in result.evaluations)
+    assert all(e.reconstructed for e in result.evaluations)
+    record = result.to_dict()
+    assert record["method"] == "brent" and record["initial_simplex"] is None
+    assert "method" not in find_focus(torch.zeros((8, 8)), GEOMETRY).to_dict()
+
+
+def test_find_focus_with_brent_in_given_bounds(monkeypatch):
+    z_true = 0.10237
+    monkeypatch.setattr(search_module, "asrm_reconstruct", _fake_asrm_on(lambda z: abs(z - z_true)))
+    cold = find_focus(torch.zeros((8, 8)), GEOMETRY, method="brent")
+    assert cold.bounds == pytest.approx((0.095, 0.105))
+    box = (0.1012, 0.1038)
+    boxed = find_focus(torch.zeros((8, 8)), GEOMETRY, bounds=box, method="brent")
+    assert boxed.bounds == box
+    assert boxed.evaluations[0].z01 == pytest.approx(box[0] + 0.5 * (3.0 - 5.0**0.5) * 2.6e-3)
+    assert all(box[0] - 1e-12 <= e.z01 <= box[1] + 1e-12 for e in boxed.evaluations)
+    assert boxed.converged and abs(boxed.z01 - z_true) < 1e-4
+    assert boxed.n_reconstructions < cold.n_reconstructions
+    missed = find_focus(torch.zeros((8, 8)), GEOMETRY, bounds=(0.096, 0.100), method="brent")
+    assert abs(missed.z01 - 0.100) < 1e-4
+    capped = find_focus(torch.zeros((8, 8)), GEOMETRY, method="brent", max_evaluations=3)
+    assert capped.n_evaluations == 3 and not capped.converged
+    with pytest.raises(ValueError, match="simplex"):
+        find_focus(torch.zeros((8, 8)), GEOMETRY, method="brent", initial_simplex=(0.101, 0.102))
+    with pytest.raises(ValueError, match="method"):
+        find_focus(torch.zeros((8, 8)), GEOMETRY, method="golden")
+
+
+def test_find_focus_with_brent_reuses_the_value_of_a_revisited_point(monkeypatch):
+    """Brent fits the values, so a repeated point returns its MFE instead of the penalty."""
+
+    def fake_minimize_scalar(objective, bounds, method, options):
+        a, b = bounds
+        values = [objective(z) for z in (a, b, np.nextafter(a, b), a)]
+        return SimpleNamespace(x=a, fun=min(values), nit=4, status=0)
+
+    monkeypatch.setattr(search_module, "asrm_reconstruct", _fake_asrm_on(lambda z: z))
+    monkeypatch.setattr(search_module, "minimize_scalar", fake_minimize_scalar)
+    exact = find_focus(torch.zeros((8, 8)), GEOMETRY, method="brent")
+    assert [e.reconstructed for e in exact.evaluations] == [True, True, True, False]
+    assert exact.evaluations[3].mfe == exact.evaluations[0].mfe
+    tolerant = find_focus(torch.zeros((8, 8)), GEOMETRY, method="brent", revisit_tolerance=1e-9)
+    assert [e.reconstructed for e in tolerant.evaluations] == [True, True, False, False]
+    assert tolerant.evaluations[2].mfe == tolerant.evaluations[0].mfe != search_module.PENALTY
+    assert tolerant.n_reconstructions == 2
+
+
+@pytest.mark.parametrize("bounds", [None, (0.1012, 0.1038)])
+def test_search_points_with_brent_are_the_points_of_find_focus(monkeypatch, bounds):
+    """Unlike Nelder-Mead, Brent probes other points on curves of another shape."""
+    z_true = 0.10237
+
+    def curve(z01):
+        return abs(z01 - z_true) ** 1.5
+
+    monkeypatch.setattr(search_module, "asrm_reconstruct", _fake_asrm_on(curve))
+    given = {"bounds": bounds, "revisit_tolerance": 1e-9, "method": "brent"}
+    result = find_focus(torch.zeros((8, 8)), GEOMETRY, **given)
+    points = search_points(curve, GEOMETRY.z01, **given)
+    assert [e.reconstructed for e in points] == [e.reconstructed for e in result.evaluations]
+    np.testing.assert_allclose(
+        [e.z01 for e in points], [e.z01 for e in result.evaluations], rtol=0, atol=1e-12
+    )
+    parabola = search_points(lambda z01: (z01 - z_true) ** 2, GEOMETRY.z01, **given)
+    assert [round(e.z01, 12) for e in parabola] != [round(e.z01, 12) for e in points]
+    with pytest.raises(ValueError):
+        search_points(curve, GEOMETRY.z01, initial_simplex=(0.101, 0.102), method="brent")

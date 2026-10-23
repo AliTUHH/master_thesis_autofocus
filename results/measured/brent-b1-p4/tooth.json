@@ -1,0 +1,176 @@
+{
+  "sample": "tooth",
+  "label": "tooth",
+  "binning": 1,
+  "cutting_band": 80,
+  "input_shape": [
+    1888,
+    1888
+  ],
+  "padding_factor": 4.0,
+  "padding_factor_input": 4.338983050847458,
+  "stage_arrays": [
+    [
+      512,
+      512
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "settings": {
+    "stages": [
+      {
+        "iterations": 700,
+        "step": 0.9,
+        "down_sampling": 16,
+        "momentum": 1.0,
+        "momentum_fwhm": 8.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 0.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 300,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 500,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 1.0
+      }
+    ],
+    "padding_factor": 4.338983050847458,
+    "fade_width": 80,
+    "a0": 0.96,
+    "update": "reference",
+    "gradient": "reference",
+    "pin_phase": true
+  },
+  "geometry_guess": {
+    "energy_kev": 17.0,
+    "z01": 0.0829,
+    "z02": 19.652,
+    "pixel_size": 6.5e-06,
+    "wavelength": 7.293188143129427e-11,
+    "z12": 19.569100000000002,
+    "magnification": 237.05669481302775,
+    "effective_pixel_size": 2.7419601058416443e-08,
+    "effective_distance": 0.08255029462650113,
+    "fresnel_number": 0.0001248780816566809
+  },
+  "paper2": {
+    "simplex": [
+      0.0779,
+      0.0879
+    ],
+    "z01_nm": 0.0809,
+    "z01_visual": 0.081,
+    "samples": 11,
+    "padding_factor": 4.0
+  },
+  "result": {
+    "z01": 0.08065991466502447,
+    "z01_guess": 0.0829,
+    "bounds": [
+      0.0779,
+      0.0879
+    ],
+    "initial_simplex": null,
+    "mfe": 0.0003160066553391516,
+    "nm_iterations": 10,
+    "converged": true,
+    "seconds": 2142.0927196590055,
+    "evaluations": [
+      {
+        "z01": 0.08171966011250106,
+        "mfe": 0.00031983014196157455,
+        "seconds": 209.98193415399874,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08408033988749895,
+        "mfe": 0.00034550606505945325,
+        "seconds": 212.08068022801308,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08026067977499791,
+        "mfe": 0.00031901244074106216,
+        "seconds": 224.5559519889939,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08088641062014806,
+        "mfe": 0.00031696708174422383,
+        "seconds": 205.35285240301164,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08092919087831693,
+        "mfe": 0.0003169946721754968,
+        "seconds": 218.80644316697726,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08085271899528072,
+        "mfe": 0.0003168717375956476,
+        "seconds": 216.85162745599519,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08062658013580568,
+        "mfe": 0.0003160417836625129,
+        "seconds": 202.10445405900828,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08048681863447296,
+        "mfe": 0.00031667781877331436,
+        "seconds": 219.07279940199805,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08065991466502447,
+        "mfe": 0.0003160066553391516,
+        "seconds": 204.46733446899452,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08069324919473767,
+        "mfe": 0.0003160291234962642,
+        "seconds": 228.7734661489958,
+        "reconstructed": true
+      }
+    ],
+    "n_reconstructions": 10,
+    "n_evaluations": 10,
+    "method": "brent"
+  },
+  "z01_minus_paper2_nm_um": -240.0853349755344,
+  "z01_minus_visual_um": -340.0853349755373,
+  "seconds_per_reconstruction": 214.20475434759865,
+  "git_commit": "e809b07",
+  "torch_version": "2.14.1+cpu",
+  "threads": 3,
+  "host": "cursor",
+  "cpu_count": 4,
+  "revisit_tolerance": 1e-09,
+  "method": "brent"
+}

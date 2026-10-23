@@ -8,6 +8,9 @@
         --out runs/baseline/cpu-4x-test-warm --limit 48 \\
         --warm-start results/learned/spectrum-cnn/test/predictions.csv --half-width 5e-4
     holofocus-baseline summary runs/baseline/cpu-4x-test
+    holofocus-baseline run configs/baseline/paper2-cpu-brent.yaml --data data/cpu-4x/test.h5 \\
+        --out runs/baseline/cpu-4x-test-brent-box --limit 48 \\
+        --box results/npe/npe-nsf-ensemble/test/predictions.csv --box-level 95
     holofocus-baseline run configs/baseline/paper2-cpu.yaml --data data/cpu-4x/test.h5 \\
         --out runs/baseline/cpu-4x-test-full/chunk-3-of-10 --chunk 3 --chunks 10
     holofocus-baseline merge --out runs/baseline/cpu-4x-test-full \\
@@ -26,7 +29,7 @@ import torch
 
 from .config import BaselineConfig
 from .results import read_rows, summarize
-from .runner import WarmStart, merge_runs, run_baseline
+from .runner import Box, WarmStart, merge_runs, run_baseline
 
 
 def _log(msg: str) -> None:
@@ -45,6 +48,7 @@ def run(args: argparse.Namespace) -> int:
             warm_start = WarmStart.from_csv(
                 args.warm_start, args.half_width, args.sigmas, args.anchor
             )
+        box = None if args.box is None else Box.from_csv(args.box, args.box_level)
         summary = run_baseline(
             config,
             args.data,
@@ -55,6 +59,7 @@ def run(args: argparse.Namespace) -> int:
             warm_start=warm_start,
             log=_log,
             chunk=None if args.chunk is None else (args.chunk, args.chunks),
+            box=box,
         )
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -119,6 +124,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="only the K-th (from 0) of --chunks contiguous parts of the selected samples",
     )
     go.add_argument("--chunks", type=int, help="number of parts for --chunk")
+    go.add_argument(
+        "--box",
+        type=Path,
+        help="CSV with index, z01_lower_<level>, z01_upper_<level> per sample: search there",
+    )
+    go.add_argument("--box-level", default="95", help="level of the interval in --box (95)")
     go.set_defaults(func=run)
     join = sub.add_parser("merge", help="join runs of other samples, e.g. the chunks of an array")
     join.add_argument("runs", type=Path, nargs="+", help="run directories")

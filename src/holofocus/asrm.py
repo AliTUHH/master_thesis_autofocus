@@ -27,6 +27,10 @@ default and the printed one is available as an option:
 
 The objective of the autofocus of [2] is the loss of the last iteration: the mean over the
 field of view of ``(|D_Fr(exp(i y))| - A)^2``, i.e. the model fit error of [2] Eq. (15).
+
+The products of complex arrays, ``||Im(y)||_2`` and the loss run on one thread
+(:func:`~holofocus.device.one_thread`), so a reconstruction gives the same bits for every
+``torch.get_num_threads()``: those of a run with one thread.
 """
 
 from __future__ import annotations
@@ -39,7 +43,7 @@ from dataclasses import dataclass, field, replace
 import torch
 import torch.nn.functional as F
 
-from .device import complex_dtype_of, real_dtype_of
+from .device import complex_dtype_of, one_thread, real_dtype_of
 from .propagation import FresnelPropagator
 
 UPDATE_RULES = ("reference", "printed")
@@ -345,24 +349,35 @@ def data_gradient(
     data: torch.Tensor,
     forward: torch.Tensor,
     rule: str = "reference",
+    backward: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Gradient of the data term at ``y`` and the modelled detector amplitude ``|D(exp(iy))|``.
 
-    ``forward`` is the transfer function of ``D_Fr``. With ``a = |D(exp(iy))|`` and the data
-    ``A``, ``rule="amplitude"`` is the gradient of ``1/2 sum (a - A)^2`` ([1] Eq. (22)) and
-    ``rule="reference"`` the gradient of ``sum (a^2 / 2 - 2/3 sqrt(A) a^(3/2))``, which is
-    what the residual ``psi (1 - sqrt(A / a))`` of the reference code differentiates.
-    Real and imaginary part of the result are the derivatives by ``Re y`` and ``Im y``.
+    ``forward`` is the transfer function of ``D_Fr`` and ``backward`` its conjugate (computed
+    here if not given). With ``a = |D(exp(iy))|`` and the data ``A``, ``rule="amplitude"`` is
+    the gradient of ``1/2 sum (a - A)^2`` ([1] Eq. (22)) and ``rule="reference"`` the gradient
+    of ``sum (a^2 / 2 - 2/3 sqrt(A) a^(3/2))``, which is what the residual
+    ``psi (1 - sqrt(A / a))`` of the reference code differentiates. Real and imaginary part of
+    the result are the derivatives by ``Re y`` and ``Im y``.
     """
+    backward = forward.conj() if backward is None else backward
     psi = torch.exp(1j * lookahead)
-    detector = torch.fft.ifft2(torch.fft.fft2(psi) * forward)
+    detector = torch.fft.ifft2(_times(torch.fft.fft2(psi), forward))
     modulus = detector.abs()
     ratio = data / modulus.clamp(min=torch.finfo(modulus.dtype).tiny)
     if rule == "reference":
         ratio = ratio.sqrt()
     residual = detector * (1.0 - ratio)
-    grad = -1j * psi.conj() * torch.fft.ifft2(torch.fft.fft2(residual) * forward.conj())
+    back = torch.fft.ifft2(_times(torch.fft.fft2(residual), backward))
+    grad = _times(-1j * psi.conj(), back)
     return grad, modulus
+
+
+def _times(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
+    """``a *= b`` for complex arrays on one thread (:func:`~holofocus.device.one_thread`); in
+    place, so the one thread does not also fault in the pages of a new array."""
+    with one_thread():
+        return a.mul_(b)
 
 
 def project_refractive(obj: torch.Tensor) -> torch.Tensor:
@@ -421,6 +436,7 @@ def asrm_reconstruct(
         forward = FresnelPropagator(
             grid.shape, fresnel_number * stage.down_sampling**2, device, cdtype
         ).kernel
+        backward = forward.conj().resolve_conj()
         k_velocity = gaussian_transfer(grid.shape, stage.momentum_fwhm, device, real)
         k_phase = gaussian_transfer(grid.shape, stage.phase_fwhm, device, real, onesided=True)
         k_absorption = gaussian_transfer(
@@ -438,13 +454,17 @@ def asrm_reconstruct(
                     _filter_real(obj.real, k_phase), _filter_real(obj.imag, k_absorption)
                 )
             lookahead = obj - gamma * velocity
-            grad, modulus = data_gradient(lookahead, data, forward, settings.gradient)
-            losses[k] = (modulus[fov] - data_fov).square().mean()
+            grad, modulus = data_gradient(lookahead, data, forward, settings.gradient, backward)
+            squares = (modulus[fov] - data_fov).square()
+            with one_thread():
+                losses[k] = squares.mean()
 
             velocity = gamma * velocity + eta * grad
             if beta != 0:
                 imag = lookahead.imag
-                velocity.imag.add_(imag * (beta / (imag.norm() + 1e-6)))
+                with one_thread():
+                    norm = imag.norm()
+                velocity.imag.add_(imag * (beta / (norm + 1e-6)))
             base = lookahead if settings.update == "reference" else obj
             obj = project_refractive(base - velocity)
             k += 1
