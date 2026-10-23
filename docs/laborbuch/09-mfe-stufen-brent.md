@@ -590,17 +590,18 @@ Rekonstruktionen jeder Suche, in Klammern ihr Ergebnis minus das der kalten Such
 Nelder–Mead in µm (bei dieser selbst das Ergebnis in mm); die Zeit ist die Zahl der
 Rekonstruktionen mal der Rate mit 3 Threads (E9; `results/stage9/compare.json`, `measured.csv`):
 
-| Probe | NM kalt | NM, 95 % CNN-Ens. | NM, 95 % NPE-Ens. | Brent kalt | Brent, 95 % CNN-Ens. | Brent, 95 % NPE-Ens. |
-|---|---|---|---|---|---|---|
-| Spinnenhaar | 13 (79,4875) | 8 (−5) | 8 (−5) | 6 (+626) | 8 (+10) | 6 (+4) |
-| Zahn | 11 (80,6344) | 12 (+2) | 12 (+43) | 10 (+26) | 8 (+16) | 8 (+57) |
-| Kaktusnadel | 13 (284,9281) | 12 (+4) | 10 (+28) | 5 (−42) | 6 (−6) | 6 (+16) |
-| Mg-Draht | 12 (471,2281) | 9 (+9) | 12 (+1) | 9 (−42) | 6 (+17) | 7 (−3) |
-| zusammen | 49 | 41 | 42 | 30 | 28 | 27 |
-| Zeit, min | 176 | 148 | 151 | 107 | 100 | 97 |
+| Probe | NM kalt | NM kalt, Numerik 1 | NM, 95 % CNN-Ens. | NM, 95 % NPE-Ens. | Brent kalt | Brent, 95 % CNN-Ens. | Brent, 95 % NPE-Ens. |
+|---|---|---|---|---|---|---|---|
+| Spinnenhaar | 13 (79,4875) | 13 (0) | 8 (−5) | 8 (−5) | 6 (+626) | 8 (+10) | 6 (+4) |
+| Zahn | 11 (80,6344) | 11 (0) | 12 (+2) | 12 (+43) | 10 (+26) | 8 (+16) | 8 (+57) |
+| Kaktusnadel | 13 (284,9281) | 13 (0) | 12 (+4) | 10 (+28) | 5 (−42) | 6 (−6) | 6 (+16) |
+| Mg-Draht | 12 (471,2281) | 13 (0) | 9 (+9) | 12 (+1) | 9 (−42) | 6 (+17) | 7 (−3) |
+| zusammen | 49 | 50 | 41 | 42 | 30 | 28 | 27 |
+| Zeit, min | 177 | 180 | 148 | 151 | 108 | 101 | 97 |
 
 Die Suchen mit Nelder–Mead sind die von Etappe 3, 5 und 8, mit Numerik 3 bis auf die im
-Intervall des CNN-Ensembles (Numerik 1, Tabelle in 2); alle mit Brent haben Numerik 1.
+Intervall des CNN-Ensembles (Numerik 1, Tabelle in 2); „NM kalt, Numerik 1“ ist die
+Wiederholung der kalten Suche (`b1-p4-repeat`, Punkt 6). Alle mit Brent haben Numerik 1.
 
 1. **Brent findet dasselbe, bis auf das Spinnenhaar kalt.** Jedes andere Ergebnis von Brent
    liegt höchstens 57 µm neben dem der kalten Suche mit Nelder–Mead, kaum weiter als die
@@ -640,13 +641,27 @@ Intervall des CNN-Ensembles (Numerik 1, Tabelle in 2); alle mit Brent haben Nume
    das CNN-Intervall Brent 2 Rekonstruktionen mehr als kalt, verhindert aber die Mulde. Kalt
    braucht Brent schon 39 % weniger als Nelder–Mead, und das Intervall nimmt ihm nur noch
    wenig. Am wenigsten braucht Brent im NPE-Intervall: 27 Rekonstruktionen, 45 % weniger als
-   die kalte Suche mit Nelder–Mead (97 statt 176 min mit 3 Threads), und die meisten spart dabei
-   Brent selbst. Mit vier Hologrammen ist das ein Hinweis; die Statistik geben die synthetischen
-   Samples (5.6, 5.7).
+   die kalte Suche mit Nelder–Mead (97 statt 177 min mit 3 Threads), und die meisten spart dabei
+   Brent selbst. Gegen die Wiederholung der kalten Suche mit Numerik 1 (Punkt 6) spart das
+   Intervall mit Nelder–Mead 9 und 8 von 50 Rekonstruktionen (18 und 16 %). Mit vier
+   Hologrammen ist das ein Hinweis; die Statistik geben die synthetischen Samples (5.6, 5.7).
 5. **Gegen [2].** Bis auf die Mulde liegen alle Suchen einer Probe innerhalb von 70 µm, und der
    Abstand zu [2] bleibt der von Etappe 8: Spinnenhaar +82 bis +97 µm, Zahn −209 bis −266 µm,
    Kaktusnadel +686 bis +756 µm, Mg-Draht +386 bis +445 µm (`z01_minus_paper2_nm_um`).
-6. **Nelder–Mead noch einmal (E8).** ‹TODO b1-p4-repeat›
+6. **Nelder–Mead noch einmal (E8).** Mit Numerik 1 wiederholt (`b1-p4-repeat`), endet die kalte
+   Suche mit Nelder–Mead bei allen vier Proben bitgenau am selben $z_{01}$ wie `b1-p4`.
+   Spinnenhaar und Kaktusnadel werten dieselben 16 Punkte in derselben Reihenfolge aus. Bei
+   den beiden anderen ordnen die Numeriken je ein Paar von Punkten verschieden. Beim Zahn liegt
+   80,7125 mm mit Numerik 3 auf dem oberen Ast der ersten Stufe, 698 ppm über Numerik 1 und
+   damit über 80,5563 mm, mit Numerik 1 auf dem unteren und darunter; die Suche von Etappe 3
+   schlägt danach zweimal 80,4 mm noch einmal vor (Strafwert, ohne Rekonstruktion), die
+   Wiederholung nicht, und beide brauchen 11 Rekonstruktionen. Beim Mg-Draht liegt 471,3062 mm
+   mit Numerik 3 2,4 ppm unter 471,15 mm, mit Numerik 1 2,1 ppm darüber, weil die Numerik die
+   MFE dort um 8,0 und 3,6 ppm verschiebt; die Wiederholung rechnet deshalb einen Punkt mehr
+   (470,9937 mm), 13 statt 12. Zusammen sind es 50 statt 49 Rekonstruktionen (180 statt
+   177 min mit 3 Threads). Die Numerik allein ändert an diesen Suchen also höchstens eine
+   Rekonstruktion pro Probe und kein Ergebnis; die Unterschiede zwischen Brent und Nelder–Mead
+   (Punkt 4) liegen nicht an ihr.
 
 ### 5.6 Brent auf den synthetischen Samples
 
