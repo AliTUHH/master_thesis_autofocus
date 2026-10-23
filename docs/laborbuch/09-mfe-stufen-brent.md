@@ -308,8 +308,10 @@ Suche mit wie vielen Threads rechnete.
 von [2] und zur kalten Suche, MFE, Rekonstruktionen, Zeit) und fasst die synthetischen Suchen
 zusammen: MAE mit Bootstrap-Intervall, Median, 90. Perzentil, Maximum, Anteil innerhalb 50, 100,
 250 und 1000 µm, Rekonstruktionen, Zeit mit 3 Threads; dazu, was das Intervall pro Verfahren
-spart, gepaart über die Samples (E7, E9; `results/stage9/compare.json`, `measured.csv`,
-`synthetic.csv`).
+spart, gepaart über die Samples (E7, E9), und die Fehler zweier Suchen gepaart: die Differenz
+der Beträge mit Bootstrap-Intervall und die Samples, die nur eine der beiden auf 100 µm trifft,
+mit dem exakten McNemar-Test wie in Laborbuch 04 (`results/stage9/compare.json`,
+`measured.csv`, `synthetic.csv`).
 
 ### 3.7 Tests
 
@@ -805,9 +807,9 @@ Verfahrens spart, relativ.*
 
 ![Die Ersparnis nach der Breite des Intervalls](figures/stage9-savings-width.png)
 
-*Abb. 10 – Gesparte Rekonstruktionen pro Sample über der Breite des 95-%-Intervalls (Punkte;
-Linie: Mittel in Klassen der Breite), mit Nelder–Mead und mit Brent, links für das
-NPE-Ensemble, rechts für das CNN.*
+*Abb. 10 – Gesparte Rekonstruktionen pro Sample über der Breite des 95-%-Intervalls (Punkte,
+für Nelder–Mead um 0,15 nach unten, für Brent um 0,15 nach oben versetzt; Linie: Mittel in drei
+gleich großen Klassen der Breite), links für das NPE-Ensemble, rechts für das CNN.*
 
 ‹TODO›
 
