@@ -300,8 +300,10 @@ Neu sind neun Tests, zwei davon mit drei bzw. zwei Fällen (13 Fälle; zusammen 
   in den drei Konfigurationen.
 
 Der CI-Schritt von Etappe 9 sucht mit Brent auf drei Samples des Demo-Datensatzes in den
-95-%-Intervallen des CNN aus dem Schritt von Etappe 4 (`configs/baseline/ci-brent.yaml`) und
-rechnet `steps`, `compare` und alle Abbildungen aus den versionierten Ergebnissen.
+95-%-Intervallen des CNN aus dem Schritt von Etappe 4 (`configs/baseline/ci-brent.yaml`),
+rechnet mit `synthetic` zwei Punkte der Baseline aus dem Schritt von Etappe 3 nach (MFE und
+Verlust der ersten Stufe bitgleich mit der Suche und mit `stage_losses[0]`) und rechnet
+`steps`, `compare` und alle Abbildungen aus den versionierten Ergebnissen.
 ‹TODO: Ergebnis der Tests, ruff, Zeit des CI-Schritts›
 
 ## 4 Entscheidungen und Begründung
