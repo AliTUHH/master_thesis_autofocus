@@ -4,7 +4,7 @@
 |---|---|
 | Datum | 22.–23.10.2026 |
 | Branch | `cursor/stage9-mfe-steps-brent-1091` |
-| Code | `one_thread` in `src/holofocus/device.py`, damit in `src/holofocus/asrm.py`, `src/holofocus/propagation.py` und `src/holofocus/autofocus/criteria.py` die Produkte komplexer Felder, die Norm von $\mathrm{Im}\,y$ und der Verlust auf einem Thread laufen; `method="brent"` in `find_focus` und `search_points` (`src/holofocus/autofocus/search.py`), `search.method` in `BaselineConfig`, `Box` und `--box`/`--box-level` für `holofocus-baseline run` (`src/holofocus/baseline/`), `--method` in `scripts/run_stage3_experiments.py measured`; `configs/baseline/paper2-cpu-brent.yaml`, `paper2-cpu-box.yaml`, `ci-brent.yaml`; `scripts/run_stage9_study.py` (`sources`, `queue`, `merge`, `scan`, `steps`, `compare`), `scripts/make_stage9_figures.py`; Erweiterungen von `tests/test_asrm.py`, `tests/test_autofocus.py` und `tests/test_baseline.py` |
+| Code | `one_thread` in `src/holofocus/device.py`, damit in `src/holofocus/asrm.py`, `src/holofocus/propagation.py` und `src/holofocus/autofocus/criteria.py` die Produkte komplexer Felder, die Norm von $\mathrm{Im}\,y$ und der Verlust auf einem Thread laufen; `method="brent"` in `find_focus` und `search_points` (`src/holofocus/autofocus/search.py`), `search.method` in `BaselineConfig`, `Box` und `--box`/`--box-level` für `holofocus-baseline run` (`src/holofocus/baseline/`), `--method` in `scripts/run_stage3_experiments.py measured`; `configs/baseline/paper2-cpu-brent.yaml`, `paper2-cpu-box.yaml`, `ci-brent.yaml`; `scripts/run_stage9_study.py` (`sources`, `queue`, `merge`, `scan`, `synthetic`, `steps`, `compare`), `scripts/make_stage9_figures.py`; Erweiterungen von `tests/test_asrm.py`, `tests/test_autofocus.py` und `tests/test_baseline.py` |
 | Ergebnisse | `results/stage9/` (Scans, `steps.json`, `mfe-points.csv`, `steps-objects.json`, `compare.json`, `measured.csv`, `synthetic.csv`, `lanes.csv`, Intervalle des CNN), `results/measured/brent-b1-p4/`, `results/measured/brent-box95-{cnn,npe}-loo-ensemble-b1-p4/`, `results/measured/b1-p4-repeat/`, `results/baseline/cpu-4x-test-{brent,brent-box95-npe-ensemble,box95-npe-ensemble,brent-box95-cnn,box95-cnn,repeat}/` |
 | Abbildungen | `docs/laborbuch/figures/stage9-*.png`, Zahlen in `stage9-metrics.json` |
 | Quellen | [2] Dora et al., Opt. Express 33(4), 6641 (2025); R. P. Brent, *Algorithms for Minimization without Derivatives*, Prentice-Hall (1973), Kap. 5 |
@@ -235,6 +235,14 @@ Numeriken zusammen, die Rekonstruktionen am selben $z_{01}$, wo die Verlustkurve
 Scans auseinanderlaufen, und die Objekte der Scans gegeneinander (`results/stage9/steps.json`,
 `mfe-points.csv`, `steps-objects.json`).
 
+`synthetic` rekonstruiert ein synthetisches Sample des Test-Splits von cpu-4x an gegebenen
+$z_{01}$ so wie die Baseline (`paper2-cpu.yaml`, 4× gebinnt), mit `--stages 1` nur die erste
+Stufe, und hält pro Punkt dasselbe fest wie `scan`, ohne das Objekt
+(`results/stage9/synthetic-<Index>.json`, `first-stage/synthetic-<Index>.json`, mit der
+Bibliothek von vorher unter `threads-3-4349d6a/`). `steps` stellt daraus dieselben $z_{01}$ mit
+beiden Numeriken nebeneinander (`synthetic_points`) und gibt für die erste Stufe Äste und
+Wechsel wie beim Zahn (`synthetic_first_stage`).
+
 ### 3.5 Die Suchen
 
 Auf den Messhologrammen (`results/measured/`, alle mit 3 Threads in Lane A, ungebinnt, Padding 4):
@@ -388,7 +396,11 @@ der Versatz zwischen den Ästen (3.4), habe ich dann drei Wechsel des Rasters (7
 jedes Paares voll gescannt, ebenso am zweiten Wechsel beim Minimum (80,901 und 80,902 mm).
 Für die Steigung am Paar bei 79,143/79,144 mm, wo der einzige Nachbar auf dem unteren Ast
 (79,15 mm) eine Suche ist, deren MFE die beiden Numeriken um 175 ppm verschieden geben, kamen
-zwei volle Scans 20 µm daneben hinzu, auf jedem Ast einer (79,123 und 79,164 mm).
+zwei volle Scans 20 µm daneben hinzu, auf jedem Ast einer (79,123 und 79,164 mm), und 79,15 mm
+selbst, voll mit beiden Numeriken. Beim synthetischen Sample 5, an dem die Numerik die MFE der
+Suche um 2–3 % verschiebt (5.1, Punkt 2), habe ich mit beiden Numeriken vier Punkte der Suchen
+voll gerechnet und die erste Stufe in ganz $\Omega_z$ alle 200 µm, in 103,3–104,5 mm alle
+25 µm und an allen zwölf Punkten der Suchen.
 
 **E12 – Keine GPU.** ‹TODO: Kernstunden›; nichts davon braucht Maxwell. Neu in
 `docs/maxwell-gpu.md` ist nur Abschnitt 8.4: Auf der GPU ist die Numerik eine andere, MFE-Werte

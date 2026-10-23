@@ -846,6 +846,11 @@ holofocus-baseline run configs/baseline/paper2-cpu-brent.yaml --data data/cpu-4x
   of the plan (about 15 s instead of 9 min with one thread; its loss is bit for bit
   `stage_losses[0]` of the full reconstruction) and keeps the padded arrays; write those scans
   to `results/stage9/first-stage`.
+- `synthetic`: reconstructions of a synthetic sample (`--index`; the cpu-4x test split unless
+  `--data`) at given `z01` in metres, as the baseline does them (`--config`, by default
+  `configs/baseline/paper2-cpu.yaml`): MFE, loss history, losses at the ends of the stages and
+  the smallest loss of the last stage per point, in `results/stage9/synthetic-<index>.json`;
+  `--stages 1` as for `scan`, written to `results/stage9/first-stage`.
 - `steps`: every padding-4 reconstruction of the measured holograms (all searches and scans)
   as MFE against `z01`, per probe and numerics, screened for steps (jumps between close
   neighbours, reversals away from the minimum), with the density of the points about the
@@ -854,8 +859,12 @@ holofocus-baseline run configs/baseline/paper2-cpu-brent.yaml --data data/cpu-4x
   and the smallest loss of the last stage screened the same way; the first-stage scans, their
   branch (upper where the loss lies more than 5 % over the smallest within 1 mm) and where
   they switch, with the objects on both sides; for every reconstruction whose first stage is
-  known its branch and how far its MFE lies above the line through its neighbours on the lower
-  branch (`branches`).
+  known its branch, and for every pair of neighbouring full reconstructions at most 2 µm apart
+  on different branches the MFE and the losses of the stages upper over lower, as computed and
+  at one `z01` (less the slope of the MFE on both branches; `branches`); on the synthetic
+  samples the Stage 3 search against its repeat with this stage's numerics
+  (`synthetic_repeat`) and, where `synthetic` ran with both numerics, the same `z01` side by
+  side (`synthetic_points`) and the branches of the first stage (`synthetic_first_stage`).
 - `compare`: Brent against Nelder–Mead, cold and in the learned intervals, on the measured
   holograms (against the references of [2] and the full search) and on the synthetic samples
   (against the truth): error, share within 100 µm, reconstructions, time at the 3-thread rate,
@@ -882,10 +891,39 @@ python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample toot
 python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth --stages 1 \
     --z01-mm $(seq -f %.1f 77.9 0.2 87.9) --out results/stage9/first-stage   # all of Omega_z
 python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth \
-    --z01-mm 81.5 81.7 81.9 82.1 82.3 82.5 --out results/stage9/omega      # across its branches
+    --z01-mm 81.5 81.7 81.9 82.1 82.3 82.5 83.7 83.9 84.1 84.3 84.5 \
+    --out results/stage9/omega                                              # across its branches
+python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth --stages 1 \
+    --z01-mm 79.200 79.150 79.125 79.138 79.144 79.141 79.143 81.800 81.850 81.825 81.838 \
+    81.844 81.847 81.849 81.848 84.000 83.950 83.925 83.938 83.931 83.928 83.929 83.930 \
+    --out results/stage9/first-stage          # three switches of that grid, halved to 1 um
+python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth \
+    --z01-mm 79.123 79.143 79.144 79.164 81.848 81.849 83.929 83.930 --out results/stage9/omega
+python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth \
+    --z01-mm 80.901 80.902                    # both sides of the second switch at the minimum
+python scripts/run_stage9_study.py --threads 3 scan --holograms $H --sample tooth \
+    --z01-mm 79.15 --out results/stage9/threads-3     # a point of the searches, with its history
+Z5="0.104375 0.10359375 0.103125 0.10375"   # synthetic sample 5, where the numerics differ by 2-3 %
+python scripts/run_stage9_study.py --threads 3 synthetic --index 5 --z01 $Z5
+python scripts/run_stage9_study.py --threads 3 synthetic --index 5 --stages 1 \
+    --out results/stage9/first-stage --z01 \
+    $(python -c "print(*[round(0.095 + k * 2e-4, 7) for k in range(51)])") \
+    $(python -c "print(*[round(0.1033 + k * 2.5e-5, 8) for k in range(49)])") \
+    0.1 0.1025 0.10375 0.104375 0.103125 0.1040625 0.1034375 0.10390625 0.10359375 \
+    0.103828125                               # Omega_z, 103.3-104.5 mm, the points of its searches
 python scripts/run_stage9_study.py steps
 python scripts/run_stage9_study.py compare
 python scripts/make_stage9_figures.py
+```
+
+Every record lists its points, so all of them can be computed again from it, into another
+directory (points already in the record there are skipped; add `--stages 1` for the records in
+`first-stage/`, and use `synthetic --index <index>` for `synthetic-<index>.json`):
+
+```bash
+r=results/stage9/scan-tooth.json
+python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth --out /tmp/again \
+    --z01 $(python -c "import json; print(*[repr(p['z01']) for p in json.load(open('$r'))['points']])")
 ```
 
 The scans with the library of before Stage 9 run in a checkout of `4349d6a`:
@@ -893,8 +931,11 @@ The scans with the library of before Stage 9 run in a checkout of `4349d6a`:
 ```bash
 git worktree add /tmp/before 4349d6a && cp scripts/run_stage9_study.py /tmp/before/scripts/
 (cd /tmp/before && PYTHONPATH=src python scripts/run_stage9_study.py --threads 3 scan \
-    --holograms $H --sample tooth --z01 0.08069255535982456 0.080694 \
+    --holograms $H --sample tooth --z01 0.08069255535982456 0.080694 0.07915000000000001 \
     --out results/stage9/threads-3-4349d6a)
+D=$PWD/data/cpu-4x/test.h5                  # the synthetic records likewise, with --data
+(cd /tmp/before && PYTHONPATH=src python scripts/run_stage9_study.py --threads 3 synthetic \
+    --index 5 --data $D --z01 $Z5 --out results/stage9/threads-3-4349d6a)
 cp -r /tmp/before/results/stage9/threads-3-4349d6a results/stage9/
 ```
 
@@ -906,6 +947,8 @@ results/stage9/omega/                      full scans of the tooth over Omega_z,
 results/stage9/threads-3/                  the same points with 3 threads (the same bits)
 results/stage9/threads-3-4349d6a/          the same points with the library before, 3 threads
 results/stage9/first-stage/                the first stage only, both numerics (threads-3-4349d6a/)
+results/stage9/synthetic-<index>.json      a synthetic sample at given z01 (also under first-stage/
+                                           and both threads-3-4349d6a/)
 results/stage9/steps.json, mfe-points.csv, steps-objects.json   the screening for steps
 results/stage9/compare.json, measured.csv, synthetic.csv        Brent against Nelder–Mead
 results/stage9/lanes.csv, intervals-cnn-test.{csv,json}

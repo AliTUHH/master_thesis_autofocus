@@ -22,6 +22,10 @@ Laborbuch 09. The MFE has the same bits for every thread count since this stage
   it is. ``scan`` also runs with the library of before this stage, whose MFE depends on the
   thread count: copy this script into a checkout of ``4349d6a`` and run it there with
   ``PYTHONPATH=src`` and ``--out results/stage9/threads-3-4349d6a``.
+* ``synthetic``: reconstructions of a synthetic test sample of cpu-4x at given ``z01`` (in m,
+  as in ``traces.jsonl``) with the settings of the baseline, as ``find_focus`` computes them:
+  MFE, losses at the ends of the stages and every 10th loss
+  (``results/stage9/synthetic-<index>.json``); like ``scan`` also with the library before.
 * ``steps``: all reconstructions of the measured holograms with binning 1 and padding 4 (the
   searches of Stages 3, 5, 8 and 9 and the scans) as MFE against ``z01``, per probe and
   numerics, screened for steps; the same ``z01`` with the same numerics, whose MFE must have
@@ -60,6 +64,7 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
+import h5py
 import numpy as np
 import torch
 import yaml
@@ -68,6 +73,8 @@ from scipy.stats import norm
 from holofocus.asrm import asrm_reconstruct, stage_grid
 from holofocus.baseline import BaselineConfig, merge_runs, read_rows, read_traces, run_baseline
 from holofocus.baseline.runner import file_sha256
+from holofocus.dataset.storage import read_config, read_labels
+from holofocus.device import get_device, real_dtype
 from holofocus.learned import bootstrap_ci, read_predictions
 from holofocus.measured import MEASURED_SAMPLES, load_measured
 from holofocus.yamlconfig import plain
@@ -680,6 +687,88 @@ def synthetic_repeat(stage3: Path, repeat: Path) -> list[dict]:
     return out
 
 
+def synthetic_points(stage9: Path) -> list[dict]:
+    """The reconstructions of ``synthetic`` at the same ``z01`` with both numerics (this stage's
+    in ``stage9``, the library before in :data:`BEFORE`): the MFE, the losses at the ends of the
+    stages and the smallest of the last stage with 3 threads before over one thread, and where
+    the loss histories part."""
+    out = []
+    for path in sorted(stage9.glob("synthetic-*.json")):
+        before = stage9 / BEFORE / path.name
+        if not before.exists():
+            continue
+        record = json.loads(path.read_text())
+        ones = {point_key(p["z01"]): p for p in record["points"]}
+        for p in json.loads(before.read_text())["points"]:
+            one = ones.get(point_key(p["z01"]))
+            if one is None:
+                continue
+            out.append(
+                {
+                    "index": record["index"],
+                    "z01": p["z01"],
+                    "z01_true": record["z01_true"],
+                    "mfe": [one["mfe"], p["mfe"]],
+                    "relative_ppm": (p["mfe"] / one["mfe"] - 1.0) * 1e6,
+                    "stage_losses_relative_ppm": [
+                        (a / b - 1.0) * 1e6
+                        for a, b in zip(p["stage_losses"], one["stage_losses"], strict=True)
+                    ],
+                    "last_stage_smallest_relative_ppm": (
+                        p["last_stage_smallest"] / one["last_stage_smallest"] - 1.0
+                    )
+                    * 1e6,
+                    "loss": loss_split(
+                        one["loss"], p["loss"], record["loss_every"], one["stage_ends"]
+                    ),
+                }
+            )
+    return out
+
+
+def synthetic_first_stage(stage9: Path) -> dict:
+    """The first stage alone (``synthetic --stages 1``) of synthetic samples, per sample and
+    numerics: its loss against ``z01``, its branch (:data:`BRANCH`, against the losses of the
+    sample with both numerics), the switches between neighbours and the largest change between
+    neighbours on one branch."""
+    records = defaultdict(dict)
+    for directory, n in ((stage9 / FIRST_STAGE, 1), (stage9 / FIRST_STAGE / BEFORE, 3)):
+        for path in sorted(directory.glob("synthetic-*.json")):
+            record = json.loads(path.read_text())
+            records[record["index"]][n] = sorted(record["points"], key=lambda p: p["z01"])
+    out = {}
+    for index, by_numerics in sorted(records.items()):
+        reference = {
+            (n, point_key(p["z01"])): (p["z01"], p["mfe"])
+            for n, points in by_numerics.items()
+            for p in points
+        }
+        out[str(index)] = {}
+        for n, points in sorted(by_numerics.items()):
+            known = {point_key(p["z01"]): (p["z01"], p["mfe"]) for p in points}
+            upper = upper_branch(known, reference)
+            on_upper = [upper[point_key(p["z01"])] for p in points]
+            steps = list(zip(points, points[1:], on_upper, on_upper[1:], strict=False))
+            out[str(index)][str(n)] = {
+                "n_points": len(points),
+                "n_upper": sum(on_upper),
+                "largest_change_same_branch": max(
+                    (abs(b["mfe"] / a["mfe"] - 1.0) for a, b, u, v in steps if u == v),
+                    default=None,
+                ),
+                "points": [
+                    {"z01": p["z01"], "loss": p["mfe"], "upper": u}
+                    for p, u in zip(points, on_upper, strict=True)
+                ],
+                "switches": [
+                    {"z01": [a["z01"], b["z01"]], "relative_change": b["mfe"] / a["mfe"] - 1.0}
+                    for a, b, u, v in steps
+                    if u != v
+                ],
+            }
+    return out
+
+
 def scan_objects(stage9: Path) -> dict:
     """RMS differences between the objects of all scan points of a probe (both numerics),
     from the npz of the scans."""
@@ -1038,6 +1127,13 @@ def cmd_steps(args) -> None:
     repeat = args.baseline / "cpu-4x-test-repeat"
     if (repeat / "results.csv").exists():
         record["synthetic_repeat"] = synthetic_repeat(args.baseline / "cpu-4x-test", repeat)
+    for key, found in (
+        ("synthetic_points", synthetic_points(args.stage9)),
+        ("synthetic_points_first_stage", synthetic_points(args.stage9 / FIRST_STAGE)),
+        ("synthetic_first_stage", synthetic_first_stage(args.stage9)),
+    ):
+        if found:
+            record[key] = found
     write_json(args.out / "steps.json", record)
     objects = scan_objects(args.stage9)
     if objects:
@@ -1560,6 +1656,64 @@ def cmd_scan(args) -> None:
         )
 
 
+def cmd_synthetic(args) -> None:
+    config = BaselineConfig.from_yaml(args.config)
+    dataset = read_config(args.data)
+    labels = read_labels(args.data)
+    settings = config.reconstruction.settings(dataset.geometry.binning)
+    if args.stages:
+        settings = dataclasses.replace(settings, stages=settings.stages[: args.stages])
+    device = get_device(config.reconstruction.device)
+    with h5py.File(args.data, "r") as fh:
+        hologram = torch.from_numpy(np.asarray(fh["hologram"][args.index]))
+    hologram = hologram.to(device, real_dtype(config.reconstruction.precision))
+    z01_guess = float(labels["z01_guess"][args.index])
+    geometry = dataset.geometry.at(z01_guess)
+    header = {
+        "index": args.index,
+        "dataset": f"{dataset.name}/{args.data.stem}",
+        "config": args.config.name,
+        "z01_true": float(labels["z01"][args.index]),
+        "z01_guess": z01_guess,
+        "settings": plain(dataclasses.asdict(settings)),
+        "loss_every": LOSS_EVERY,
+    }
+    args.out.mkdir(parents=True, exist_ok=True)
+    target = args.out / f"synthetic-{args.index}.json"
+    record = json.loads(target.read_text()) if target.exists() else {**header, "points": []}
+    if any(record.get(k) != v for k, v in header.items()):
+        raise SystemExit(f"{target} holds reconstructions with other settings")
+    done = {point_key(p["z01"]) for p in record["points"]}
+    for z01 in args.z01:
+        if point_key(z01) in done:
+            print(f"sample {args.index}: {z01 * 1e3:.6f} mm reconstructed already, skipped")
+            continue
+        start = time.perf_counter()
+        result = asrm_reconstruct(hologram, geometry.with_z01(z01).fresnel_number, settings)
+        seconds = time.perf_counter() - start
+        loss, ends = np.asarray(result.loss, dtype=np.float64), list(result.stage_ends)
+        point = {
+            "z01": z01,
+            "mfe": result.final_loss,
+            "seconds": seconds,
+            "stage_ends": ends,
+            "stage_losses": [float(loss[e - 1]) for e in ends],
+            "last_stage_smallest": float(loss[ends[-2] if len(ends) > 1 else 0 :].min()),
+            "loss": [float(x) for x in loss[LOSS_EVERY - 1 :: LOSS_EVERY]],
+            **environment(),
+        }
+        record["points"].append(point)
+        record["points"].sort(key=lambda p: p["z01"])
+        done.add(point_key(z01))
+        write_json(target, record)
+        print(
+            f"sample {args.index}: {z01 * 1e3:.6f} mm  MFE {result.final_loss:.10e}  stages "
+            + " ".join(f"{v:.6e}" for v in point["stage_losses"])
+            + f"  ({seconds:.0f} s)",
+            flush=True,
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--threads", type=int, help="torch CPU threads")
@@ -1594,6 +1748,18 @@ def main() -> None:
     )
     scan.add_argument("--out", type=Path, default=STAGE9)
     scan.set_defaults(func=cmd_scan)
+    synthetic = sub.add_parser(
+        "synthetic", help="reconstructions of a synthetic sample at given z01, as in the baseline"
+    )
+    synthetic.add_argument("--index", type=int, required=True)
+    synthetic.add_argument(
+        "--z01", type=float, nargs="+", required=True, help="in m, as in traces.jsonl"
+    )
+    synthetic.add_argument("--data", type=Path, default=TEST_SPLIT)
+    synthetic.add_argument("--config", type=Path, default=CONFIGS / "paper2-cpu.yaml")
+    synthetic.add_argument("--stages", type=int, help="only the first STAGES stages of the plan")
+    synthetic.add_argument("--out", type=Path, default=STAGE9)
+    synthetic.set_defaults(func=cmd_synthetic)
     steps = sub.add_parser("steps", help="the MFE of the measured holograms against z01 (part 1)")
     steps.add_argument("--measured", type=Path, default=MEASURED)
     steps.add_argument("--stage9", type=Path, default=STAGE9, help="where the scans are")
