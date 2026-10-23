@@ -68,7 +68,7 @@ import h5py
 import numpy as np
 import torch
 import yaml
-from scipy.stats import norm
+from scipy.stats import binomtest, norm
 
 from holofocus.asrm import asrm_reconstruct, stage_grid
 from holofocus.baseline import BaselineConfig, merge_runs, read_rows, read_traces, run_baseline
@@ -224,11 +224,14 @@ PAIRED_ERRORS = (
     ("brent-box95-npe", "nm-cold"),
     ("nm-box95-cnn", "nm-cold"),
     ("brent-box95-cnn", "nm-cold"),
+    ("brent-box95-npe", "brent-cold"),
+    ("brent-box95-cnn", "brent-cold"),
     ("nm-cold-repeat", "nm-cold"),
 )
 """The searches on the synthetic samples whose errors ``compare`` sets against each other,
 sample by sample: Brent against Nelder-Mead in the same interval, each search in an interval
-against the full search of [2], and the numerics alone."""
+against the full search of [2] and Brent in an interval against Brent cold, and the numerics
+alone."""
 WITHIN_UM = (50, 100, 250, 1000)
 MFE_APART_PPM = 100.0
 """How far the MFE at the result of a search must lie from that of the cold Nelder-Mead search
@@ -1483,6 +1486,7 @@ def synthetic_comparison(baseline: Path, lanes: Path) -> tuple[dict, list[dict]]
         a = np.array([runs[second][i]["abs_error_um"] for i in idx])
         b = np.array([runs[first][i]["abs_error_um"] for i in idx])
         apart = np.abs([runs[first][i]["z01_est"] - runs[second][i]["z01_est"] for i in idx]) * 1e6
+        only = int(np.sum((a <= 100) & (b > 100))), int(np.sum((a > 100) & (b <= 100)))
         accuracy[f"{first} vs {second}"] = {
             "n_samples": len(idx),
             "abs_error_difference_um": {
@@ -1492,9 +1496,10 @@ def synthetic_comparison(baseline: Path, lanes: Path) -> tuple[dict, list[dict]]
             },
             "within_100um": {
                 "both": int(np.sum((a <= 100) & (b <= 100))),
-                f"only_{second}": int(np.sum((a <= 100) & (b > 100))),
-                f"only_{first}": int(np.sum((a > 100) & (b <= 100))),
+                f"only_{second}": only[0],
+                f"only_{first}": only[1],
                 "neither": int(np.sum((a > 100) & (b > 100))),
+                "p_mcnemar": binomtest(min(only), sum(only)).pvalue if sum(only) else 1.0,
             },
             "results_apart_um": {
                 "median": float(np.median(apart)),
