@@ -313,12 +313,13 @@ results/crosscheck/             reports of scripts/crosscheck_asrm_holowizard.py
 ## Learned autofocus (Stage 4)
 
 `holofocus.learned` estimates `dz01 = z01 - z01_guess` (±5 mm) from one hologram as a Gaussian
-mean and standard deviation. Two input representations are implemented:
+mean and standard deviation. Three input representations are implemented:
 
 | `representation.kind` | Input | Model |
 |---|---|---|
 | `spectrum` | radially averaged power spectrum of the Hann-windowed hologram on a uniform `f^2` axis (1024 bins up to 0.125 cycles²/px²), log, standardized; its minima lie at `f^2 = k Fr` | `SpectrumCNN` (1-D convolutions) |
 | `image` | the hologram binned 2×2, standardized; random D4 transforms (rotations by 90°, flips) during training | `ImageCNN` (2-D convolutions) |
+| `polar` (Stage 10) | the same power spectrum in `angles` sectors (8) of the direction of the frequency, modulo 180°, times the bins of `f^2` | `PolarSpectrumCNN` (invariant to rotations by 90° and flips) |
 
 Both models end in a Gaussian head (mean and variance) trained with the β-NLL. Training keeps
 the epoch with the lowest validation MAE and calibrates the standard deviation on the
@@ -339,6 +340,8 @@ z01_est = z01_guess + dz01
 | `configs/learned/spectrum-cnn.yaml` | spectrum, 1024 bins | 4 stages (16/32/64/64 channels), 178k parameters, 100 epochs |
 | `configs/learned/spectrum-cnn-wide.yaml` | spectrum, 1024 bins | 4 stages (32/64/128/128 channels), 450k parameters, 100 epochs |
 | `configs/learned/image-cnn.yaml` | image, binning 2 (256²) | 4 stages (16/32/64/128 channels), 308k parameters, 40 epochs |
+| `configs/learned/polar-cnn.yaml` | polar, 8 sectors × 1024 bins | the stages of `spectrum-cnn-wide.yaml` after an angular first stage, 465k parameters, 100 epochs (Stage 10) |
+| `configs/learned/polar-cnn-hf.yaml`, `image-cnn-b1.yaml` | polar, 2048 bins up to 0.25; image, binning 1 (512²) | as `polar-cnn.yaml` and `image-cnn.yaml`; for the GPU (Stage 10) |
 | `configs/learned/ci.yaml` | spectrum, 128 bins | 2 stages, 3 epochs (CI) |
 
 ```bash
@@ -978,6 +981,111 @@ results/stage9/lanes.csv, intervals-cnn-test.{csv,json}
 results/measured/brent-b1-p4/, brent-box95-{cnn,npe}-loo-ensemble-b1-p4/, b1-p4-repeat/
 results/baseline/cpu-4x-test-{brent,brent-box95-npe-ensemble,box95-npe-ensemble,
                               brent-box95-cnn,box95-cnn,repeat}/
+```
+
+## Stage 10: beyond the radial power spectrum
+
+Three parts (Laborbuch 10), all on the CPU; the full runs for a GPU are in
+[maxwell-gpu.md](maxwell-gpu.md) 8.5.
+
+**Texture fits with the levels of the spectrum.** `fit_objective(median, measured, levels=True)`
+adds the absolute levels of the radial log power spectrum to the shape features of Stage 6: the
+mean log power of the mid band, of the upper band of the CNN and of the highest frequencies
+(`LEVEL_NAMES`), each difference over `LEVEL_SCALE`. `run_stage6_study.py fit --levels` runs the
+texture grids of Stage 6 with this objective; `TEXTURE_FITS_LEVELS` holds the result.
+
+**Inputs beyond the radial spectrum.** Four families, each trained with the seeds 0, 1 and 2
+(`holofocus-learn train --seed k`) and combined into an ensemble:
+
+| Family | Config | Ensemble |
+|---|---|---|
+| `radial-cnn` | `spectrum-cnn-wide.yaml` | equal-weight mixture of the Gaussians (calibrated `sigma`) |
+| `npe` | `npe-nsf.yaml` | `holofocus-learn npe-predict` with the three runs |
+| `polar-cnn` | `polar-cnn.yaml` | mixture |
+| `image-cnn` | `image-cnn.yaml` | mixture |
+
+`PolarSpectrumCNN` starts with a convolution over 3 sectors × `kernel_size` bins that is cyclic
+and symmetric in the angle (`AngularConv`), takes the mean and the maximum over the sectors
+(`AnglePool`: the maximum keeps the sectors across a fiber, the mean is the radial average) and
+continues with the stages of `SpectrumCNN`. A mixture is written in the columns of the NPE
+predictions (intervals, `pit`), so a CNN ensemble and an NPE ensemble go through the same
+metrics and bound a search the same way.
+
+**Brent in the learned interval.** The 95 % interval of each ensemble bounds Brent's method
+(Stage 9: `holofocus-baseline run --box CSV --box-level 95`, `run_stage3_experiments.py measured
+--method brent --box DIR`), on the 48 synthetic samples of Stage 3 and on the four measured
+holograms. Cold Nelder–Mead (Stage 3) and cold Brent (Stage 9) are the references.
+
+`scripts/run_jobs.py` runs the jobs of a plan on one machine within a budget of threads and
+memory: the jobs whose inputs are done, by priority, with EASY backfilling (a job may jump the
+queue only if it does not delay the first waiting one). Every job has a log, its exit code and
+its peak memory in the state folder. A runner started again takes over the jobs that still run.
+`forecast` plays the rest of the plan through and prints when each group ends, in UTC and in
+Berlin time. `retry` releases a failed job.
+
+`scripts/run_stage10_study.py`:
+
+- `configs`: the leave-one-out configs of the texture fits with levels,
+  `configs/dataset/loo2-<sample>.yaml` (6000/250/250 samples), and `loo2-<sample>-large.yaml`
+  (50 000 more training samples, for the GPU); the ranges and each probe's own values in
+  `results/objectmodel/loo2-ranges.json`.
+- `plan`: every job of the stage for `run_jobs.py` (`runs/stage10/plan.json`). It covers the
+  loo2 sets and their fingerprints, the trainings and predictions of the four families on
+  cpu-4x and on the loo2 sets, the ensembles, the estimates on the measured holograms, the
+  searches, `texture`, `spectra` and, once all others are done, `compare`. Seeds trained in
+  earlier stages are reused (radial CNN seed 0, NPE seeds 0–2, image CNN seed 0).
+- `ensembles`: the seeds of a CNN family on a test split as one mixture; `mixture` does the same
+  for predictions given by path, e.g. seeds trained on Maxwell.
+- `measured`: the seeds of a family trained on the loo2 set of a measured hologram, applied to
+  that hologram (4× binned, with the 16 phases of the binning grid), and their ensemble. The
+  ensemble record is the interval of the bounded search. `--runs` and `--out` take runs from
+  elsewhere.
+- `search` and `merge`: Brent in the 95 % interval of a family's ensemble on one synthetic sample
+  (`runs/stage10/search/<family>/<index>`), and all of them joined into one baseline run.
+- `texture`: the fit set of each measured hologram without texture and with the textures of
+  Stages 6 and 10, against its spectrum (levels, CTF bands, the power the texture adds).
+  `spectra`: the measured hologram among the leave-one-out test splits of Stages 6 and 10, bin
+  by bin.
+- `compare`: the four families side by side. Learned estimates: share within 100 µm (Wilson
+  interval), MAE (bootstrap interval) and coverage of the 95 % interval, on the 48 synthetic
+  samples, the full cpu-4x test split, the loo2 test splits and the measured holograms.
+  Searches: the same metrics, reconstructions, the samples whose truth lies outside the
+  interval, and the pairs of `SEARCH_PAIRS` sample by sample (each search in an interval
+  against both cold searches, the polar and the image CNN against the radial CNN and the NPE,
+  exact McNemar test).
+- `evaluate`: the metrics of `compare` for predictions (`NAME=CSV[,CSV...]`, several CSVs are
+  mixed), searches (`NAME=DIR[,CSV]`, the intervals from the `run.yaml` of the search, checked
+  by SHA-256) and estimates on the measured holograms given by path, e.g. the runs of Maxwell;
+  every two of them paired.
+
+The runs of Laborbuch 10, on a 4-core machine:
+
+```bash
+H=/path/to/Examples/data/holograms      # Zenodo record 10.5281/zenodo.8349365
+python scripts/run_stage6_study.py fit --holograms $H --levels --out results/objectmodel/levels
+python scripts/run_stage10_study.py configs
+python scripts/run_stage10_study.py plan --holograms $H
+python scripts/run_jobs.py run runs/stage10/plan.json --state runs/stage10   # in tmux
+python scripts/run_jobs.py forecast runs/stage10/plan.json --state runs/stage10
+python scripts/make_stage10_figures.py
+```
+
+The plan has 388 jobs, 101.5 core-hours with a budget of 4 threads and 8 GB. The results:
+
+```
+results/objectmodel/levels/fit-<sample>.{json,csv}   the texture fits with levels
+results/objectmodel/loo2-ranges.json                 the loo2 ranges and own values
+results/datasets/loo2-<sample>-{val,test}.csv        fingerprints of the loo2 splits
+results/stage10/cpu-4x/<family>/seed-<k>/            trainings on cpu-4x (models not tracked)
+results/stage10/cpu-4x/<family>-ensemble/test/       the ensembles on the cpu-4x test split
+results/stage10/loo2/<family>/seed-<k>/loo-<sample>/ the CNN trainings on loo2, and their
+results/stage10/loo2/<family>/ensemble/loo-<sample>/ ensembles on the loo2 test splits
+results/stage10/loo2/npe/matched-<sample>[-seed<k>][-ensemble]/   the NPE on loo2
+results/stage10/baseline/cpu-4x-test-brent-box95-<family>/  Brent in the intervals (48 samples)
+results/measured/<family>-loo2-ensemble/<sample>.json       the ensembles on the holograms
+results/measured/brent-box95-<family>-loo2-ensemble-b1-p4/  Brent in their intervals
+results/stage10/texture-<sample>.json, spectra-<sample>.json
+results/stage10/compare.json, learned.csv, measured.csv, searches-{synthetic,measured}.csv
 ```
 
 ## GPU runs on DESY Maxwell
