@@ -216,7 +216,7 @@ SYNTHETIC_METHODS = {
 """The same on the synthetic samples (``results/baseline/<folder>``)."""
 INTERVALS = {"npe": NPE_PREDICTIONS, "cnn": CNN_INTERVALS}
 """The sources of the 95 % intervals on the synthetic samples."""
-PAIRED_ERRORS = (
+PAIRS = (
     ("brent-cold", "nm-cold"),
     ("brent-box95-npe", "nm-box95-npe"),
     ("brent-box95-cnn", "nm-box95-cnn"),
@@ -228,10 +228,10 @@ PAIRED_ERRORS = (
     ("brent-box95-cnn", "brent-cold"),
     ("nm-cold-repeat", "nm-cold"),
 )
-"""The searches on the synthetic samples whose errors ``compare`` sets against each other,
-sample by sample: Brent against Nelder-Mead in the same interval, each search in an interval
-against the full search of [2] and Brent in an interval against Brent cold, and the numerics
-alone."""
+"""The searches on the synthetic samples whose errors and reconstructions ``compare`` sets
+against each other, sample by sample: Brent against Nelder-Mead in the same interval, each
+search in an interval against the full search of [2] and Brent in an interval against Brent
+cold, and the numerics alone."""
 WITHIN_UM = (50, 100, 250, 1000)
 MFE_APART_PPM = 100.0
 """How far the MFE at the result of a search must lie from that of the cold Nelder-Mead search
@@ -1307,6 +1307,12 @@ def ci(values, statistic=np.mean) -> list[float]:
     return list(bootstrap_ci(values, statistic, resamples=RESAMPLES))
 
 
+def fewer(counts: np.ndarray) -> float:
+    """How many fewer reconstructions the searches of the first column need than those of the
+    second, relative: ``1 - sum(first) / sum(second)``."""
+    return 1.0 - counts[:, 0].mean() / counts[:, 1].mean()
+
+
 def search_summary(rows: list[dict], rate: float | None) -> dict:
     err = np.array([r["abs_error_um"] for r in rows])
     recon = np.array([r["n_reconstructions"] for r in rows], dtype=float)
@@ -1385,8 +1391,9 @@ def width_bins(runs, nm, brent, idx, widths: dict, bins: int = 3) -> list[dict]:
 
 def synthetic_comparison(baseline: Path, lanes: Path) -> tuple[dict, list[dict]]:
     """The searches of :data:`SYNTHETIC_METHODS` on the samples of :data:`SYNTHETIC`: errors
-    against the truth, reconstructions, the time at the rate of 3 threads, and what the 95 %
-    intervals save with Nelder-Mead and with Brent."""
+    against the truth, reconstructions, the time at the rate of 3 threads, what the 95 %
+    intervals save with Nelder-Mead and with Brent, and the searches of :data:`PAIRS` against
+    each other."""
     from holofocus.baseline.runner import Box
 
     runs, provenance = {}, {}
@@ -1478,8 +1485,8 @@ def synthetic_comparison(baseline: Path, lanes: Path) -> tuple[dict, list[dict]]
                 **paired_savings(runs, nm, brent, idx),
                 "by_width": width_bins(runs, nm, brent, idx, widths[key]),
             }
-    accuracy = {}
-    for first, second in PAIRED_ERRORS:
+    pairs = {}
+    for first, second in PAIRS:
         if first not in runs or second not in runs:
             continue
         idx = sorted(set(runs[first]) & set(runs[second]))
@@ -1487,7 +1494,11 @@ def synthetic_comparison(baseline: Path, lanes: Path) -> tuple[dict, list[dict]]
         b = np.array([runs[first][i]["abs_error_um"] for i in idx])
         apart = np.abs([runs[first][i]["z01_est"] - runs[second][i]["z01_est"] for i in idx]) * 1e6
         only = int(np.sum((a <= 100) & (b > 100))), int(np.sum((a > 100) & (b <= 100)))
-        accuracy[f"{first} vs {second}"] = {
+        counts = np.array(
+            [[runs[m][i]["n_reconstructions"] for m in (first, second)] for i in idx], dtype=float
+        )
+        extra = counts[:, 0] - counts[:, 1]
+        pairs[f"{first} vs {second}"] = {
             "n_samples": len(idx),
             "abs_error_difference_um": {
                 "mean": float((b - a).mean()),
@@ -1507,13 +1518,22 @@ def synthetic_comparison(baseline: Path, lanes: Path) -> tuple[dict, list[dict]]
                 "same": int(np.sum(apart == 0.0)),
                 "within_xatol": int(np.sum(apart <= XATOL_UM)),
             },
+            "reconstructions": {
+                "difference": float(extra.mean()),
+                "difference_ci": ci(extra),
+                "relative_fewer": fewer(counts),
+                "relative_fewer_ci": ci(counts, fewer),
+                "fewer": int(np.sum(extra < 0)),
+                "same": int(np.sum(extra == 0)),
+                "more": int(np.sum(extra > 0)),
+            },
         }
     record = {
         "searches": provenance,
         "seconds_per_reconstruction": rates,
         "summaries": summaries,
         "savings": comparisons,
-        "accuracy": accuracy,
+        "pairs": pairs,
     }
     return record, per_sample
 

@@ -308,10 +308,10 @@ Suche mit wie vielen Threads rechnete.
 von [2] und zur kalten Suche, MFE, Rekonstruktionen, Zeit) und fasst die synthetischen Suchen
 zusammen: MAE mit Bootstrap-Intervall, Median, 90. Perzentil, Maximum, Anteil innerhalb 50, 100,
 250 und 1000 µm, Rekonstruktionen, Zeit mit 3 Threads; dazu, was das Intervall pro Verfahren
-spart, gepaart über die Samples (E7, E9), und die Fehler zweier Suchen gepaart: die Differenz
-der Beträge mit Bootstrap-Intervall und die Samples, die nur eine der beiden auf 100 µm trifft,
-mit dem exakten McNemar-Test wie in Laborbuch 04 (`results/stage9/compare.json`,
-`measured.csv`, `synthetic.csv`).
+spart, gepaart über die Samples (E7, E9), und zwei Suchen gepaart (`pairs`): die Differenz der
+Beträge ihrer Fehler mit Bootstrap-Intervall, die Samples, die nur eine der beiden auf 100 µm
+trifft, mit dem exakten McNemar-Test wie in Laborbuch 04, und die Differenz ihrer
+Rekonstruktionen (`results/stage9/compare.json`, `measured.csv`, `synthetic.csv`).
 
 ### 3.7 Tests
 
@@ -809,9 +809,10 @@ Fehler gegen die Wahrheit, Rekonstruktionen und Zeit pro Autofokus mit 3 Threads
 | Brent, 95 % CNN | ‹CNN-ROW-BR› |
 
 1. **Kalt ist Brent so genau wie Nelder–Mead, mit 27 % weniger Rekonstruktionen.** Brent
-   braucht 8,17 statt 11,15 pro Autofokus. Sample für Sample unterscheidet sich der Betrag des
+   braucht 8,17 statt 11,15 pro Autofokus, gepaart 2,98 [2,46, 3,50] weniger, weniger auf 44
+   der 48 Samples und mehr auf 2 (`pairs` unter `synthetic`). Sample für Sample unterscheidet sich der Betrag des
    Fehlers im Mittel um −1 µm [−51, +50]; auf 100 µm trifft nur Brent 4 Samples, nur
-   Nelder–Mead 2 (exakter McNemar-Test, $p = 0{,}69$; `accuracy` unter `synthetic`). Auf 45 der
+   Nelder–Mead 2 (exakter McNemar-Test, $p = 0{,}69$; `pairs` unter `synthetic`). Auf 45 der
    48 Samples enden beide höchstens 100 µm auseinander, im Median 17 µm.
 2. **Der Fehler ist der der MFE.** Bei allen vier Suchen (kalt und im NPE-Intervall) liegen
    85–88 % der Ergebnisse über der Wahrheit, im Median um 120–124 µm: Das ist der Versatz des

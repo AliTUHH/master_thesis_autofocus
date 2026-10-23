@@ -870,9 +870,10 @@ holofocus-baseline run configs/baseline/paper2-cpu-brent.yaml --data data/cpu-4x
 - `compare`: Brent against Nelder–Mead, cold and in the learned intervals, on the measured
   holograms (against the references of [2] and the full search) and on the synthetic samples
   (against the truth): error, share within 100 µm, reconstructions, time at the 3-thread rate,
-  and the reconstructions the interval saves with each method, paired over the samples; the
-  errors of two searches paired as well (the difference of the absolute errors with a bootstrap
-  interval, and an exact McNemar test on the samples only one of them gets within 100 µm).
+  and the reconstructions the interval saves with each method, paired over the samples; two
+  searches paired as well (`pairs`: the difference of the absolute errors with a bootstrap
+  interval, an exact McNemar test on the samples only one of them gets within 100 µm, and the
+  difference of their reconstructions).
 
 The runs of Laborbuch 09, on a 4-core machine (3 threads next to at most one 1-thread run):
 
