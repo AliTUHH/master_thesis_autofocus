@@ -43,8 +43,9 @@ der CTF über das Band des CNN und in vier Bändern, das Signal-Rausch-Verhältn
 über dem Boden und die Steigung. Wie viel Leistung eine Textur hinzufügt, sieht es nicht. Bei
 Kaktusnadel und Mg-Draht lag die beste Steigung am Rand des Gitters (1,75), und der Boden des
 Spektrums lag mit der Textur bei −6,4 statt −7,6 (Kaktusnadel) und bei −3,9 statt −6,8
-(Mg-Draht), im natürlichen Logarithmus der Leistung. Zu Beginn dieser Etappe nachgemessen, auf
-den Sätzen der Anpassung von Etappe 6 (16 Test-Samples pro Textur): Ab $f^2 = 0{,}02$ hat die
+(Mg-Draht), im natürlichen Logarithmus der Leistung. Nachgemessen mit
+`run_stage10_study.py texture` auf den Sätzen der Anpassung (16 Test-Samples pro Textur, 5.1):
+Ab $f^2 = 0{,}02$ hat die
 Simulation mit der Textur von Etappe 6 das 5,8-Fache (Kaktusnadel) und das 20-Fache (Mg-Draht)
 der Leistung des Messhologramms, beim Spinnenhaar das 1,4-Fache; ohne Textur das 0,73-, 0,31-
 und 0,64-Fache, beim Zahn (ohne Textur angepasst) das 0,98-Fache. Was die Textur hinzufügt, ist
@@ -362,6 +363,95 @@ McNemar-Test auf den Samples, die nur eine von zwei Methoden innerhalb 100 µm s
 Messhologrammen gibt es keine Statistik, nur die Zahlen.
 
 ## 5 Ergebnisse
+
+### 5.1 Die Textur gegen das Messhologramm (Teil 1)
+
+![Textur gegen Messung](figures/stage10-texture.png)
+
+*Abb. 1 – Oben das radiale Log-Leistungsspektrum jedes Messhologramms (4× gebinnt) und der
+Median der 16 Test-Samples seines Anpassungssatzes ohne Textur, mit der Textur von Etappe 6 und
+mit der von Etappe 10; unten die Differenz zur Messung. Grau die Bänder der drei Pegel. Bei
+Spinnenhaar und Zahn sind die Texturen beider Etappen gleich.*
+
+`run_stage10_study.py texture` erzeugt die Samples der Anpassung neu und rechnet dasselbe Maß
+wie sie: Wo eine Textur in `results/objectmodel/fit-<probe>.json` oder
+`levels/fit-<probe>.json` vorkommt, stimmt ihr Maß auf alle Stellen überein. Leistung ab
+$f^2 = 0{,}02$; „Textur / Fehlbetrag“ ist, was die Textur an Leistung hinzufügt, geteilt durch
+das, was der Simulation ohne Textur zur Messung fehlt (`results/stage10/texture-<probe>.json`):
+
+| Probe | Textur | Maß von Etappe 6 | Maß mit Pegeln | Pegel – Messung (Mitte, oben, Boden) | Leistung / Messung | Textur / Fehlbetrag |
+|---|---|---|---|---|---|---|
+| Spinnenhaar | ohne | 2,56 | 2,24 | −1,00, −0,10, +0,33 | 0,64 | – |
+| | Etappe 6 und 10 | 1,13 | 1,03 | +0,25, +0,41, +0,43 | 1,36 | 2,0 |
+| Zahn | ohne (Etappe 6 und 10) | 0,72 | 0,70 | +0,31, +0,28, +0,39 | 0,98 | – |
+| Kaktusnadel | ohne | 3,87 | 3,24 | −0,23, −0,32, −0,12 | 0,73 | – |
+| | Etappe 6 | 1,73 | 2,37 | +1,97, +1,87, +1,22 | 5,77 | 18,4 |
+| | Etappe 10 | 1,98 | 1,76 | +0,86, +0,37, +0,08 | 1,67 | 3,4 |
+| Mg-Draht | ohne | 5,62 | 4,87 | −1,19, −1,36, −0,90 | 0,31 | – |
+| | Etappe 6 | 0,89 | 3,37 | +2,90, +3,20, +2,90 | 20,3 | 28,9 |
+| | Etappe 10 | 1,93 | 1,88 | +1,02, +0,93, +0,63 | 2,60 | 3,3 |
+
+1. **Die Leistung bei den höchsten Frequenzen ist fast behoben, die im mittleren Band nicht.**
+   Bei Kaktusnadel und Mg-Draht fügt die Textur von Etappe 10 das 3,4- und 3,3-Fache des
+   Fehlbetrags hinzu statt des 18- und 29-Fachen; ab $f^2 = 0{,}02$ hat die Simulation das 1,7-
+   und 2,6-Fache der gemessenen Leistung statt des 5,8- und 20-Fachen. Am Boden liegt die
+   Kaktusnadel 0,08 nat über der Messung (Etappe 6: 1,22), der Mg-Draht 0,63 (2,90). Am
+   weitesten darüber bleibt das mittlere Band mit +0,86 und +1,02 nat, dem 2,4- und 2,8-Fachen
+   der gemessenen Leistung dort.
+2. **Pegel und Form gehen mit diesem Texturmodell nicht zusammen.** Im Maß von Etappe 6 werden
+   beide Proben schlechter, die Kaktusnadel von 1,73 auf 1,98, der Mg-Draht von 0,89 auf 1,93.
+   Beim Mg-Draht verliert vor allem das unterste CTF-Band ($f^2$ = 0,002–0,03) seinen Kontrast:
+   Seine Korrelation mit der CTF liegt 0,42 unter der Messung (Etappe 6: 0,05), weil vom Film,
+   der ihn trug, ein Zehntel bleibt. Bei der Kaktusnadel fällt das Spektrum über das Band des
+   CNN steiler ab als gemessen ($d \log P / d f^2$ um 6,8 unter der Messung, Etappe 6: 2,5).
+   Im Gitter der Anpassung gibt es
+   Texturen, deren drei Pegel alle innerhalb ±0,25 nat liegen (13 bei der Kaktusnadel, 4 beim
+   Mg-Draht), aber keine davon mit einem Maß der Form unter 2,70 und 2,80. Mit RMS innen, Film
+   und Steigung trifft die Textur entweder die Pegel oder den Kontrast der CTF, nicht beides
+   (6, Punkt 1).
+3. **Spinnenhaar und Zahn behalten ihre Texturen** (3.1). Beim Spinnenhaar fehlt der Simulation
+   ohne Textur das mittlere Band (−1,00 nat); die Textur legt dort und im oberen Band zu
+   (+0,25, +0,41), am Boden bleibt der Flatfield-Rest (+0,33 ohne, +0,43 mit Textur). Die
+   Simulation des Zahns hat ohne Textur 98 % der gemessenen Leistung und liegt in allen drei
+   Pegeln darüber; eine Textur vergrößerte beides.
+
+### 5.2 Das Messhologramm unter den Test-Splits von `loo` und `loo2`
+
+![Spektren der Leave-one-out-Sätze](figures/stage10-spectra.png)
+
+*Abb. 2 – Oben das 5–95-%-Band und der Median des radialen Log-Leistungsspektrums der
+250 Test-Samples von `loo` (Etappe 6) und `loo2` (Etappe 10) jeder Probe und das
+Messhologramm; unten, Bin für Bin, das Perzentil des Messhologramms unter ihnen, grau außerhalb
+5–95 %.*
+
+`run_stage10_study.py spectra` (`results/stage10/spectra-<probe>.json`): Perzentile des
+Messhologramms unter den 250 Test-Samples und der Anteil der Bins bis $f^2 = 0{,}125$ (das Band
+der Spektrum-CNNs), in denen es innerhalb 5–95 % liegt:
+
+| Probe | Satz | Mitte | oben | Boden | CTF | Bins innerhalb 5–95 % |
+|---|---|---|---|---|---|---|
+| Spinnenhaar | `loo` | 0,8 % | 1,2 % | 0,8 % | 91,6 % | 16 % |
+| | `loo2` | 6,4 % | 4,0 % | 4,8 % | 93,2 % | 36 % |
+| Zahn | `loo` | 13,2 % | 15,2 % | 20,4 % | 4,4 % | 100 % |
+| | `loo2` | 12,4 % | 14,4 % | 21,6 % | 3,6 % | 100 % |
+| Kaktusnadel | `loo` | 10,4 % | 9,6 % | 7,6 % | 34,4 % | 100 % |
+| | `loo2` | 12,4 % | 12,8 % | 14,8 % | 41,6 % | 100 % |
+| Mg-Draht | `loo` | 54,8 % | 50,4 % | 35,6 % | 67,6 % | 100 % |
+| | `loo2` | 87,2 % | 84,4 % | 55,6 % | 89,2 % | 99 % |
+
+1. **Spinnenhaar: leiser als fast alle Samples beider Sätze.** `loo2` hebt das Messhologramm in
+   den Pegeln von 1 % auf 4–6 % und von 16 % auf 36 % der Bins innerhalb des Bandes. Seine
+   Textur kommt unter Leave-one-out von den anderen drei Proben (RMS bis 0,6 rad, 3.2), die
+   eigene ist schwach und steil (Film 0,1 rad, Steigung 3,0). Im zweiten CTF-Band
+   ($f^2$ = 0,03–0,0625) hat das Messhologramm mehr Kontrast als jedes der 250 Samples.
+2. **Zahn und Kaktusnadel: im Band, in den Pegeln bei 10–22 %.** `loo2` ändert daran wenig. Beim
+   Zahn bleibt der Kontrast der CTF am Rand: weniger als bei 96 % der Samples, im untersten
+   CTF-Band weniger als bei 97 %.
+3. **Mg-Draht: von der Mitte an den oberen Rand.** Unter `loo` lag das Messhologramm bei
+   36–68 %, unter `loo2` liegt es in den Pegeln der Mitte und oben, im Kontrast der CTF und in
+   `upper_snr` bei 84–93 %, in 99 % der Bins noch innerhalb des Bandes. Das sagt 3.2 voraus:
+   Keine der anderen drei Proben hat so viel Textur im Objekt (0,3 rad), `loo2` reicht dort bis
+   0,2 rad.
 
 ## 6 Offene Punkte
 
