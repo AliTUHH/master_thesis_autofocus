@@ -261,7 +261,9 @@ def spectral_features(radial: RadialPower, hologram: np.ndarray, fresnel_number:
     ``floor``: mean log power at the highest frequencies; ``upper_snr``: the upper band of the
     CNN above the floor; ``low_excess``: the lowest frequencies above the mid band;
     ``slope``: d log P / d f^2 over the CNN band (blur makes it steeper); ``ctf``: CTF
-    correlation over the CNN band and per band of :data:`CTF_BANDS`. Logs are natural.
+    correlation over the CNN band and per band of :data:`CTF_BANDS`; ``level_mid`` and
+    ``level_upper``: mean log power of the mid and upper band (with ``floor`` the absolute
+    levels). Logs are natural.
     """
     p = radial(hologram)
     f2 = radial.f2
@@ -275,6 +277,8 @@ def spectral_features(radial: RadialPower, hologram: np.ndarray, fresnel_number:
         "slope": slope,
         "ctf": _ctf_correlation(f2, p, fresnel_number, (0.002, 0.125)),
         "ctf_bands": [_ctf_correlation(f2, p, fresnel_number, b) for b in CTF_BANDS],
+        "level_mid": level["mid"],
+        "level_upper": level["upper"],
     }
 
 

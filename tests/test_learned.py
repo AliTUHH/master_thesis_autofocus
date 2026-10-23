@@ -16,6 +16,7 @@ from holofocus.learned import (
     LearnedAutofocus,
     LearnedConfig,
     ModelConfig,
+    PolarSpectrumCNN,
     Representation,
     RepresentationConfig,
     SpectrumCNN,
@@ -56,6 +57,21 @@ TINY_IMAGE = {
     "training": {"epochs": 1, "batch_size": 4, "warmup_epochs": 0},
     "device": "cpu",
 }
+TINY_POLAR = {
+    "name": "tiny-polar",
+    "representation": {"kind": "polar", "bins": 64, "angles": 8},
+    "model": {"channels": [4, 8], "hidden": 8, "pool_to": 4},
+    "training": {"epochs": 1, "batch_size": 4, "warmup_epochs": 0, "augment": False},
+    "device": "cpu",
+}
+
+
+def _sector_permutation(element: int, angles: int) -> torch.Tensor:
+    """Sectors of the polar spectrum after ``d4_transform(., element)``: an odd number of
+    quarter turns shifts them by ``angles / 2``, the flip reverses them."""
+    k = torch.arange(angles)
+    shift = angles // 2 if element % 2 else 0
+    return (shift - k) % angles if element >= 4 else (k + shift) % angles
 
 
 def _row(index, error_um, z01_true=0.1):
@@ -94,7 +110,7 @@ def splits(tmp_path_factory):
 
 
 def test_repository_configs_and_validation():
-    for name in ("spectrum-cnn", "spectrum-cnn-wide", "image-cnn", "ci"):
+    for name in ("spectrum-cnn", "spectrum-cnn-wide", "image-cnn", "polar-cnn", "ci"):
         config = LearnedConfig.from_yaml(ROOT / "configs" / "learned" / f"{name}.yaml")
         assert LearnedConfig.from_dict(yaml.safe_load(config.to_yaml())) == config
         assert config.target_scale == 5e-3
@@ -104,10 +120,15 @@ def test_repository_configs_and_validation():
     assert wide.model.channels == (32, 64, 128, 128)
     assert dataclasses.replace(wide.model, channels=spectrum.model.channels) == spectrum.model
     assert (wide.representation, wide.training) == (spectrum.representation, spectrum.training)
+    polar = LearnedConfig.from_yaml(ROOT / "configs" / "learned" / "polar-cnn.yaml")
+    assert polar.representation == dataclasses.replace(wide.representation, kind="polar")
+    assert (polar.model, polar.training) == (wide.model, wide.training)
     bad = [
         {"nme": "typo"},
         {"representation": {"kind": "wavelet"}},
         {"representation": {"f2_max": 0.7}},
+        {"representation": {"kind": "polar", "angles": 5}},
+        {"representation": {"kind": "polar", "angles": 2}},
         {"model": {"kernel_size": 4}},
         {"model": {"channels": []}},
         {"training": {"beta": 1.5}},
@@ -162,6 +183,34 @@ def test_spectrum_is_invariant_under_rotations_and_flips():
         Representation(RepresentationConfig(kind="spectrum", bins=4096, f2_max=0.25), (32, 32))
 
 
+def test_polar_spectrum_sectors_and_symmetry():
+    n, bins = 64, 32
+    config = RepresentationConfig(kind="polar", bins=bins, f2_max=0.25, angles=8)
+    rep = Representation(config, (n, n))
+    hologram = 1 + 0.05 * torch.rand((n, n), generator=torch.Generator().manual_seed(3))
+    reference = rep(hologram)
+    assert reference.shape == (1, 1, 8, bins) and rep.input_shape == (1, 8, bins)
+    assert abs(float(reference.mean())) < 1e-5
+    assert float(reference.std()) == pytest.approx(1.0, rel=1e-4)
+    for element in range(8):
+        permuted = reference[0, 0, _sector_permutation(element, 8)]
+        out = rep(d4_transform(hologram, element))[0, 0]
+        torch.testing.assert_close(out[:, 1:], permuted[:, 1:])
+        # float32 rounding of the windowed mean leaks through the window into the lowest bin
+        torch.testing.assert_close(out[:, 0], permuted[:, 0], rtol=0, atol=1e-3)
+    y, x = torch.meshgrid(torch.arange(n), torch.arange(n), indexing="ij")
+    stripes_cases = ((x, 12, 1, 0), (y, 12, 1, 4), (x + y, 8, 2, 2), (x - y, 8, 2, 6))
+    for coordinate, m, f2, sector in stripes_cases:
+        stripes = 1 + 0.1 * torch.cos(2 * math.pi * m / n * coordinate)
+        found, index = divmod(int(rep(stripes)[0, 0].argmax()), bins)
+        assert found == sector
+        assert abs(index - (f2 * (m / n) ** 2 / 0.25 * bins - 0.5)) <= 1
+    for shape in ((472, 472), (512, 512)):
+        Representation(dataclasses.replace(config, bins=1024, f2_max=0.125), shape)
+    with pytest.raises(ValueError):
+        Representation(dataclasses.replace(config, bins=1024), (32, 32))
+
+
 def test_d4_group():
     x = torch.arange(9.0).reshape(1, 1, 3, 3)
     images = [d4_transform(x, e) for e in range(8)]
@@ -180,14 +229,39 @@ def test_models_output_a_positive_variance():
     for model, x in (
         (SpectrumCNN(config), torch.randn(3, 1, 64)),
         (ImageCNN(config), torch.randn(3, 1, 32, 32)),
+        (PolarSpectrumCNN(config), torch.randn(3, 1, 8, 64)),
     ):
         mean, var = model.eval()(x)
         assert mean.shape == var.shape == (3,)
         assert torch.all(var >= 0.01**2)
     spectrum = LearnedConfig.from_dict({"model": {"channels": [4]}})
     image = LearnedConfig.from_dict({"representation": {"kind": "image"}})
+    polar = LearnedConfig.from_dict({"representation": {"kind": "polar"}})
     assert isinstance(build_model(spectrum), SpectrumCNN)
     assert isinstance(build_model(image), ImageCNN)
+    assert isinstance(build_model(polar), PolarSpectrumCNN)
+
+
+def test_polar_cnn_is_invariant_to_rotations_and_flips():
+    torch.manual_seed(0)
+    model = PolarSpectrumCNN(ModelConfig(channels=(4, 8), hidden=8, pool_to=4)).eval()
+    x = torch.randn(3, 1, 8, 64)
+    with torch.no_grad():
+        reference = model(x)
+        for element in range(8):
+            for shift in range(8):
+                permuted = (_sector_permutation(element, 8) + shift) % 8
+                for out, expected in zip(model(x[:, :, permuted]), reference, strict=True):
+                    torch.testing.assert_close(out, expected)
+        other = x.clone()
+        other[:, :, 0] = other[:, :, 0].roll(1, dims=-1)
+        assert not torch.allclose(model(other)[0], reference[0])
+    rep = Representation(RepresentationConfig(kind="polar", bins=64, f2_max=0.25), (64, 64))
+    hologram = 1 + 0.05 * torch.rand((64, 64), generator=torch.Generator().manual_seed(4))
+    with torch.no_grad():
+        mean = model(rep(hologram))[0]
+        for element in range(8):
+            torch.testing.assert_close(model(rep(d4_transform(hologram, element)))[0], mean)
 
 
 def test_gaussian_nll_and_beta_weighting():
@@ -345,6 +419,14 @@ def test_train_predict_and_reload(splits, tmp_path):
     image_autofocus = LearnedAutofocus.load(tmp_path / "image" / "model.pt")
     assert isinstance(image_autofocus.model, ImageCNN)
     assert image_autofocus.representation.input_shape == (1, 32, 32)
+
+    polar = LearnedConfig.from_dict(TINY_POLAR)
+    train_model(polar, splits["train"], splits["val"], tmp_path / "polar", log=None)
+    polar_autofocus = LearnedAutofocus.load(tmp_path / "polar")
+    assert isinstance(polar_autofocus.model, PolarSpectrumCNN)
+    assert polar_autofocus.representation.input_shape == (1, 8, 64)
+    result = predict_split(polar_autofocus, splits["test"], tmp_path / "polar-pred", log=None)
+    assert result["n_samples"] == 4
 
 
 def test_cli(splits, tmp_path, capsys):

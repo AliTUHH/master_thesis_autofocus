@@ -29,7 +29,7 @@ import yaml
 
 from ..yamlconfig import build, plain
 
-REPRESENTATIONS = ("image", "spectrum")
+REPRESENTATIONS = ("image", "spectrum", "polar")
 
 
 @dataclass(frozen=True)
@@ -40,12 +40,17 @@ class RepresentationConfig:
     ``spectrum``: radially averaged power spectrum in ``bins`` bins of ``f^2`` from 0 to
     ``f2_max`` (cycles^2 per pixel^2 of the stored grid), logarithmic and standardized
     (1-D CNN).
+    ``polar``: the power spectrum in ``angles`` sectors of the direction of the spatial
+    frequency (modulo 180 degrees) times the same ``bins`` of ``f^2``, logarithmic and
+    standardized (Stage 10). ``angles`` is even, so a rotation by 90 degrees shifts the
+    sectors by ``angles / 2``.
     """
 
     kind: str = "spectrum"
     binning: int = 2
     bins: int = 1024
     f2_max: float = 0.125
+    angles: int = 8
 
     def __post_init__(self) -> None:
         if self.kind not in REPRESENTATIONS:
@@ -54,6 +59,8 @@ class RepresentationConfig:
             raise ValueError("binning must be >= 1 and bins >= 8")
         if not 0 < self.f2_max <= 0.5:
             raise ValueError("f2_max must lie in (0, 0.5] (Nyquist corner)")
+        if self.angles < 4 or self.angles % 2:
+            raise ValueError("angles must be even and at least 4")
 
 
 @dataclass(frozen=True)
@@ -62,8 +69,9 @@ class ModelConfig:
 
     ``channels`` per stage; every stage halves the resolution. The image CNN uses a 5x5
     stem and 3x3 convolutions, the spectrum CNN ``kernel_size`` and adaptive average pooling
-    to ``pool_to`` positions before the head. ``min_sigma`` bounds the predicted standard
-    deviation from below (units of ``target_scale``).
+    to ``pool_to`` positions before the head. The polar spectrum CNN has a first stage over
+    angle and ``f^2`` and the spectrum CNN after it. ``min_sigma`` bounds the predicted
+    standard deviation from below (units of ``target_scale``).
     """
 
     channels: tuple[int, ...] = (16, 32, 64, 64)

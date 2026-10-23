@@ -55,7 +55,8 @@ class ImageCNN(nn.Module):
                 layers += _conv_bn(nn.Conv2d(c, c, 3, 1, 1, bias=False), c, True)
             c_in = c
         self.features = nn.Sequential(*layers)
-        self.head = GaussianHead(c_in, config)
+        self.n_features = c_in
+        self.head = GaussianHead(self.n_features, config)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         return self.head(self.features(x).mean(dim=(-2, -1)))
@@ -79,17 +80,80 @@ class SpectrumCNN(nn.Module):
             c_in = c
         layers.append(nn.AdaptiveAvgPool1d(config.pool_to))
         self.features = nn.Sequential(*layers)
-        self.head = GaussianHead(c_in * config.pool_to, config)
+        self.n_features = c_in * config.pool_to
+        self.head = GaussianHead(self.n_features, config)
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         return self.head(self.features(x).flatten(1))
 
 
+class AngularConv(nn.Module):
+    """Convolution over ``(angle, f^2)`` with a kernel of 3 sectors times ``kernel_size`` bins
+    and ``stride`` along ``f^2``: cyclic along the angle, zero padded along ``f^2`` and
+    symmetric in the angle, so it commutes with every cyclic shift and every reversal of the
+    sectors."""
+
+    def __init__(self, c_in: int, c_out: int, kernel_size: int, stride: int = 1) -> None:
+        super().__init__()
+        self.conv = nn.Conv2d(c_in, c_out, (3, kernel_size), bias=False)
+        self.pad = kernel_size // 2
+        self.stride = stride
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = torch.cat([x[:, :, -1:], x, x[:, :, :1]], dim=2)
+        weight = 0.5 * (self.conv.weight + self.conv.weight.flip(2))
+        return F.conv2d(x, weight, stride=(1, self.stride), padding=(0, self.pad))
+
+
+class AnglePool(nn.Module):
+    """``(B, C, angles, F)`` -> ``(B, 2 C, F)``: mean and maximum over the sectors."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.cat([x.mean(dim=2), x.amax(dim=2)], dim=1)
+
+
+class PolarSpectrumCNN(nn.Module):
+    """CNN on the polar power spectrum ``(1, angles, bins)`` (Stage 10).
+
+    Stage 0 is an :class:`AngularConv` with ``channels[0]`` outputs and stride 2 along
+    ``f^2`` (in place of the max-pooling of :class:`SpectrumCNN`, which on all sectors costs
+    twice the time of the whole spectrum CNN); the mean and the maximum over the sectors
+    (:class:`AnglePool`) give ``2 channels[0]`` channels on the ``f^2`` axis, on which the
+    stages ``channels[1:]`` of :class:`SpectrumCNN` follow. The maximum keeps the sectors
+    across a fiber, the mean the radial average. The output does not change under rotations
+    of the hologram by 90 degrees and flips (cyclic shifts and reversals of the sectors).
+    """
+
+    def __init__(self, config: ModelConfig) -> None:
+        super().__init__()
+        c, k = config.channels[0], config.kernel_size
+        layers: list[nn.Module] = [*_conv_bn(AngularConv(1, c, k, stride=2), c, True), AnglePool()]
+        c_in = 2 * c
+        for c in config.channels[1:]:
+            layers += _conv_bn(nn.Conv1d(c_in, c, k, 1, k // 2, bias=False), c, False)
+            layers.append(nn.MaxPool1d(2))
+            c_in = c
+        layers.append(nn.AdaptiveAvgPool1d(config.pool_to))
+        self.features = nn.Sequential(*layers)
+        self.n_features = c_in * config.pool_to
+        self.head = GaussianHead(self.n_features, config)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        return self.head(self.features(x).flatten(1))
+
+
+def build_cnn(kind: str, config: ModelConfig) -> nn.Module:
+    """The network for the representation ``kind``."""
+    if kind == "image":
+        return ImageCNN(config)
+    if kind == "polar":
+        return PolarSpectrumCNN(config)
+    return SpectrumCNN(config)
+
+
 def build_model(config: LearnedConfig) -> nn.Module:
     """The network for ``config.representation.kind``."""
-    if config.representation.kind == "image":
-        return ImageCNN(config.model)
-    return SpectrumCNN(config.model)
+    return build_cnn(config.representation.kind, config.model)
 
 
 def count_parameters(model: nn.Module) -> int:

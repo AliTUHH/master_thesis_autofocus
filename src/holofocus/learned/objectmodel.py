@@ -273,25 +273,48 @@ more power at the highest frequencies of spider hair and tooth than their hologr
 (Laborbuch 05, 5.6)."""
 
 
+LEVEL_NAMES = ("level_mid", "level_upper", "floor")
+"""Absolute levels of :func:`holofocus.learned.sim2real.spectral_features` (mean log power of
+the mid band, the upper band of the CNN and the highest frequencies) in the objective with
+levels (Stage 10)."""
+
+LEVEL_SCALE = 0.5
+"""Scale of each level difference (natural log of the power) in :func:`fit_objective` with
+levels: half a unit of log power counts as much as 0.1 of CTF correlation. Without levels the
+objective cannot see how much power a texture adds, and the fits of Stage 6 put 18 (cactus
+needle) and 30 times (Mg wire) the measured power into the texture from ``f^2 = 0.02`` up
+(Laborbuch 10)."""
+
+
 def median_features(features: Sequence[Mapping]) -> dict:
     """Median of every feature of :func:`holofocus.learned.sim2real.spectral_features` over a
-    set of holograms, ``ctf_bands`` band by band."""
+    set of holograms, ``ctf_bands`` band by band; the levels only if every set member has
+    them (records of Stage 6 do not)."""
     out = {name: float(np.nanmedian([f[name] for f in features])) for name in FEATURE_NAMES}
     out["ctf_bands"] = [
         float(np.nanmedian([f["ctf_bands"][k] for f in features])) for k in range(len(CTF_BANDS))
     ]
+    for name in LEVEL_NAMES:
+        if name not in out and all(name in f for f in features):
+            out[name] = float(np.nanmedian([f[name] for f in features]))
     return out
 
 
-def fit_objective(median: Mapping, measured: Mapping) -> float:
+def fit_objective(median: Mapping, measured: Mapping, levels: bool = False) -> float:
     """RMS of the scaled differences between the median features of a simulated set and the
-    features of the measured hologram (:data:`FIT_SCALES`); ``inf`` if one is undefined."""
+    features of the measured hologram (:data:`FIT_SCALES`); ``inf`` if one is undefined.
+
+    ``levels`` adds the differences of :data:`LEVEL_NAMES` over :data:`LEVEL_SCALE` (Stage 10);
+    without them the objective is that of Stage 6.
+    """
     scale = FIT_SCALES["ctf"]
     terms = [(median["ctf"] - measured["ctf"]) / scale]
     terms += [
         (a - b) / scale for a, b in zip(median["ctf_bands"], measured["ctf_bands"], strict=True)
     ]
     terms += [(median[k] - measured[k]) / FIT_SCALES[k] for k in ("upper_snr", "slope")]
+    if levels:
+        terms += [(median[k] - measured[k]) / LEVEL_SCALE for k in LEVEL_NAMES]
     value = float(np.sqrt(np.mean(np.square(terms))))
     return value if math.isfinite(value) else math.inf
 

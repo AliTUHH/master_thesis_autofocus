@@ -67,6 +67,8 @@ from holofocus.learned.objectmodel import (
     BINNING,
     DETECTOR_FITS,
     FIT_SCALES,
+    LEVEL_NAMES,
+    LEVEL_SCALE,
     LOO_FACTOR,
     REGION_FRACTIONS,
     TEXTURE_FITS,
@@ -317,12 +319,14 @@ def _fit_row(entry: dict) -> dict:
         "spectral_slope": m["slope"],
         "floor": m["floor"],
         "low_excess": m["low_excess"],
+        **{k: m[k] for k in ("level_mid", "level_upper") if k in m},
         "stage": entry["stage"],
         "seconds": entry["seconds"],
     }
 
 
-def fit_sample(name: str, holograms: Path, n: int, out: Path) -> None:
+def fit_sample(name: str, holograms: Path, n: int, out: Path, levels: bool = False) -> None:
+    """``levels``: the objective with the absolute levels of the spectrum (Stage 10)."""
     target = out / f"fit-{name}.json"
     radial, measured = measured_features(holograms, name)
     base = matched_config(name)
@@ -337,9 +341,12 @@ def fit_sample(name: str, holograms: Path, n: int, out: Path) -> None:
         "scales": FIT_SCALES,
         "settings": [],
     }
+    if levels:
+        record["levels"] = {"names": list(LEVEL_NAMES), "scale": LEVEL_SCALE}
     if target.exists():
         old = json.loads(target.read_text())
-        same = all(old.get(k) == record[k] for k in ("sample", "base_config", "split", "n"))
+        keys = ("sample", "base_config", "split", "n", "levels")
+        same = all(old.get(k) == record.get(k) for k in keys)
         if same and np.allclose(old["measured"]["ctf_bands"], measured["ctf_bands"]):
             record["settings"] = old["settings"]
     done = {_key(Texture(**e["texture"])) for e in record["settings"]}
@@ -355,7 +362,7 @@ def fit_sample(name: str, holograms: Path, n: int, out: Path) -> None:
             "texture": dataclasses.asdict(texture),
             "stage": stage,
             "median": median,
-            "objective": fit_objective(median, measured),
+            "objective": fit_objective(median, measured, levels),
             "phase_shift_median": float(np.median([f["phase_shift"] for f in features])),
             "seconds": time.perf_counter() - start,
         }
@@ -396,7 +403,7 @@ def fit_sample(name: str, holograms: Path, n: int, out: Path) -> None:
 
 def cmd_fit(args) -> None:
     for name in args.samples:
-        fit_sample(name, args.holograms, args.n, args.out)
+        fit_sample(name, args.holograms, args.n, args.out, args.levels)
 
 
 PROFILE_F2_MAX = 0.125
@@ -747,6 +754,9 @@ def main() -> None:
     fi.add_argument("--samples", **samples)
     fi.add_argument("--n", type=int, default=16, help="test samples per texture")
     fi.add_argument("--out", type=Path, default=RESULTS / "objectmodel")
+    fi.add_argument(
+        "--levels", action="store_true", help="objective with the levels of the spectrum (Stage 10)"
+    )
     fi.set_defaults(func=cmd_fit)
 
     cf = sub.add_parser("configs", help="the leave-one-out dataset configs")

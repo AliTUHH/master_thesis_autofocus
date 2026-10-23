@@ -172,6 +172,7 @@ def test_ctf_feature_finds_the_fresnel_number_and_blur_steepens_the_slope():
     wrong = spectral_features(radial, sharp, 1.37 * fr)
     assert right["ctf"] > 0.5 and right["ctf"] > wrong["ctf"] + 0.3
     assert len(right["ctf_bands"]) == 4
+    assert right["upper_snr"] == pytest.approx(right["level_upper"] - right["floor"])
     assert spectral_features(radial, blurred, fr)["slope"] < right["slope"] - 5
     stats = feature_distribution([right, wrong])
     assert set(stats) == set(FEATURE_NAMES)
