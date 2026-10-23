@@ -204,6 +204,19 @@ SYNTHETIC_METHODS = {
 """The same on the synthetic samples (``results/baseline/<folder>``)."""
 INTERVALS = {"npe": NPE_PREDICTIONS, "cnn": CNN_INTERVALS}
 """The sources of the 95 % intervals on the synthetic samples."""
+PAIRED_ERRORS = (
+    ("brent-cold", "nm-cold"),
+    ("brent-box95-npe", "nm-box95-npe"),
+    ("brent-box95-cnn", "nm-box95-cnn"),
+    ("nm-box95-npe", "nm-cold"),
+    ("brent-box95-npe", "nm-cold"),
+    ("nm-box95-cnn", "nm-cold"),
+    ("brent-box95-cnn", "nm-cold"),
+    ("nm-cold-repeat", "nm-cold"),
+)
+"""The searches on the synthetic samples whose errors ``compare`` sets against each other,
+sample by sample: Brent against Nelder-Mead in the same interval, each search in an interval
+against the full search of [2], and the numerics alone."""
 WITHIN_UM = (50, 100, 250, 1000)
 MFE_APART_PPM = 100.0
 """How far the MFE at the result of a search must lie from that of the cold Nelder-Mead search
@@ -1333,11 +1346,14 @@ def synthetic_comparison(baseline: Path, lanes: Path) -> tuple[dict, list[dict]]
                 "by_width": width_bins(runs, nm, brent, idx, widths[key]),
             }
     accuracy = {}
-    if "nm-cold" in runs and "brent-cold" in runs:
-        idx = sorted(set(runs["nm-cold"]) & set(runs["brent-cold"]))
-        a = np.array([runs["nm-cold"][i]["abs_error_um"] for i in idx])
-        b = np.array([runs["brent-cold"][i]["abs_error_um"] for i in idx])
-        accuracy["brent-cold vs nm-cold"] = {
+    for first, second in PAIRED_ERRORS:
+        if first not in runs or second not in runs:
+            continue
+        idx = sorted(set(runs[first]) & set(runs[second]))
+        a = np.array([runs[second][i]["abs_error_um"] for i in idx])
+        b = np.array([runs[first][i]["abs_error_um"] for i in idx])
+        apart = np.abs([runs[first][i]["z01_est"] - runs[second][i]["z01_est"] for i in idx]) * 1e6
+        accuracy[f"{first} vs {second}"] = {
             "n_samples": len(idx),
             "abs_error_difference_um": {
                 "mean": float((b - a).mean()),
@@ -1346,9 +1362,15 @@ def synthetic_comparison(baseline: Path, lanes: Path) -> tuple[dict, list[dict]]
             },
             "within_100um": {
                 "both": int(np.sum((a <= 100) & (b <= 100))),
-                "only_nm": int(np.sum((a <= 100) & (b > 100))),
-                "only_brent": int(np.sum((a > 100) & (b <= 100))),
+                f"only_{second}": int(np.sum((a <= 100) & (b > 100))),
+                f"only_{first}": int(np.sum((a > 100) & (b <= 100))),
                 "neither": int(np.sum((a > 100) & (b > 100))),
+            },
+            "results_apart_um": {
+                "median": float(np.median(apart)),
+                "max": float(apart.max()),
+                "same": int(np.sum(apart == 0.0)),
+                "within_xatol": int(np.sum(apart <= XATOL_UM)),
             },
         }
     record = {
