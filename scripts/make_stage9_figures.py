@@ -55,7 +55,7 @@ REPO = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = REPO / "docs" / "laborbuch" / "figures"
 RESULTS = REPO / "results"
 STAGE9 = RESULTS / "stage9"
-BEFORE, AFTER = "threads-3-4349d6a", "threads-3"
+BEFORE, AFTER, OMEGA = "threads-3-4349d6a", "threads-3", "omega"
 ONE, THREE = "tab:blue", "tab:red"
 NUMERICS = {1: ("one thread (this stage)", ONE), 3: ("3 threads, before this stage", THREE)}
 OMEGA_STEP = 0.2e-3
@@ -82,11 +82,16 @@ def _points(stage9: Path) -> list[dict]:
 
 
 def _scans(stage9: Path, sample: str) -> list[dict]:
-    """The scan points of ``sample`` with both numerics, with ``numerics`` set; those with
-    3 threads and the library of this stage have the bits of one thread and count where no
-    scan with one thread has their ``z01``."""
+    """The scan points of ``sample`` with both numerics (also those over ``Omega_z``), with
+    ``numerics`` set; those with 3 threads and the library of this stage have the bits of one
+    thread and count where no scan with one thread has their ``z01``."""
     out = []
-    for directory, n in ((stage9, 1), (stage9 / AFTER, 1), (stage9 / BEFORE, 3)):
+    for directory, n in (
+        (stage9, 1),
+        (stage9 / OMEGA, 1),
+        (stage9 / AFTER, 1),
+        (stage9 / BEFORE, 3),
+    ):
         record = _json(directory / f"scan-{sample}.json")
         if record is not None:
             seen = {p["z01"] for p in out if p["numerics"] == n}
@@ -480,41 +485,42 @@ def first_stage_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
 
 
 def _branches_panel(ax, steps: dict) -> dict:
-    """The MFE of the full reconstructions of the tooth above the line through their nearest
-    neighbours whose first stage lies on the lower branch, by the branch of their own."""
-    near = steps.get("branch_neighbours_um", 500.0)
+    """The full MFE of the tooth across the switches of its first stage: that of the
+    reconstruction on the upper branch over that of its neighbour on the lower one, at most
+    ``branch_pair_um`` apart."""
+    guess = MEASURED_SAMPLES["tooth"].z01_guess
     out = {}
     for n, (label, color) in NUMERICS.items():
         record = steps.get("branches", {}).get("tooth", {}).get(str(n))
-        if not record:
+        if not record or not record["pairs"]:
             continue
-        points = [
-            p
-            for p in record["points"]
-            if p["offset_ppm"] is not None and max(p["neighbours_um"]) <= near
-        ]
-        for upper, fill in ((False, "none"), (True, color)):
-            sel = [p for p in points if p["upper"] == upper]
-            if not sel:
-                continue
-            ax.plot(
-                [p["z01"] * 1e3 for p in sel],
-                [p["offset_ppm"] for p in sel],
-                "o" if n == 1 else "D",
-                ms=3.5,
-                mfc=fill,
-                color=color,
-                label=f"{'upper' if upper else 'lower'} branch, {label}",
+        pairs = record["pairs"]
+        z = [(sum(p["z01"]) / 2 - guess) * 1e3 for p in pairs]
+        ppm = [p["upper_over_lower_ppm"] for p in pairs]
+        ax.plot(z, ppm, "o" if n == 1 else "D", ms=4, color=color, label=label)
+        for x, y, p in zip(z, ppm, pairs, strict=True):
+            ax.annotate(
+                f"{p['z01'][0] * 1e3:.3f}/{p['z01'][1] * 1e3 % 1:.3f}".replace("/0.", "/."),
+                (x, y),
+                textcoords="offset points",
+                xytext=(3, 3),
+                fontsize=6,
             )
-        out[str(n)] = {k: record[k] for k in ("upper", "lower")}
+        out[str(n)] = {"n_pairs": len(pairs), "upper_over_lower_ppm": ppm}
     ax.axhline(0.0, color="0.5", lw=0.8)
-    ax.ticklabel_format(axis="x", useOffset=False)
-    ax.set_xlabel("z01 (mm)", fontsize=8)
-    ax.set_ylabel("MFE above the line through the lower neighbours (ppm)", fontsize=8)
+    ax.margins(y=0.15)
+    ax.set_xlim(-5.0, 5.0)
+    ax.set_xlabel("z01 minus the guess (mm)", fontsize=8)
+    ax.set_ylabel("MFE on the upper branch over the lower (ppm)", fontsize=8)
     ax.tick_params(labelsize=7)
     ax.grid(alpha=0.3)
-    ax.set_title("tooth: full reconstructions by their first stage", fontsize=9)
-    ax.legend(fontsize=7)
+    ax.set_title(
+        f"tooth: full MFE across a switch, neighbours "
+        f"<= {steps.get('branch_pair_um', 2.0):g} um apart",
+        fontsize=9,
+    )
+    if out:
+        ax.legend(fontsize=7)
     return out
 
 

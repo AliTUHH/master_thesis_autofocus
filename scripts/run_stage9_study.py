@@ -144,9 +144,11 @@ smallest of the first stage within ``window_mm`` of it (same probe and numerics)
 a pair of neighbouring points on different branches. The two branches of the tooth lie
 8-11 % apart; on one branch the loss changes by less than 1 % in 1 mm, and no run of points on
 the upper branch is longer than 0.8 mm."""
-BRANCH_NEIGHBOURS_UM = 500.0
-"""The offset of a full reconstruction from the line through its nearest neighbours on the
-lower branch is summarised only where both lie within this distance."""
+BRANCH_PAIR_UM = 2.0
+"""Two neighbouring full reconstructions whose first stage lies on different branches give the
+offset of the MFE between the branches where they lie at most this far apart: the MFE on one
+branch changes by far less over so short a distance than between the branches. Farther apart,
+the bend of the MFE over ``z01`` is as large as the offset."""
 WINDOWS_UM = (250.0, 500.0)
 """Half-widths of the windows about the minimum in which ``steps`` reports how densely the
 points lie (:func:`coverage`)."""
@@ -767,10 +769,9 @@ def upper_branch(losses: dict) -> dict:
 def branches(losses: dict, rows: list[dict]) -> dict:
     """The full reconstructions (searches and scans) whose first stage is known
     (:func:`first_stage_losses`), per probe and numerics: on which branch the first stage lies
-    (:func:`upper_branch`), and how far the MFE lies above the line through the nearest
-    reconstructions on either side whose first stage lies on the lower branch
-    (``offset_ppm``); summarised per branch where both of these lie within
-    :data:`BRANCH_NEIGHBOURS_UM`."""
+    (:func:`upper_branch`), and the pairs of neighbouring ones on different branches at most
+    :data:`BRANCH_PAIR_UM` apart, with the MFE of the one on the upper branch over that of the
+    one on the lower (``upper_over_lower_ppm``)."""
     groups = defaultdict(list)
     for row in rows:
         groups[row["sample"], row["numerics"]].append(row)
@@ -785,41 +786,30 @@ def branches(losses: dict, rows: list[dict]) -> dict:
             for p in distinct(group)[0]
             if point_key(p["z01"]) in known
         ]
-        lower = [p for p in points if not p["upper"]]
-        for p in points:
-            left = [q for q in lower if q["z01"] < p["z01"]]
-            right = [q for q in lower if q["z01"] > p["z01"]]
-            if left and right:
-                a, b = left[-1], right[0]
-                share = (p["z01"] - a["z01"]) / (b["z01"] - a["z01"])
-                line = a["mfe"] + share * (b["mfe"] - a["mfe"])
-                p["offset_ppm"] = (p["mfe"] / line - 1.0) * 1e6
-                p["neighbours_um"] = [(p["z01"] - a["z01"]) * 1e6, (b["z01"] - p["z01"]) * 1e6]
-        summary = {}
-        for name, on_upper in (("upper", True), ("lower", False)):
-            offsets = [
-                p["offset_ppm"]
-                for p in points
-                if p["upper"] == on_upper
-                and "offset_ppm" in p
-                and max(p["neighbours_um"]) <= BRANCH_NEIGHBOURS_UM
-            ]
-            summary[name] = {
-                "n_points": sum(p["upper"] == on_upper for p in points),
-                "n_offsets": len(offsets),
-                "offset_ppm": [min(offsets), float(np.median(offsets)), max(offsets)]
-                if offsets
-                else None,
-            }
-        keep = ("z01", "mfe", "ppm", "source", "first_stage", "upper", "offset_ppm")
+        pairs = []
+        for a, b in zip(points, points[1:], strict=False):
+            spacing = (b["z01"] - a["z01"]) * 1e6
+            if a["upper"] == b["upper"] or spacing > BRANCH_PAIR_UM + 1e-6:
+                continue
+            high, low = (a, b) if a["upper"] else (b, a)
+            pairs.append(
+                {
+                    "z01": [a["z01"], b["z01"]],
+                    "upper": [a["upper"], b["upper"]],
+                    "ppm": [a["ppm"], b["ppm"]],
+                    "spacing_um": spacing,
+                    "upper_over_lower_ppm": (high["mfe"] / low["mfe"] - 1.0) * 1e6,
+                    "sources": [a["source"], b["source"]],
+                }
+            )
+        keep = ("z01", "mfe", "ppm", "source", "first_stage", "upper")
         out[sample][str(n)] = {
             "n_first_stage": len(known),
             "n_first_stage_upper": sum(upper.values()),
-            **summary,
-            "points": [
-                {**{k: p.get(k) for k in keep}, "neighbours_um": p.get("neighbours_um")}
-                for p in points
-            ],
+            "n_upper": sum(p["upper"] for p in points),
+            "n_lower": sum(not p["upper"] for p in points),
+            "pairs": pairs,
+            "points": [{k: p[k] for k in keep} for p in points],
         }
     return dict(out)
 
@@ -887,8 +877,8 @@ def cmd_steps(args) -> None:
     for steps; the same screening of the loss at the object (``object_loss``) and of the
     smallest loss of the last stage of the plan in the scans (``last_stage``); the scans of the
     first stage and their switches (``first_stage``); the branch of the first stage of every
-    reconstruction and how far its MFE lies off the reconstructions on the lower branch
-    (``branches``); the reconstructions at the same ``z01``
+    reconstruction and the MFE across the switches (``branches``); the reconstructions at the
+    same ``z01``
     with the same numerics (``repeats``) and with both numerics (``same_z01``); the loss
     histories of the scans; the Stage 3 search on synthetic samples again (``repeat``).
     ``steps-objects.json``: the objects of the scans against each other (only where their npz
@@ -938,7 +928,7 @@ def cmd_steps(args) -> None:
         "last_stage": last_stage(args.stage9),
         "first_stage_branch": BRANCH,
         "first_stage": first_stage(args.stage9),
-        "branch_neighbours_um": BRANCH_NEIGHBOURS_UM,
+        "branch_pair_um": BRANCH_PAIR_UM,
         "branches": branches(losses, rows),
         "repeats": repeats(rows),
         "same_z01": across_numerics(rows, losses),
@@ -990,16 +980,17 @@ def cmd_steps(args) -> None:
             )
     for sample, by_numerics in record["branches"].items():
         for n, summary in by_numerics.items():
-            spans = {
-                name: "/".join(f"{x:+.0f}" for x in summary[name]["offset_ppm"] or [])
-                for name in ("upper", "lower")
-            }
+            where = ", ".join(
+                f"{p['z01'][0] * 1e3:.3f}/{p['z01'][1] * 1e3:.3f} mm "
+                f"{p['upper_over_lower_ppm']:+.0f} ppm"
+                for p in summary["pairs"]
+            )
             print(
                 f"{sample} [{n}] branches: first stage upper at {summary['n_first_stage_upper']} "
                 f"of {summary['n_first_stage']} points; full reconstructions "
-                f"{summary['upper']['n_points']} upper, {summary['lower']['n_points']} lower; "
-                f"MFE over the line of the lower ones (ppm, min/median/max): "
-                f"upper {spans['upper'] or '-'}, lower {spans['lower'] or '-'}"
+                f"{summary['n_upper']} upper, {summary['n_lower']} lower; "
+                f"{len(summary['pairs'])} pairs across a switch"
+                f"{', upper over lower: ' + where if where else ''}"
             )
 
 

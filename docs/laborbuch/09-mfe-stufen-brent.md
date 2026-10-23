@@ -197,10 +197,18 @@ am selben $z_{01}$; das Objekt geht mit dem ganzen Feld samt Rand nach
 beim Zahn alle 10 µm in 80,50–81,10 mm und alle 1 µm in 80,700–80,730 und 80,900–80,920 mm,
 mit der Numerik von vorher alle 2 µm in 80,660–80,700 mm und alle 50 µm in 80,50–80,90 mm,
 bei allen vier Proben in ganz $\Omega_z$ alle 200 µm und beim Zahn an jedem $z_{01}$, an dem
-ihn eine Suche rekonstruierte, mit deren Numerik. Als Wechsel der ersten Stufe zählt `steps` eine
-Änderung ihres Verlusts zwischen Nachbarn, die um mehr als 1 % von dem abweicht, was der Median
-der Steigungen der bis zu zwei Paare auf jeder Seite erwarten lässt: Eine steile Flanke in
-$\Omega_z$ ist so kein Wechsel, und ein einzelner Punkt auf dem anderen Ast gibt zwei.
+ihn eine Suche rekonstruierte, mit deren Numerik. Auf dem oberen Ast liegt die erste Stufe für
+`steps`, wo ihr Verlust mehr als 5 % über dem kleinsten der ersten Stufe derselben Probe und
+Numerik im Umkreis von 1 mm liegt; ein Wechsel ist ein Paar von Nachbarn auf verschiedenen
+Ästen. Die Äste des Zahns liegen 8–11 % auseinander, auf einem Ast ändert sich der Verlust um
+weniger als 1 % pro mm, und kein Lauf auf dem oberen Ast ist länger als 0,8 mm. Für jede volle
+Rekonstruktion, deren erste Stufe bekannt ist, gibt `steps` außerdem den Ast an, und für jedes
+Paar benachbarter voller Rekonstruktionen auf verschiedenen Ästen höchstens 2 µm auseinander,
+um wie viel die MFE auf dem oberen Ast über der auf dem unteren liegt (`branches`). Auf 2 µm
+ändert sich die MFE auf einem Ast um höchstens ‹TODO› ppm. Weiter auseinander taugt das nicht:
+Über 0,2 mm biegt sich die MFE so stark wie der Versatz. Bei 81,9 mm (oberer Ast) liegt sie
+389 ppm unter der Geraden durch ihre Nachbarn auf dem unteren Ast bei 81,7 und 82,1 mm, aber
+205 ppm über der Parabel durch 81,5, 81,7 und 82,1 mm.
 
 `steps` sammelt alle Rekonstruktionen der Messhologramme mit Padding 4 (die Suchen der Etappen
 3, 5, 8 und 9 und die Scans) als MFE über $z_{01}$, getrennt nach Numerik (E2), und
@@ -358,7 +366,10 @@ Zahn dicht um die Wechsel, mit beiden Numeriken, und bei allen Proben in ganz $\
 Zahns dabei in ganz $\Omega_z$ zwischen den Ästen wechselte (5.4, Punkt 2), habe ich ihn an
 elf Punkten dieses Rasters voll gescannt, an denen sie es tut (81,5–82,5 und 83,7–84,5 mm,
 `results/stage9/omega/`), und die erste Stufe an jedem Punkt einer Suche gerechnet, damit jede
-Rekonstruktion der Suchen ihren Ast hat.
+Rekonstruktion der Suchen ihren Ast hat. Weil die Biegung der MFE über 0,2 mm so groß ist wie
+der Versatz zwischen den Ästen (3.4), habe ich dann drei Wechsel des Rasters (79,1–79,3,
+81,7–81,9 und 83,9–84,1 mm) mit der ersten Stufe auf 1 µm eingegabelt und an beiden Punkten
+jedes Paares voll gescannt, ebenso am zweiten Wechsel beim Minimum (80,901 und 80,902 mm).
 
 **E12 – Keine GPU.** ‹TODO: Kernstunden›; nichts davon braucht Maxwell. Neu in
 `docs/maxwell-gpu.md` ist nur Abschnitt 8.4: Auf der GPU ist die Numerik eine andere, MFE-Werte

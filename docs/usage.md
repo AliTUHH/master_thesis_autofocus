@@ -851,8 +851,11 @@ holofocus-baseline run configs/baseline/paper2-cpu-brent.yaml --data data/cpu-4x
   neighbours, reversals away from the minimum), with the density of the points about the
   minimum, the same `z01` with the same and with the other numerics, where the loss histories
   of two scans part and the scan objects against each other; the loss at the returned object
-  and the smallest loss of the last stage screened the same way; the first-stage scans and
-  where they switch between two solutions, with the objects on both sides.
+  and the smallest loss of the last stage screened the same way; the first-stage scans, their
+  branch (upper where the loss lies more than 5 % over the smallest within 1 mm) and where
+  they switch, with the objects on both sides; for every reconstruction whose first stage is
+  known its branch and how far its MFE lies above the line through its neighbours on the lower
+  branch (`branches`).
 - `compare`: Brent against Nelder–Mead, cold and in the learned intervals, on the measured
   holograms (against the references of [2] and the full search) and on the synthetic samples
   (against the truth): error, share within 100 µm, reconstructions, time at the 3-thread rate,
@@ -876,6 +879,10 @@ python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample toot
     --z01-mm 80.694 80.696 80.698 80.702 80.710 80.725      # the points of Laborbuch 09, 5.1
 python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth --stages 1 \
     --z01-mm $(seq -f %.3f 80.700 0.001 80.730) --out results/stage9/first-stage
+python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth --stages 1 \
+    --z01-mm $(seq -f %.1f 77.9 0.2 87.9) --out results/stage9/first-stage   # all of Omega_z
+python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth \
+    --z01-mm 81.5 81.7 81.9 82.1 82.3 82.5 --out results/stage9/omega      # across its branches
 python scripts/run_stage9_study.py steps
 python scripts/run_stage9_study.py compare
 python scripts/make_stage9_figures.py
@@ -895,6 +902,7 @@ The results:
 
 ```
 results/stage9/scan-<sample>.json          scans with this stage's library, one thread
+results/stage9/omega/                      full scans of the tooth over Omega_z, one thread
 results/stage9/threads-3/                  the same points with 3 threads (the same bits)
 results/stage9/threads-3-4349d6a/          the same points with the library before, 3 threads
 results/stage9/first-stage/                the first stage only, both numerics (threads-3-4349d6a/)
