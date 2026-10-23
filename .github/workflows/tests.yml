@@ -183,6 +183,39 @@ jobs:
           $study compare --out $root/compare
           python scripts/make_stage9_figures.py --quick --out ${{ runner.temp }}/figures
 
+      - name: Stage 10 (the smoke-run CNN as a mixture of seeds, Brent in its intervals and evaluate; the loo2 configs and the plan from the repository)
+        run: |
+          demo=${{ runner.temp }}/demo-dataset
+          seed=${{ runner.temp }}/learned-ci/test/predictions.csv
+          root=${{ runner.temp }}/stage10-ci
+          study="python scripts/run_stage10_study.py --threads 2"
+          mkdir -p $root/configs
+          $study configs --out $root/configs --results $root/objectmodel
+          for f in $root/configs/*.yaml; do cmp $f configs/dataset/$(basename $f); done
+          $study mixture --predictions $seed $seed --out $root/mixture
+          holofocus-baseline run configs/baseline/ci-brent.yaml --data $demo/test.h5 \
+            --out $root/brent-box --limit 3 --box $root/mixture/predictions.csv --box-level 95
+          $study evaluate --predictions cnn=$seed mixture=$root/mixture/predictions.csv \
+            --searches nm-cold=${{ runner.temp }}/baseline-ci brent-box95=$root/brent-box \
+            brent-box95-stage9=${{ runner.temp }}/stage9-ci/brent-box --out $root/evaluate.json
+          python - $root <<'EOF'
+          import hashlib, json, sys
+          root = sys.argv[1]
+          record = json.load(open(f"{root}/evaluate.json"))
+          seed, mixture = (record["learned"]["methods"][m] for m in ("cnn", "mixture"))
+          assert abs(seed["mae_um"] - mixture["mae_um"]) < 1e-6, (seed, mixture)
+          assert seed["coverage_95"] == mixture["coverage_95"], (seed, mixture)
+          searches = record["searches"]
+          sha = hashlib.sha256(open(f"{root}/mixture/predictions.csv", "rb").read()).hexdigest()
+          assert searches["intervals"]["brent-box95"]["sha256"] == sha, searches["intervals"]
+          box, stage9 = (searches["summaries"][m] for m in ("brent-box95", "brent-box95-stage9"))
+          assert searches["n_samples"] == 3 and abs(box["mae_um"] - stage9["mae_um"]) < 1, (box, stage9)
+          print(f"the seed as a mixture with itself: MAE {mixture['mae_um']:.0f} um as the seed; Brent in "
+                f"its intervals: MAE {box['mae_um']:.0f} um as in those of the seed (Stage 9)")
+          EOF
+          $study plan --holograms $root/none --out $root/plan.json
+          python scripts/run_jobs.py forecast $root/plan.json --state $root/state
+
       - name: Upload demo dataset
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
