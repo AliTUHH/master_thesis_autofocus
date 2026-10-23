@@ -211,9 +211,9 @@ entfernt. Für jede volle
 Rekonstruktion, deren erste Stufe bekannt ist, gibt `steps` außerdem den Ast an, und für jedes
 Paar benachbarter voller Rekonstruktionen auf verschiedenen Ästen höchstens 2 µm auseinander,
 um wie viel die MFE auf dem oberen Ast über der auf dem unteren liegt (`branches`), so
-gerechnet und am selben $z_{01}$ (`offset_ppm`): Auf einem Ast steigt die MFE um bis zu
-42 ppm pro µm (bei 84,1 mm; nahe am Minimum um 1–10 ppm), über 1 µm also um so viel wie der
-Versatz fern vom Fokus. Abgezogen wird deshalb die Steigung auf beiden Ästen mal dem Abstand
+gerechnet und am selben $z_{01}$ (`offset_ppm`): Auf einem Ast ändert sich die MFE um bis zu
+55 ppm pro µm (von 79,144 nach 79,15 mm; bei 84,1 mm um 42 ppm, nahe am Minimum um 1–13 ppm),
+über 1 µm also um so viel wie der Versatz fern vom Fokus. Abgezogen wird deshalb die Steigung auf beiden Ästen mal dem Abstand
 (`slope_ppm_per_um`), gemittelt über die beiden Seiten des Paares: auf jeder die Gerade durch
 seine Rekonstruktion dort und die nächsten zwei auf demselben Ast höchstens 250 µm entfernt.
 Zwei statt einer, weil nahe an einem Wechsel einzelne Rekonstruktionen neben der Geraden
@@ -374,7 +374,7 @@ derselben Probe, auf den synthetischen Samples der Median der Suchen der Lane mi
 
 **E10 – Wann ein Sprung eine Stufe ist.** Die Numerik verschiebt die MFE in ±1,6 mm um das
 Minimum um höchstens 32 ppm, wo die erste Stufe beider Numeriken auf demselben Ast liegt und
-kein Wechsel nahe ist (5.1, Punkt 2); die MFE steigt nahe am Minimum um 1–10 ppm pro µm. Eine Stufe wie die des
+kein Wechsel nahe ist (5.1, Punkt 2); die MFE steigt nahe am Minimum um 1–13 ppm pro µm. Eine Stufe wie die des
 Zahns (etwa 700 ppm auf wenigen µm) fällt mit 50 ppm zwischen Nachbarn im Abstand von höchstens
 50 µm, dreimal so steil wie die Sekanten daneben, sicher auf; die Krümmung einer glatten Kurve
 nicht. Weiter auseinanderliegende Punkte prüft die Regel nicht, deshalb steht die Dichte der
@@ -422,12 +422,14 @@ der Wiederholung (E8).*
 1. **Bitgleich mit jeder Threadzahl.** Der Zahn bei 80,69255535982456 mm, mit der Bibliothek
    dieser Etappe und drei Threads gescannt (`results/stage9/threads-3/`), gibt bitgenau die MFE
    der Suche mit einem Thread aus Etappe 8, 3,160280757583678·10⁻⁴ (`repeats` in
-   `steps.json`); ebenso das synthetische Sample 0 mit 1–4 Threads (3.1) und die Tests (3.7).
+   `steps.json`); ebenso der Mg-Draht bei 467,4 mm in der Wiederholung der kalten Suche (drei
+   Threads) und in der Suche im Intervall des CNN-Ensembles (ein Thread, Etappe 8), das
+   synthetische Sample 0 mit 1–4 Threads (3.1) und die Tests (3.7).
 2. **Die Numerik von vorher** gegen die eines Threads am selben $z_{01}$, an 51 Punkten der
    Messhologramme, fast alle aus der Wiederholung der kalten Suche (`same_z01` in
    `steps.json`): bei der Kaktusnadel an allen 13 Punkten −8,3 bis −10,7 ppm, beim Mg-Draht
-   an 12 Punkten −1,0 bis −8,0 ppm, beim Spinnenhaar in ±1,6 mm um sein Minimum −6,6 bis
-   +3,0 ppm und 2,8 und 5,3 mm darüber −35 und −57 ppm. Beim Zahn −11 bis +32 ppm, wo die
+   an 12 Punkten −1,0 bis −8,0 ppm, beim Spinnenhaar von 4,7 mm unter bis 1,6 mm über seinem
+   Minimum −6,6 bis +3,0 ppm und 2,8 und 5,3 mm darüber −35 und −57 ppm. Beim Zahn −11 bis +32 ppm, wo die
    erste Stufe beider Numeriken auf demselben Ast liegt, +675 bis +698 ppm, wo sie auf
    verschiedenen liegt (80,6926, 80,694 und 80,7125 mm). Nahe an einem Wechsel der ersten Stufe
    unterscheiden sich auch Punkte auf demselben Ast um mehr: bei 79,15 mm, 6 µm über dem
@@ -471,8 +473,8 @@ denselben Farben.*
 
 1. **Zwei Lösungen schon nach der ersten Stufe.** Nach der ersten Stufe liegt der Verlust des
    Zahns (am Vorgriff) auf einem von zwei Ästen, 1,6487–1,6526·10⁻³ oder 1,8248–1,8261·10⁻³,
-   10,4–10,8 % höher (`first_stage` in `steps.json`, Abb. 3). Auf jedem Ast steigt er glatt mit
-   $z_{01}$, um 3–4 ppm pro µm. Mit einem Thread liegen alle 51 Punkte von 80,500 bis
+   am selben $z_{01}$ 10,6 % höher (`first_stage` in `steps.json`, Abb. 3). Auf jedem Ast
+   steigt er glatt mit $z_{01}$, um 3–5 ppm pro µm. Mit einem Thread liegen alle 51 Punkte von 80,500 bis
    80,716 mm (Scans und $z_{01}$ der Suchen) auf dem unteren Ast, alle 38 von 80,717 bis
    80,901 mm auf dem oberen und alle 44 von 80,902 bis 81,100 mm wieder auf dem unteren. Beide Wechsel liegen zwischen zwei Punkten
    1 µm auseinander, und kein Punkt dazwischen springt zurück: Der obere Ast ist hier ein
@@ -481,19 +483,19 @@ denselben Farben.*
    vorher reicht das Fenster von 80,686 mm bis 80,869–80,893 mm. Am zurückgegebenen Objekt
    unterscheiden sich die Äste um 1,9–2,0 %.
    Vor jedem Wechsel wird der Ast unruhig. Mit einem Thread steigt der Verlust in den letzten
-   6 µm vor dem ersten Wechsel in Sprüngen von 12–25 ppm statt um 0–8 ppm pro µm, und bei jedem
-   Sprung ändert sich die Phase im Sichtfeld um 0,09–0,39 mrad RMS statt um 0,01–0,04 mrad
+   6 µm vor dem ersten Wechsel in Sprüngen von 12–23 ppm statt um 0–8 ppm pro µm, und bei jedem
+   Sprung ändert sich die Phase im Sichtfeld um 0,09–0,39 mrad RMS statt um 0,01–0,08 mrad
    (`to_previous` unter `first_stage`); vor dem zweiten ändert sie sich von 80,890 nach
-   80,900 mm um 0,45 mrad und von 80,900 nach 80,901 mm um 0,56 mrad, davor um 0,04–0,05 mrad
+   80,900 mm um 0,45 mrad und von 80,900 nach 80,901 mm um 0,56 mrad, davor um 0,04–0,07 mrad
    pro 10 µm. Mit der Numerik von vorher liegt der letzte Punkt vor dem ersten Wechsel
-   (80,684 mm) 155 ppm und 2,1 mrad neben seinem Vorgänger, die Punkte davor 11–14 ppm und
-   höchstens 0,13 mrad auseinander.
+   (80,684 mm) 155 ppm und 2,1 mrad neben seinem Vorgänger, die Punkte davor (80,660–80,682 mm,
+   0,3–2 µm auseinander) höchstens 21 ppm und 0,26 mrad.
 2. **Wie sich die Objekte der ersten Stufe unterscheiden.** Vor allem in der Absorption: Auf dem
    unteren Ast hat das Objekt nach der ersten Stufe an einem Bogen des Zahns einen Fleck mit
    Absorption bis 0,060, auf dem oberen fehlt er (größte Absorption im Sichtfeld 0,018). Über
    den Wechsel mit einem Thread (80,717 gegen 80,716 mm) unterscheidet sich die Absorption im
    Sichtfeld um 2,2·10⁻³ RMS, höchstens um 0,055 (`first_stage` in `steps.json`), zwei Nachbarn
-   1 µm auseinander auf demselben Ast um höchstens 7·10⁻⁷ RMS. Die Phase unterscheidet sich am
+   1 µm auseinander auf demselben Ast um höchstens 1,2·10⁻⁶ RMS. Die Phase unterscheidet sich am
    selben Bogen und an einer Kante um 1,1 mrad RMS, bis ±12 mrad, mit Streifen daneben
    (Abb. 3 oben rechts), und um 0,8 mrad außerhalb des Sichtfelds; das ist nicht viel mehr als
    die 0,39 mrad vor dem Wechsel (Punkt 1), bei 5,8 rad Umfang der Phase. Über den zweiten
@@ -502,17 +504,18 @@ denselben Farben.*
    über beide Wechsel mit der Numerik von vorher ist es derselbe Fleck (2,2·10⁻³ RMS, höchstens
    0,055–0,056). Nach der ersten Stufe ist die Absorption im Mittel 7,0·10⁻⁴ (Streuung
    3,2·10⁻³) auf dem unteren Ast und 4,7·10⁻⁴ (1,7·10⁻³) auf dem oberen. Die folgenden Stufen
-   löschen den Fleck: Am Ende ist die Absorption auf beiden Ästen fast null (Mittel 3·10⁻⁶,
-   Streuung 1,5·10⁻⁴, ohne Sprung über den Wechsel; `object` in `scan-tooth.json`), und über den
-   Wechsel unterscheidet sie sich um 2,5·10⁻⁶ RMS, so wenig wie zwischen Nachbarn auf demselben
-   Ast (1,9·10⁻⁶).
+   löschen den Fleck: Am Ende ist die Absorption auf beiden Ästen fast null (am ersten Wechsel
+   Mittel 3,4·10⁻⁶, Streuung 1,5·10⁻⁴, ohne Sprung; `object` in `scan-tooth.json`), und über den
+   Wechsel (80,716/80,717 mm) unterscheidet sie sich um 1,4·10⁻⁶ RMS, so wenig wie zwischen
+   Nachbarn 2–3 µm auseinander auf demselben Ast (1,3–1,9·10⁻⁶; `steps-objects.json`).
 3. **Die MFE folgt der ersten Stufe.** Jeder volle Scan liegt auf dem Ast, den seine erste
    Stufe trifft: mit einem Thread bis 80,716 mm auf dem unteren, von 80,717 bis 80,901 mm auf
    dem oberen und ab 80,902 mm wieder auf dem unteren. Am ersten Wechsel springt die MFE über
    1 µm von 222 auf 877 ppm über ihrer kleinsten, am zweiten fällt sie über 1 µm von 3345 auf
-   3025 ppm. Auf beiden Ästen steigt sie sonst um 5–10 ppm pro µm, unmittelbar vor dem zweiten
-   Wechsel um 21 und 52 ppm pro µm (80,890 → 80,900 → 80,901 mm) und dahinter bis 80,910 mm
-   gar nicht; danach steigt sie auf dem unteren Ast weiter, an den Punkten der Suchen in
+   3025 ppm. Sonst steigt sie auf dem unteren Ast vor dem ersten Wechsel im Mittel um 6 ppm pro
+   µm (80,691–80,716 mm), auf dem oberen um 13 ppm pro µm (80,725–80,890 mm), unmittelbar vor
+   dem zweiten Wechsel um 21 und 52 ppm pro µm (80,890 → 80,900 → 80,901 mm) und dahinter bis
+   80,910 mm gar nicht; danach steigt sie auf dem unteren Ast weiter, an den Punkten der Suchen in
    80,923–81,091 mm von 3086 auf 4520 ppm (Abb. 2). Ein zweites Minimum gibt es hinter dem
    Fenster nicht. Das Objekt springt mit: Seine Phase ändert sich von 80,716 nach 80,717 mm um
    3,4 mrad RMS, auf demselben Ast über 2–3 µm um 0,5–1,0 mrad, und von 80,901 nach 80,902 mm
@@ -548,8 +551,13 @@ denselben Farben.*
 die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.*
 
 1. **Die MFE ist nicht der kleinste Verlust.** In der letzten Stufe fällt der Verlust des Zahns
-   bis Iteration 1220–1230 und steigt danach bis zur letzten (1500) um 1,55–1,56 % auf dem
-   unteren Ast und um 1,62–1,63 % auf dem oberen (`last_stage` in `steps.json`). Der
+   um das Minimum (80,45–80,91 mm) bis Iteration 1200–1230 und steigt danach bis zur letzten
+   (1500), um den ersten Wechsel (80,65–80,725 mm) um 1,555–1,562 % auf dem unteren Ast und um
+   1,625–1,634 % auf dem oberen, sonst um 1,56–1,77 % (`last_stage` in `steps.json`). Fern vom
+   Minimum ändert sich das: Bei 79,1 mm liegt der kleinste Verlust bei Iteration 1270–1280 und
+   die MFE 1,8 % darüber, bei 81,5 und 81,7 mm bei 1320 und 1290 und die MFE 0,39 und 0,01 %
+   darüber, und ab 81,85 mm fällt der Verlust bis zur letzten Iteration; dort ist die MFE der
+   kleinste Verlust der letzten Stufe. Der
    Referenzcode tut dasselbe: Auf dem synthetischen Sample 0 ist der Verlust der letzten Stufe
    bei Iteration 1007 am kleinsten und endet 2325 ppm darüber, in holowizard wie hier
    (`results/crosscheck/reconstruct_0.json`, Laborbuch 03).
@@ -647,8 +655,8 @@ letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kle
    Iteration 1010–1060; bis zur letzten steigt er dann um 1,1 % (79,27 mm), 2,2 % (79,48 mm)
    bis 4,3 % (79,95 mm). Erst dieser Anstieg, der von 79,27 bis 79,95 mm wächst, legt das
    Minimum der MFE unter das des kleinsten Verlusts. Beim Zahn steigt der Verlust nach seinem
-   Minimum überall um 1,55–1,63 %, und die Minima von MFE und kleinstem Verlust liegen 15 µm
-   auseinander (5.3, Punkt 3). Der Verlust am Objekt ist zwischen 79,70 und 79,95 mm nicht
+   Minimum in 80,45–80,91 mm um 1,56–1,77 %, und die Minima von MFE und kleinstem Verlust liegen
+   15 µm auseinander (5.3, Punkte 1 und 3). Der Verlust am Objekt ist zwischen 79,70 und 79,95 mm nicht
    monoton: bei 79,80 mm 52 ppm über 79,70 mm, eine Umkehr nach E10 knapp über der Schwelle, an
    Punkten 100–150 µm auseinander; die MFE steigt dort glatt.
 5. **Zwei Lösungen auf einem synthetischen Sample.** Die Wiederholung der Suche von Etappe 3
