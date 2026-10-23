@@ -827,11 +827,12 @@ done
 Es gelten die Regeln aus 7.2: Val und Test mit `--cpu`, damit der Job sie mit den
 Fingerabdrücken `results/datasets/loo2-<probe>-{val,test}.csv` vergleicht (erwartet PASS oder
 WARN), und die kleine Config auf der GPU nur mit `--splits train`. Auf der VM brauchte ein
-Sample mit einem Thread 0,40 s (Kaktusnadel und Mg-Draht); Spinnenhaar und Zahn liegen wie in
-7.2 deutlich darüber. **PRÜFEN** wie in 7.2: die Zeit pro Sample auf der GPU im Log des
-Train-Jobs ablesen (`train: 600/6000 samples, … s/sample`) und die große Config erst danach
-abschicken, mit einem Zeitlimit, in das 50 000 mal diese Zeit deutlich passt, sonst mit
-`--limit 25000`:
+Sample mit einem Thread (vier Jobs auf den vier Kernen) 4,0–4,2 s beim Spinnenhaar, 1,83 s
+beim Zahn, 0,38–0,40 s bei der Kaktusnadel und 0,35–0,37 s beim Mg-Draht; 50 000 Samples des
+Spinnenhaars wären damit auf einem Kern 57 h. **PRÜFEN** wie in 7.2: die Zeit pro Sample auf
+der GPU im Log des Train-Jobs ablesen (`train: 600/6000 samples, … s/sample`) und die große
+Config erst danach abschicken, mit einem Zeitlimit, in das 50 000 mal diese Zeit deutlich
+passt, sonst mit `--limit 25000`:
 
 ```bash
 for p in spider_hair tooth cactus_needle magnesium_wire; do
