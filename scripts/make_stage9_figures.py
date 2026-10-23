@@ -58,6 +58,9 @@ STAGE9 = RESULTS / "stage9"
 BEFORE, AFTER = "threads-3-4349d6a", "threads-3"
 ONE, THREE = "tab:blue", "tab:red"
 NUMERICS = {1: ("one thread (this stage)", ONE), 3: ("3 threads, before this stage", THREE)}
+OMEGA_STEP = 0.2e-3
+"""Spacing of the scans of the first stage over all of ``Omega_z`` (from its lower end, in m);
+the panel over ``Omega_z`` shows only these, not the dense scans of the tooth."""
 METHODS = {
     "nm-cold": ("NM, guess ±5 mm", "black", "o", "-"),
     "nm-cold-repeat": ("NM, guess ±5 mm, again", "0.5", "o", ":"),
@@ -283,7 +286,7 @@ def tooth_loss_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     if steps is None or not scans:
         return None
     by_key = {(p["z01"], p["numerics"]): p for p in scans}
-    switch = steps.get("first_stage_switch", 0.01)
+    switch = steps.get("first_stage_branch", {}).get("above", 0.05)
     chosen = []
     pairs = [p for p in steps["scans"] if p["sample"] == "tooth"]
     for p in pairs:
@@ -352,6 +355,11 @@ def _first_stage(stage9: Path, sample: str) -> tuple[list[dict], dict | None]:
     return sorted(out, key=lambda p: (p["z01"], p["numerics"])), header
 
 
+def _on_omega_grid(z01: float, guess: float) -> bool:
+    steps = (z01 - guess) / OMEGA_STEP
+    return abs(steps - round(steps)) < 1e-6
+
+
 def _first_stage_panel(ax, points: list[dict], lo: float, hi: float, smallest: dict) -> None:
     """Both losses after the first stage, each relative to its smallest with one thread."""
     for n, (label, color) in NUMERICS.items():
@@ -399,8 +407,15 @@ def first_stage_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
         "tooth_switches": {n: v["switches"] for n, v in first.get("tooth", {}).items()},
     }
     switches = first.get("tooth", {}).get("1", {}).get("switches", [])
+    # the switch between the closest neighbours (the lowest of those), not one of the grid
+    # over Omega_z
+    closest = min(
+        switches,
+        key=lambda s: (round((s["z01"][1] - s["z01"][0]) * 1e7), s["z01"][0]),
+        default=None,
+    )
     by_z = {p["z01"]: p for p in ones}
-    pair = [by_z.get(z) for z in switches[0]["z01"]] if switches else []
+    pair = [by_z.get(z) for z in closest["z01"]] if closest else []
     present = len(pair) == 2 and all(p is not None and (REPO / p["arrays"]).exists() for p in pair)
     for col, (name, unit, scale) in enumerate(
         (("phase", "mrad", 1e3), ("absorption", "1e-3", 1e3)), start=2
@@ -422,7 +437,7 @@ def first_stage_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
         )
         ax.set_title(
             f"{name} after stage 1, field of view:\n{pair[1]['z01'] * 1e3:.3f} minus "
-            f"{pair[0]['z01'] * 1e3:.3f} mm (RMS {rms * scale:.1f} {unit}, {span})",
+            f"{pair[0]['z01'] * 1e3:.3f} mm\nRMS {rms * scale:.1f} {unit}, {span}",
             fontsize=8,
         )
         metrics[f"tooth_first_switch_{name}"] = {
@@ -431,15 +446,15 @@ def first_stage_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
             "largest": [float(a.max()), float(b.max())],
             "range": float(a.max() - a.min()),
         }
-    ax = fig.add_subplot(grid[1, :])
+    ax = fig.add_subplot(grid[1, :3])
     for name, color in zip(
         MEASURED_SAMPLES, ("tab:green", "tab:purple", "tab:orange", "tab:brown"), strict=False
     ):
         sel, _ = _first_stage(stage9, name)
-        sel = [p for p in sel if p["numerics"] == 1]
+        guess = MEASURED_SAMPLES[name].z01_guess
+        sel = [p for p in sel if p["numerics"] == 1 and _on_omega_grid(p["z01"], guess)]
         if len(sel) < 10:
             continue
-        guess = MEASURED_SAMPLES[name].z01_guess
         low = min(p["mfe"] for p in sel)
         ax.plot(
             [p["z01"] * 1e3 - guess * 1e3 for p in sel],
@@ -458,9 +473,49 @@ def first_stage_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     ax.grid(alpha=0.3)
     ax.set_title("first stage over all of Omega_z, one thread", fontsize=9)
     ax.legend(fontsize=7)
+    metrics["tooth_branches"] = _branches_panel(fig.add_subplot(grid[1, 3]), steps)
     fig.legend(handles, labels, loc="outside upper center", ncols=4, fontsize=7)
     _save(fig, out / "stage9-first-stage.png", dpi)
     return metrics
+
+
+def _branches_panel(ax, steps: dict) -> dict:
+    """The MFE of the full reconstructions of the tooth above the line through their nearest
+    neighbours whose first stage lies on the lower branch, by the branch of their own."""
+    near = steps.get("branch_neighbours_um", 500.0)
+    out = {}
+    for n, (label, color) in NUMERICS.items():
+        record = steps.get("branches", {}).get("tooth", {}).get(str(n))
+        if not record:
+            continue
+        points = [
+            p
+            for p in record["points"]
+            if p["offset_ppm"] is not None and max(p["neighbours_um"]) <= near
+        ]
+        for upper, fill in ((False, "none"), (True, color)):
+            sel = [p for p in points if p["upper"] == upper]
+            if not sel:
+                continue
+            ax.plot(
+                [p["z01"] * 1e3 for p in sel],
+                [p["offset_ppm"] for p in sel],
+                "o" if n == 1 else "D",
+                ms=3.5,
+                mfc=fill,
+                color=color,
+                label=f"{'upper' if upper else 'lower'} branch, {label}",
+            )
+        out[str(n)] = {k: record[k] for k in ("upper", "lower")}
+    ax.axhline(0.0, color="0.5", lw=0.8)
+    ax.ticklabel_format(axis="x", useOffset=False)
+    ax.set_xlabel("z01 (mm)", fontsize=8)
+    ax.set_ylabel("MFE above the line through the lower neighbours (ppm)", fontsize=8)
+    ax.tick_params(labelsize=7)
+    ax.grid(alpha=0.3)
+    ax.set_title("tooth: full reconstructions by their first stage", fontsize=9)
+    ax.legend(fontsize=7)
+    return out
 
 
 def probes_figure(stage9: Path, out: Path, dpi: int) -> dict | None:

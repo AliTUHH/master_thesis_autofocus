@@ -135,11 +135,18 @@ reversal)."""
 FIRST_STAGE = "first-stage"
 """Where the scans of the first stage of the plan go (``scan --stages 1``), under
 ``results/stage9``; those with the library of before this stage under ``first-stage/BEFORE``."""
-SWITCH = 0.01
-"""A switch of the first stage: between neighbouring points its loss at the lookahead changes
-by more than this share beyond what the median slope of the (up to) two pairs on either side
-predicts, so that a steep flank over all of ``Omega_z`` is no switch and a single point on the
-other branch is two."""
+OMEGA = "omega"
+"""Full scans of the tooth over ``Omega_z`` where its first stage changes branch
+(``results/stage9/omega``), apart from those about the minimum."""
+BRANCH = {"above": 0.05, "window_mm": 1.0}
+"""The first stage lies on the upper branch where its loss lies more than ``above`` over the
+smallest of the first stage within ``window_mm`` of it (same probe and numerics); a switch is
+a pair of neighbouring points on different branches. The two branches of the tooth lie
+8-11 % apart; on one branch the loss changes by less than 1 % in 1 mm, and no run of points on
+the upper branch is longer than 0.8 mm."""
+BRANCH_NEIGHBOURS_UM = 500.0
+"""The offset of a full reconstruction from the line through its nearest neighbours on the
+lower branch is summarised only where both lie within this distance."""
 WINDOWS_UM = (250.0, 500.0)
 """Half-widths of the windows about the minimum in which ``steps`` reports how densely the
 points lie (:func:`coverage`)."""
@@ -352,9 +359,11 @@ def numerics(threads: int, before: bool) -> int:
 
 def scan_records(stage9: Path):
     """The records of ``scan`` with their source and whether they used the library of before
-    this stage: with one thread, with 3 threads (:data:`AFTER`) and before (:data:`BEFORE`)."""
+    this stage: with one thread (also over ``Omega_z``, :data:`OMEGA`), with 3 threads
+    (:data:`AFTER`) and before (:data:`BEFORE`)."""
     for directory, source, before in (
         (stage9, "scan", False),
+        (stage9 / OMEGA, f"scan-{OMEGA}", False),
         (stage9 / AFTER, f"scan-{AFTER}", False),
         (stage9 / BEFORE, f"scan-{BEFORE}", True),
     ):
@@ -478,8 +487,10 @@ def repeats(rows: list[dict]) -> list[dict]:
     ]
 
 
-def across_numerics(rows: list[dict]) -> list[dict]:
-    """Reconstructions at exactly the same ``z01`` with both numerics."""
+def across_numerics(rows: list[dict], losses: dict) -> list[dict]:
+    """Reconstructions at exactly the same ``z01`` with both numerics, with the branch of the
+    first stage of each where it is known (:func:`first_stage_losses`, ``None`` otherwise)."""
+    labels = {key: upper_branch(known) for key, known in losses.items()}
     by_point = defaultdict(dict)
     for row in rows:
         by_point[row["sample"], row["z01"]].setdefault(row["numerics"], row)
@@ -497,6 +508,7 @@ def across_numerics(rows: list[dict]) -> list[dict]:
                     "ppm_one_thread": one["ppm"],
                     "ppm_3_threads": three["ppm"],
                     "sources": [one["source"], three["source"]],
+                    "upper": [labels.get((sample, n), {}).get(point_key(z01)) for n in (1, 3)],
                 }
             )
     return pairs
@@ -675,8 +687,9 @@ def object_difference(record: dict, a: dict, b: dict) -> dict:
 def first_stage(stage9: Path) -> dict:
     """The scans of the first stage of the plan (:data:`FIRST_STAGE`), per probe and numerics:
     its loss at the lookahead (``loss``, the ``mfe`` of the scan) and at the returned object
-    against ``z01``, its object against that of the point before (``to_previous``), and the
-    switches between neighbouring points (:data:`SWITCH`)."""
+    against ``z01``, its branch (:data:`BRANCH`), its object against that of the point before
+    (``to_previous``), the switches between neighbouring points and the largest change between
+    neighbours on the same branch."""
     out = defaultdict(dict)
     for directory, before in ((stage9 / FIRST_STAGE, False), (stage9 / FIRST_STAGE / BEFORE, True)):
         for path in sorted(directory.glob("scan-*.json")):
@@ -686,37 +699,128 @@ def first_stage(stage9: Path) -> dict:
                 by_numerics[numerics(p["threads"], before)].append(p)
             for n, points in sorted(by_numerics.items()):
                 points.sort(key=lambda p: p["z01"])
+                upper = upper_branch({point_key(p["z01"]): (p["z01"], p["mfe"]) for p in points})
+                on_upper = [upper[point_key(p["z01"])] for p in points]
                 summary = [
-                    {"z01": p["z01"], "loss": p["mfe"], "object_loss": p["object_loss"]}
-                    for p in points
+                    {"z01": p["z01"], "loss": p["mfe"], "object_loss": p["object_loss"], "upper": u}
+                    for p, u in zip(points, on_upper, strict=True)
                 ]
-                pairs = list(zip(points, points[1:], strict=False))
-                changes = [b["mfe"] / a["mfe"] - 1.0 for a, b in pairs]
-                slopes = [c / (b["z01"] - a["z01"]) for c, (a, b) in zip(changes, pairs)]
-                switches = []
-                for k, (a, b) in enumerate(pairs):
+                switches, same_branch = [], []
+                for k, (a, b) in enumerate(zip(points, points[1:], strict=False)):
                     difference = object_difference(record, a, b)
                     summary[k + 1]["to_previous"] = difference
-                    around = slopes[max(k - 2, 0) : k] + slopes[k + 1 : k + 3]
-                    trend = float(np.median(around)) * (b["z01"] - a["z01"]) if around else 0.0
-                    if abs(changes[k] - trend) > SWITCH:
-                        switches.append(
-                            {
-                                "z01": [a["z01"], b["z01"]],
-                                "loss": [a["mfe"], b["mfe"]],
-                                "relative_change": changes[k],
-                                "trend": trend,
-                                "object_loss_relative_change": b["object_loss"] / a["object_loss"]
-                                - 1.0,
-                                **difference,
-                            }
-                        )
+                    change = b["mfe"] / a["mfe"] - 1.0
+                    if on_upper[k] == on_upper[k + 1]:
+                        same_branch.append(abs(change))
+                        continue
+                    switches.append(
+                        {
+                            "z01": [a["z01"], b["z01"]],
+                            "loss": [a["mfe"], b["mfe"]],
+                            "relative_change": change,
+                            "object_loss_relative_change": b["object_loss"] / a["object_loss"]
+                            - 1.0,
+                            **difference,
+                        }
+                    )
                 out[record["sample"]][str(n)] = {
                     "n_points": len(points),
+                    "n_upper": sum(on_upper),
+                    "largest_change_same_branch": max(same_branch, default=None),
                     "z01_range": [points[0]["z01"], points[-1]["z01"]],
                     "points": summary,
                     "switches": switches,
                 }
+    return dict(out)
+
+
+def first_stage_losses(stage9: Path, rows: list[dict]) -> dict:
+    """Per ``(probe, numerics)`` the loss after the first stage at every ``z01`` it is known
+    at, ``{point_key: (z01, loss)}``: the scans of the first stage, and the first stage of the
+    full scans, which has the same bits."""
+    out = defaultdict(dict)
+    for directory, before in ((stage9 / FIRST_STAGE, False), (stage9 / FIRST_STAGE / BEFORE, True)):
+        for path in sorted(directory.glob("scan-*.json")):
+            record = json.loads(path.read_text())
+            for p in record["points"]:
+                key = record["sample"], numerics(p["threads"], before)
+                out[key][point_key(p["z01"])] = (p["z01"], p["mfe"])
+    for row in rows:
+        if row["first_stage_loss"] is not None:
+            key = row["sample"], row["numerics"]
+            out[key].setdefault(point_key(row["z01"]), (row["z01"], row["first_stage_loss"]))
+    return dict(out)
+
+
+def upper_branch(losses: dict) -> dict:
+    """``{point_key: on the upper branch}`` for the losses of one probe and numerics from
+    :func:`first_stage_losses` (:data:`BRANCH`)."""
+    z = np.array([z01 for z01, _ in losses.values()]) * 1e3
+    loss = np.array([value for _, value in losses.values()])
+    out = {}
+    for key, (z01, value) in losses.items():
+        near = loss[np.abs(z - z01 * 1e3) <= BRANCH["window_mm"]]
+        out[key] = bool(value > (1.0 + BRANCH["above"]) * near.min())
+    return out
+
+
+def branches(losses: dict, rows: list[dict]) -> dict:
+    """The full reconstructions (searches and scans) whose first stage is known
+    (:func:`first_stage_losses`), per probe and numerics: on which branch the first stage lies
+    (:func:`upper_branch`), and how far the MFE lies above the line through the nearest
+    reconstructions on either side whose first stage lies on the lower branch
+    (``offset_ppm``); summarised per branch where both of these lie within
+    :data:`BRANCH_NEIGHBOURS_UM`."""
+    groups = defaultdict(list)
+    for row in rows:
+        groups[row["sample"], row["numerics"]].append(row)
+    out = defaultdict(dict)
+    for (sample, n), group in sorted(groups.items()):
+        known = losses.get((sample, n))
+        if not known:
+            continue
+        upper = upper_branch(known)
+        points = [
+            {**p, "first_stage": known[point_key(p["z01"])][1], "upper": upper[point_key(p["z01"])]}
+            for p in distinct(group)[0]
+            if point_key(p["z01"]) in known
+        ]
+        lower = [p for p in points if not p["upper"]]
+        for p in points:
+            left = [q for q in lower if q["z01"] < p["z01"]]
+            right = [q for q in lower if q["z01"] > p["z01"]]
+            if left and right:
+                a, b = left[-1], right[0]
+                share = (p["z01"] - a["z01"]) / (b["z01"] - a["z01"])
+                line = a["mfe"] + share * (b["mfe"] - a["mfe"])
+                p["offset_ppm"] = (p["mfe"] / line - 1.0) * 1e6
+                p["neighbours_um"] = [(p["z01"] - a["z01"]) * 1e6, (b["z01"] - p["z01"]) * 1e6]
+        summary = {}
+        for name, on_upper in (("upper", True), ("lower", False)):
+            offsets = [
+                p["offset_ppm"]
+                for p in points
+                if p["upper"] == on_upper
+                and "offset_ppm" in p
+                and max(p["neighbours_um"]) <= BRANCH_NEIGHBOURS_UM
+            ]
+            summary[name] = {
+                "n_points": sum(p["upper"] == on_upper for p in points),
+                "n_offsets": len(offsets),
+                "offset_ppm": [min(offsets), float(np.median(offsets)), max(offsets)]
+                if offsets
+                else None,
+            }
+        keep = ("z01", "mfe", "ppm", "source", "first_stage", "upper", "offset_ppm")
+        out[sample][str(n)] = {
+            "n_first_stage": len(known),
+            "n_first_stage_upper": sum(upper.values()),
+            **summary,
+            "points": [
+                {**{k: p.get(k) for k in keep}, "neighbours_um": p.get("neighbours_um")}
+                for p in points
+            ],
+        }
     return dict(out)
 
 
@@ -782,7 +886,9 @@ def cmd_steps(args) -> None:
     ``steps.json``: per probe and numerics the smallest MFE, repeated points and the screening
     for steps; the same screening of the loss at the object (``object_loss``) and of the
     smallest loss of the last stage of the plan in the scans (``last_stage``); the scans of the
-    first stage and their switches (``first_stage``); the reconstructions at the same ``z01``
+    first stage and their switches (``first_stage``); the branch of the first stage of every
+    reconstruction and how far its MFE lies off the reconstructions on the lower branch
+    (``branches``); the reconstructions at the same ``z01``
     with the same numerics (``repeats``) and with both numerics (``same_z01``); the loss
     histories of the scans; the Stage 3 search on synthetic samples again (``repeat``).
     ``steps-objects.json``: the objects of the scans against each other (only where their npz
@@ -791,6 +897,7 @@ def cmd_steps(args) -> None:
     args.out.mkdir(parents=True, exist_ok=True)
     rows = mfe_points(args.measured, args.stage9)
     write_csv(args.out / "mfe-points.csv", rows)
+    losses = first_stage_losses(args.stage9, rows)
     groups = defaultdict(list)
     for row in rows:
         groups[row["sample"], row["numerics"]].append(row)
@@ -829,10 +936,12 @@ def cmd_steps(args) -> None:
         "probes": probes,
         "object_loss": object_losses(rows),
         "last_stage": last_stage(args.stage9),
-        "first_stage_switch": SWITCH,
+        "first_stage_branch": BRANCH,
         "first_stage": first_stage(args.stage9),
+        "branch_neighbours_um": BRANCH_NEIGHBOURS_UM,
+        "branches": branches(losses, rows),
         "repeats": repeats(rows),
-        "same_z01": across_numerics(rows),
+        "same_z01": across_numerics(rows, losses),
         "scans": scan_pairs(args.stage9, minima),
     }
     repeat = args.baseline / "cpu-4x-test-repeat"
@@ -872,9 +981,25 @@ def cmd_steps(args) -> None:
                 f"{s['z01'][0] * 1e3:.3f}-{s['z01'][1] * 1e3:.3f} mm ({s['relative_change']:+.1%})"
                 for s in summary["switches"]
             )
+            largest = summary["largest_change_same_branch"]
             print(
                 f"{sample} [{n}] first stage: {summary['n_points']} points, "
+                f"{summary['n_upper']} on the upper branch, neighbours on one branch at most "
+                f"{'-' if largest is None else f'{largest:.2%}'} apart, "
                 f"{len(summary['switches'])} switches{': ' + where if where else ''}"
+            )
+    for sample, by_numerics in record["branches"].items():
+        for n, summary in by_numerics.items():
+            spans = {
+                name: "/".join(f"{x:+.0f}" for x in summary[name]["offset_ppm"] or [])
+                for name in ("upper", "lower")
+            }
+            print(
+                f"{sample} [{n}] branches: first stage upper at {summary['n_first_stage_upper']} "
+                f"of {summary['n_first_stage']} points; full reconstructions "
+                f"{summary['upper']['n_points']} upper, {summary['lower']['n_points']} lower; "
+                f"MFE over the line of the lower ones (ppm, min/median/max): "
+                f"upper {spans['upper'] or '-'}, lower {spans['lower'] or '-'}"
             )
 
 

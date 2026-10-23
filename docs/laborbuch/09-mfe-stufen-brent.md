@@ -194,9 +194,10 @@ verkleinert, beim Zahn 118² px in 512² px, 700 Iterationen), mit einem Thread 
 statt 9 min. Ihr Verlust am Ende ist bitgleich mit `stage_losses[0]` der vollen Rekonstruktion
 am selben $z_{01}$; das Objekt geht mit dem ganzen Feld samt Rand nach
 `results/stage9/first-stage/scan-<probe>/` (nicht versioniert). Gescannt ist die erste Stufe
-beim Zahn alle 10 µm in 80,50–80,90 mm und alle 1 µm in 80,700–80,730 mm, mit der Numerik von
-vorher alle 2 µm in 80,660–80,700 mm und alle 50 µm in 80,50–80,90 mm, und bei allen vier
-Proben in ganz $\Omega_z$ alle 200 µm. Als Wechsel der ersten Stufe zählt `steps` eine
+beim Zahn alle 10 µm in 80,50–81,10 mm und alle 1 µm in 80,700–80,730 und 80,900–80,920 mm,
+mit der Numerik von vorher alle 2 µm in 80,660–80,700 mm und alle 50 µm in 80,50–80,90 mm,
+bei allen vier Proben in ganz $\Omega_z$ alle 200 µm und beim Zahn an jedem $z_{01}$, an dem
+ihn eine Suche rekonstruierte, mit deren Numerik. Als Wechsel der ersten Stufe zählt `steps` eine
 Änderung ihres Verlusts zwischen Nachbarn, die um mehr als 1 % von dem abweicht, was der Median
 der Steigungen der bis zu zwei Paare auf jeder Seite erwarten lässt: Eine steile Flanke in
 $\Omega_z$ ist so kein Wechsel, und ein einzelner Punkt auf dem anderen Ast gibt zwei.
@@ -353,7 +354,11 @@ aller Suchen innerhalb ±250 µm um das Minimum Lücken über 50 µm lassen. Ein
 einem Thread etwa 9 min. Als sich zeigte, dass die Stufe schon nach der ersten Stufe des Plans
 angelegt ist (5.2), habe ich diese allein gescannt, mit 15 s pro Punkt 36-mal billiger: beim
 Zahn dicht um die Wechsel, mit beiden Numeriken, und bei allen Proben in ganz $\Omega_z$ alle
-200 µm als Suche nach Stufen, die die Punkte der Suchen nicht zeigen.
+200 µm als Suche nach Stufen, die die Punkte der Suchen nicht zeigen. Weil die erste Stufe des
+Zahns dabei in ganz $\Omega_z$ zwischen den Ästen wechselte (5.4, Punkt 2), habe ich ihn an
+elf Punkten dieses Rasters voll gescannt, an denen sie es tut (81,5–82,5 und 83,7–84,5 mm,
+`results/stage9/omega/`), und die erste Stufe an jedem Punkt einer Suche gerechnet, damit jede
+Rekonstruktion der Suchen ihren Ast hat.
 
 **E12 – Keine GPU.** ‹TODO: Kernstunden›; nichts davon braucht Maxwell. Neu in
 `docs/maxwell-gpu.md` ist nur Abschnitt 8.4: Auf der GPU ist die Numerik eine andere, MFE-Werte
@@ -392,9 +397,10 @@ Verlust der letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder übe
 
 *Abb. 3 – Der Verlust nach der ersten Stufe des Plans (512² px, 700 Iterationen) über $z_{01}$,
 über dem kleinsten derselben Numerik, am Vorgriff (Linie) und am zurückgegebenen Objekt
-(gepunktet): oben links der Zahn in 80,50–80,90 mm, daneben um die Wechsel, oben rechts die
-Differenz der Phase und der Absorption im Sichtfeld über den Wechsel mit einem Thread; unten
-alle vier Proben in ganz $\Omega_z$ mit einem Thread, über dem Schätzwert.*
+(gepunktet): oben links der Zahn in 80,50–81,10 mm, daneben um den ersten Wechsel, oben
+rechts die Differenz der Phase und der Absorption im Sichtfeld über den ersten Wechsel mit
+einem Thread; unten alle vier Proben in ganz $\Omega_z$ alle 200 µm mit einem Thread, über dem
+Schätzwert.*
 
 ![Die Objekte auf beiden Seiten der Stufe](figures/stage9-tooth-objects.png)
 
@@ -408,8 +414,9 @@ denselben Farben.*
    $z_{01}$, um 3–4 ppm pro µm. Mit einem Thread liegen alle 37 Punkte von 80,500 bis
    80,716 mm auf dem unteren Ast, alle 32 von 80,717 bis 80,901 mm auf dem oberen und alle 37
    von 80,902 bis 81,100 mm wieder auf dem unteren. Beide Wechsel liegen zwischen zwei Punkten
-   1 µm auseinander, und kein Punkt dazwischen springt zurück: Der obere Ast ist ein Fenster
-   von 185 µm, das 52 µm über dem Minimum der MFE (80,665 mm) beginnt. Mit der Numerik von
+   1 µm auseinander, und kein Punkt dazwischen springt zurück: Der obere Ast ist hier ein
+   Fenster von 185 µm, das 52 µm über dem Minimum der MFE (80,665 mm) beginnt, eines von vielen
+   in $\Omega_z$ (5.4, Punkt 2). Mit der Numerik von
    vorher reicht das Fenster von 80,686 mm bis 80,850–80,900 mm. Am zurückgegebenen Objekt
    unterscheiden sich die Äste um 1,9–2,0 %.
    Vor jedem Wechsel wird der Ast unruhig. Mit einem Thread steigt der Verlust in den letzten
@@ -465,8 +472,8 @@ denselben Farben.*
    unter 7·10⁻⁵ und enden 6 ppm auseinander. Zwischen etwa 80,686 und 80,716 mm und wieder
    jenseits von 80,85 mm erreichen die beiden Numeriken verschiedene Äste; dort gibt es beide
    Lösungen, und welche eine Rekonstruktion trifft, hängt an Unterschieden im letzten Bit. Bei
-   fester Numerik ist die Wahl dagegen eine glatte Funktion von $z_{01}$: ein Wechsel, kein
-   Hin und Her auf 1 µm.
+   fester Numerik wechselt der Ast dagegen an scharfen Stellen, ohne Hin und Her auf 1 µm:
+   in 80,5–81,1 mm zweimal, in ganz $\Omega_z$ mindestens 25-mal (5.4, Punkt 2).
 
 ### 5.3 Wo die Stufe der MFE entsteht
 
@@ -524,7 +531,18 @@ letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kle
    Numerik 3 die Stufe bei 80,678–80,6926 mm (+648 ppm) und eine Umkehr von 80,869 nach
    80,893 mm (−138 ppm). Beide Umkehren sind der zweite Wechsel der ersten Stufe, zurück auf den
    unteren Ast (5.2, Punkte 1 und 3) ‹TODO Numerik 3 bei 80,869/80,893 mm›.
-2. **Die erste Stufe in ganz $\Omega_z$.** ‹TODO›
+2. **Die erste Stufe in ganz $\Omega_z$.** Alle 200 µm in ganz $\Omega_z$ gescannt
+   (Abb. 3 unten links), ist die erste Stufe bei Spinnenhaar, Kaktusnadel und Mg-Draht glatt:
+   Nachbarn liegen höchstens 0,16 %, 0,02 % und 0,01 % auseinander, kein Punkt liegt auf einem
+   zweiten Ast (`first_stage` in `steps.json`). Beim Zahn liegt sie in ganz $\Omega_z$ auf
+   einem der beiden Äste: 22 der 51 Punkte auf dem oberen, in Läufen von einem bis vier
+   Punkten, mit 23 Wechseln zwischen Nachbarn des Rasters, dazu die beiden des dichten Scans
+   (5.2, Punkt 1). Über einen Wechsel ändert sich ihr Verlust um 8,1–10,7 %, und der Abstand
+   der Äste nimmt mit $z_{01}$ ab (10,6 % bei 78 mm, 8,8 % bei 88 mm); auf einem Ast liegen
+   Nachbarn höchstens 0,20 % auseinander. Das Fenster von 80,717–80,901 mm ist also eines von
+   vielen. Bei keiner Probe liegt der kleinste Verlust der ersten Stufe am Fokus: beim
+   Spinnenhaar bei 80,2 mm, bei den drei anderen am unteren Ende von $\Omega_z$.
+   ‹TODO volle MFE in Ωz›
 3. **Die Schulter des Spinnenhaars.** Über dem Minimum (79,49 mm) steigt die MFE bis 79,95 mm
    glatt auf 11 150 ppm, im Mittel um 24 ppm pro µm, danach bis 80,25 mm nur noch um 2–3 ppm
    pro µm (11 930 ppm). Zwischen 80,035 und 80,147 mm liegen sechs Punkte innerhalb von 32 ppm,
@@ -657,9 +675,10 @@ NPE-Ensemble, rechts für das CNN.*
 3. **Welcher Ast ist richtig?** Am selben $z_{01}$ unterscheiden sich die Objekte der beiden Äste
    um 3 mrad RMS (5.2, Punkt 4); welches näher an der Wahrheit liegt, sagt das Messhologramm
    nicht. Ein synthetisches Sample mit einem solchen Wechsel zeigte es; gesucht ist danach nicht.
-4. **Wie weit reichen beide Lösungen?** Beide Äste sind zwischen 80,686 und 80,716 mm und
-   jenseits von 80,85 mm erreichbar (5.2, Punkt 5). Ob es sie auch außerhalb gibt, zeigte eine
-   kleine Störung des Starts an jedem $z_{01}$; nicht gerechnet.
+4. **Gibt es beide Lösungen an jedem $z_{01}$?** Die erste Stufe des Zahns trifft in ganz
+   $\Omega_z$ beide Äste (5.4, Punkt 2), und wo die beiden Numeriken verschiedene treffen, gibt
+   es am selben $z_{01}$ beide (5.2, Punkt 5). Ob an jedem $z_{01}$ beide erreichbar sind,
+   zeigte eine kleine Störung des Starts; nicht gerechnet.
 5. **Die Numerik der GPU.** Wo der Wechsel auf der GPU liegt, ist nicht geprüft
    (`docs/maxwell-gpu.md`, 8.4).
 
