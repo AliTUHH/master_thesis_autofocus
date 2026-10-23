@@ -400,9 +400,10 @@ der Wiederholung (E8).*
 
 *Abb. 2 – Die MFE des Zahns über $z_{01}$, über der kleinsten MFE derselben Numerik: oben links
 alle Rekonstruktionen in 80,4–81,1 mm (Suchen und Scans, beide Numeriken; gepunktet: dasselbe
-$z_{01}$ mit beiden), oben rechts um die Stufe; unten links der RMS-Abstand der Phase jedes Scans
-zu der des Scans am Minimum; unten rechts für die Scans mit einem Thread die MFE, der kleinste
-Verlust der letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kleinsten.*
+$z_{01}$ mit beiden), oben rechts um die Stufe; unten links der RMS-Abstand der Phase jedes vollen
+Scans (auch derer über $\Omega_z$) zu der des Scans am Minimum; unten rechts für die Scans mit
+einem Thread die MFE, der kleinste Verlust der letzten Stufe und der Verlust am zurückgegebenen
+Objekt, jeder über seinem kleinsten.*
 
 ![Die erste Stufe des Plans](figures/stage9-first-stage.png)
 
@@ -410,8 +411,9 @@ Verlust der letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder übe
 über dem kleinsten derselben Numerik, am Vorgriff (Linie) und am zurückgegebenen Objekt
 (gepunktet): oben links der Zahn in 80,50–81,10 mm, daneben um den ersten Wechsel, oben
 rechts die Differenz der Phase und der Absorption im Sichtfeld über den ersten Wechsel mit
-einem Thread; unten alle vier Proben in ganz $\Omega_z$ alle 200 µm mit einem Thread, über dem
-Schätzwert.*
+einem Thread; unten links alle vier Proben in ganz $\Omega_z$ alle 200 µm mit einem Thread, über
+dem Schätzwert; unten rechts die volle MFE des Zahns über die Wechsel der ersten Stufe, die auf
+dem oberen Ast über der des Nachbarn auf dem unteren, höchstens 2 µm daneben.*
 
 ![Die Objekte auf beiden Seiten der Stufe](figures/stage9-tooth-objects.png)
 
@@ -511,11 +513,14 @@ die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.
    6,4·10⁻⁴ bei Iteration 1310, 4·10⁻⁶ bei 1430 und 6,8·10⁻⁴ bei der letzten.
 3. **Drei Verluste, drei Minima.** Bei den Scans mit einem Thread ist die MFE bei 80,665 mm am
    kleinsten, der kleinste Verlust der letzten Stufe bei 80,650 mm, und der Verlust am
-   zurückgegebenen Objekt fällt von 80,451 bis 80,910 mm, dem letzten Scan, um 13 400 ppm, um
-   20–34 ppm pro µm, nur über den ersten Wechsel nicht: Von 80,716 nach 80,717 mm steigt er um
-   61 ppm, eine Stufe von etwa 90 ppm, ein Siebtel der Stufe der MFE. Über den zweiten fällt er
-   um 263 ppm in 10 µm, kaum mehr als davor (203–246 ppm). Sein Minimum liegt jenseits von
-   80,910 mm (Abb. 2 unten rechts). Er ist 3,5- bis 3,6-mal so groß wie die MFE, wohl weil am
+   zurückgegebenen Objekt fällt von 80,451 bis 80,910 mm um 13 400 ppm, um 20–34 ppm pro µm,
+   nur über den ersten Wechsel nicht: Von 80,716 nach 80,717 mm steigt er um 61 ppm, eine Stufe
+   von etwa 90 ppm, ein Siebtel der Stufe der MFE. Über den zweiten fällt er um 263 ppm in
+   10 µm, kaum mehr als davor (203–246 ppm). Sein Minimum liegt bei etwa 81,5 mm, wie die Scans
+   über $\Omega_z$ zeigen (Scheitel der Parabel durch 80,910, 81,5 und 81,7 mm: 81,49 mm;
+   Abb. 2 unten rechts), 0,83 mm über dem der MFE und 0,5–0,6 mm über den Referenzen von [2]
+   (80,9 und 81,0 mm); das der MFE liegt 0,24–0,34 mm darunter. Er ist 3,5- bis 3,6-mal so groß
+   wie die MFE, wohl weil am
    Vorgriff auch der Rand außerhalb
    des Sichtfelds den Impuls trägt, am zurückgegebenen Objekt dagegen nur das gespiegelte
    Sichtfeld ist (3.4). Die MFE von [2] ist der Verlust am Vorgriff $y = \tilde O - \gamma v$

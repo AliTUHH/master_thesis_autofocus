@@ -158,9 +158,10 @@ def tooth_step_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     _mfe_panel(axes[0, 1], rows, "tooth", lo - 25e-6, hi + 25e-6, log=False)
     axes[0, 1].set_title("around the step", fontsize=9)
     for ax in axes[0]:
+        left, right = ax.get_xlim()
         for pair in steps.get("same_z01", []):
-            if pair["sample"] == "tooth":
-                z = pair["z01"] * 1e3
+            z = pair["z01"] * 1e3
+            if pair["sample"] == "tooth" and left <= z <= right:
                 ax.plot([z, z], [pair["ppm_one_thread"], pair["ppm_3_threads"]], "k:", lw=0.8)
     reference = min(ones, key=lambda p: p["mfe"])
     ref_phase = _phase(reference)
@@ -552,13 +553,24 @@ def probes_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     return metrics
 
 
+def _across_branches(pair: dict) -> bool:
+    """Whether the first stage of the two reconstructions of a pair of ``same_z01`` lies on
+    different branches (known only where both first stages are)."""
+    upper = pair.get("upper") or [None, None]
+    return None not in upper and upper[0] != upper[1]
+
+
 def numerics_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     steps = _json(stage9 / "steps.json")
     if steps is None:
         return None
     groups = {}
-    for pair in steps["same_z01"]:
-        groups.setdefault(MEASURED_SAMPLES[pair["sample"]].label, []).append(pair["relative_ppm"])
+    for name, sample in MEASURED_SAMPLES.items():
+        pairs = [p for p in steps["same_z01"] if p["sample"] == name]
+        for across, suffix in ((False, ""), (True, ", first stage on other branches")):
+            values = [p["relative_ppm"] for p in pairs if _across_branches(p) == across]
+            if values:
+                groups[sample.label + suffix] = values
     repeat = steps.get("synthetic_repeat", [])
     if repeat:
         groups["synthetic, at the truth"] = [r["mfe_true_relative_ppm"] for r in repeat]
