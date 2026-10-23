@@ -9,7 +9,34 @@
 | Abbildungen | `docs/laborbuch/figures/stage9-*.png`, Zahlen in `stage9-metrics.json` |
 | Quellen | [2] Dora et al., Opt. Express 33(4), 6641 (2025); R. P. Brent, *Algorithms for Minimization without Derivatives*, Prentice-Hall (1973), Kap. 5 |
 
-Kurz: ‹TODO›
+Kurz: **Die Threadzahl.** Die MFE hängt nicht mehr an der Zahl der Threads: `one_thread`
+rechnet die vollen Reduktionen und die Produkte komplexer Felder auf einem Thread, und jede
+Threadzahl gibt die Bits eines Laufs mit einem Thread, auch die der Suche mit einem Thread aus
+Etappe 8 (mit drei Threads 6 % langsamer). Die Numerik von vorher mit drei Threads verschiebt
+die MFE am selben $z_{01}$ auf den Messhologrammen meist um einige ppm, höchstens um 57 ppm, wo
+beide Numeriken dieselbe Lösung treffen und kein Wechsel nahe ist. **Die Stufe des Zahns.** Ja,
+die Rekonstruktion wechselt dort zwischen zwei Lösungen, und zwar schon in der ersten Stufe
+des Plans: Deren Verlust liegt auf einem von zwei Ästen, am selben $z_{01}$ 10,6 %
+auseinander, und die Objekte unterscheiden sich vor allem in einem Fleck der Absorption an
+einem Bogen des Zahns. Mit einem Thread wechselt der Ast um das Minimum zweimal, bei
+80,716/80,717 und 80,901/80,902 mm, jeweils zwischen zwei Punkten 1 µm auseinander, und die
+volle MFE folgt ihm: Auf dem oberen Ast liegt sie am selben $z_{01}$ 649 und 331 ppm über dem
+unteren. Welche Lösung eine Rekonstruktion nahe am Wechsel trifft, entscheidet die Rundung;
+deshalb hing die Stufe an der Threadzahl. In ganz $\Omega_z$ wechselt die erste Stufe des
+Zahns 27-mal den Ast, die volle MFE trägt ihn aber nur um das Minimum: 1,2–3,3 mm davon liegt
+der obere Ast 47–99 ppm unter dem unteren. Die Stufe entsteht in den letzten knapp 300
+Iterationen, in denen der Verlust nach seinem Minimum wieder steigt; die MFE von [2] ist der
+Verlust der letzten Iteration, beim Zahn um das Minimum 1,6–1,8 % über dem kleinsten der
+letzten Stufe. **Die
+anderen Proben** haben keine Stufe: Bei Spinnenhaar, Kaktusnadel und Mg-Draht hat die erste
+Stufe in ganz $\Omega_z$ einen Ast, und die MFE hat nach der Regel von E10 keinen Sprung. Das
+synthetische Sample 5 hat zwei Lösungen am selben $z_{01}$, 2–3 % auseinander ‹K-SAMPLE5›.
+**Brent.** Auf den Messhologrammen braucht Brent kalt 30 Rekonstruktionen für die vier Proben,
+Nelder–Mead 49, und endet höchstens 42 µm neben Nelder–Mead, außer beim Spinnenhaar: Dort fällt
+es in eine flache Mulde der Schulter über dem Minimum (+626 µm), die beide gelernten
+Intervalle vermeiden. ‹K-SYNTH› **Die Hauptfrage: nein.** Ein gelerntes Intervall spart mit
+Brent weniger als mit Nelder–Mead: auf den Messhologrammen 2–3 statt 7–8 der kalten
+Rekonstruktionen, ‹K-MAIN›
 
 ## 1 Ziel
 
