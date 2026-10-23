@@ -923,6 +923,10 @@ F5="$(python -c "print(*[round(0.095 + k * 2e-4, 7) for k in range(51)])")
 python scripts/run_stage9_study.py --threads 3 synthetic --index 5 --z01 $Z5
 python scripts/run_stage9_study.py --threads 3 synthetic --index 5 --z01 $F5 --stages 1 \
     --out results/stage9/first-stage          # Omega_z, 103.3-104.5 mm, the points of its searches
+Z27="0.096171875 0.09617184868636408 0.0961188401002897"  # sample 27: two searches 0.03 um apart
+python scripts/run_stage9_study.py --threads 3 synthetic --index 27 --z01 $Z27
+python scripts/run_stage9_study.py --threads 3 synthetic --index 27 --z01 $Z27 --stages 1 \
+    --out results/stage9/first-stage
 python scripts/run_stage9_study.py steps
 python scripts/run_stage9_study.py compare
 python scripts/make_stage9_figures.py
@@ -952,6 +956,8 @@ b scan --holograms $H --sample tooth --stages 1 --out $f3 --z01 $(points 3)
 D=$PWD/data/cpu-4x/test.h5                  # the synthetic records likewise, with --data
 b synthetic --index 5 --data $D --z01 $Z5 --out $o3
 b synthetic --index 5 --data $D --z01 $F5 --stages 1 --out $f3
+b synthetic --index 27 --data $D --z01 $Z27 --out $o3
+b synthetic --index 27 --data $D --z01 $Z27 --stages 1 --out $f3
 cp -r /tmp/before/$o3 results/stage9/ && cp -r /tmp/before/$f3 results/stage9/first-stage/
 ```
 
