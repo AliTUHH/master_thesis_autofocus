@@ -140,10 +140,12 @@ OMEGA = "omega"
 (``results/stage9/omega``), apart from those about the minimum."""
 BRANCH = {"above": 0.05, "window_mm": 1.0}
 """The first stage lies on the upper branch where its loss lies more than ``above`` over the
-smallest of the first stage within ``window_mm`` of it (same probe and numerics); a switch is
-a pair of neighbouring points on different branches. The two branches of the tooth lie
-8-11 % apart; on one branch the loss changes by less than 1 % in 1 mm, and no run of points on
-the upper branch is longer than 0.8 mm."""
+smallest of the first stage within ``window_mm`` of it (same probe, either numerics: they move
+it by less than 0.01 %, and the points with 3 threads before this stage lie too sparsely for a
+reference of their own); a switch is a pair of neighbouring points on different branches. The
+two branches of the tooth lie 8-11 % apart; on one branch the loss changes by less than 1 % in
+1 mm, and from every point of the tooth on the upper branch one on the lower lies at most
+0.4 mm away."""
 BRANCH_PAIR_UM = 2.0
 """Two neighbouring full reconstructions whose first stage lies on different branches give the
 offset of the MFE between the branches where they lie at most this far apart: the MFE on one
@@ -492,7 +494,9 @@ def repeats(rows: list[dict]) -> list[dict]:
 def across_numerics(rows: list[dict], losses: dict) -> list[dict]:
     """Reconstructions at exactly the same ``z01`` with both numerics, with the branch of the
     first stage of each where it is known (:func:`first_stage_losses`, ``None`` otherwise)."""
-    labels = {key: upper_branch(known) for key, known in losses.items()}
+    labels = {
+        key: upper_branch(known, probe_losses(losses, key[0])) for key, known in losses.items()
+    }
     by_point = defaultdict(dict)
     for row in rows:
         by_point[row["sample"], row["z01"]].setdefault(row["numerics"], row)
@@ -686,10 +690,11 @@ def object_difference(record: dict, a: dict, b: dict) -> dict:
     return out
 
 
-def first_stage(stage9: Path) -> dict:
+def first_stage(stage9: Path, losses: dict) -> dict:
     """The scans of the first stage of the plan (:data:`FIRST_STAGE`), per probe and numerics:
     its loss at the lookahead (``loss``, the ``mfe`` of the scan) and at the returned object
-    against ``z01``, its branch (:data:`BRANCH`), its object against that of the point before
+    against ``z01``, its branch (:data:`BRANCH`, against all ``losses`` of the probe from
+    :func:`first_stage_losses`), its object against that of the point before
     (``to_previous``), the switches between neighbouring points and the largest change between
     neighbours on the same branch."""
     out = defaultdict(dict)
@@ -701,7 +706,10 @@ def first_stage(stage9: Path) -> dict:
                 by_numerics[numerics(p["threads"], before)].append(p)
             for n, points in sorted(by_numerics.items()):
                 points.sort(key=lambda p: p["z01"])
-                upper = upper_branch({point_key(p["z01"]): (p["z01"], p["mfe"]) for p in points})
+                upper = upper_branch(
+                    {point_key(p["z01"]): (p["z01"], p["mfe"]) for p in points},
+                    probe_losses(losses, record["sample"]),
+                )
                 on_upper = [upper[point_key(p["z01"])] for p in points]
                 summary = [
                     {"z01": p["z01"], "loss": p["mfe"], "object_loss": p["object_loss"], "upper": u}
@@ -754,15 +762,26 @@ def first_stage_losses(stage9: Path, rows: list[dict]) -> dict:
     return dict(out)
 
 
-def upper_branch(losses: dict) -> dict:
+def probe_losses(losses: dict, sample: str) -> dict:
+    """The losses of :func:`first_stage_losses` of ``sample`` with both numerics."""
+    return {
+        (n, key): value
+        for (probe, n), known in losses.items()
+        if probe == sample
+        for key, value in known.items()
+    }
+
+
+def upper_branch(losses: dict, reference: dict) -> dict:
     """``{point_key: on the upper branch}`` for the losses of one probe and numerics from
-    :func:`first_stage_losses` (:data:`BRANCH`)."""
-    z = np.array([z01 for z01, _ in losses.values()]) * 1e3
-    loss = np.array([value for _, value in losses.values()])
+    :func:`first_stage_losses` (:data:`BRANCH`), against the smallest of ``reference`` (those
+    of the probe with both numerics, :func:`probe_losses`) within the window."""
+    z = np.array([z01 for z01, _ in reference.values()]) * 1e3
+    loss = np.array([value for _, value in reference.values()])
     out = {}
     for key, (z01, value) in losses.items():
         near = loss[np.abs(z - z01 * 1e3) <= BRANCH["window_mm"]]
-        out[key] = bool(value > (1.0 + BRANCH["above"]) * near.min())
+        out[key] = bool(value > (1.0 + BRANCH["above"]) * near.min(initial=value))
     return out
 
 
@@ -780,7 +799,7 @@ def branches(losses: dict, rows: list[dict]) -> dict:
         known = losses.get((sample, n))
         if not known:
             continue
-        upper = upper_branch(known)
+        upper = upper_branch(known, probe_losses(losses, sample))
         points = [
             {**p, "first_stage": known[point_key(p["z01"])][1], "upper": upper[point_key(p["z01"])]}
             for p in distinct(group)[0]
@@ -927,7 +946,7 @@ def cmd_steps(args) -> None:
         "object_loss": object_losses(rows),
         "last_stage": last_stage(args.stage9),
         "first_stage_branch": BRANCH,
-        "first_stage": first_stage(args.stage9),
+        "first_stage": first_stage(args.stage9, losses),
         "branch_pair_um": BRANCH_PAIR_UM,
         "branches": branches(losses, rows),
         "repeats": repeats(rows),

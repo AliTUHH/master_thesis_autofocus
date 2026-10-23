@@ -198,10 +198,15 @@ beim Zahn alle 10 µm in 80,50–81,10 mm und alle 1 µm in 80,700–80,730 und 
 mit der Numerik von vorher alle 2 µm in 80,660–80,700 mm und alle 50 µm in 80,50–80,90 mm,
 bei allen vier Proben in ganz $\Omega_z$ alle 200 µm und beim Zahn an jedem $z_{01}$, an dem
 ihn eine Suche rekonstruierte, mit deren Numerik. Auf dem oberen Ast liegt die erste Stufe für
-`steps`, wo ihr Verlust mehr als 5 % über dem kleinsten der ersten Stufe derselben Probe und
-Numerik im Umkreis von 1 mm liegt; ein Wechsel ist ein Paar von Nachbarn auf verschiedenen
-Ästen. Die Äste des Zahns liegen 8–11 % auseinander, auf einem Ast ändert sich der Verlust um
-weniger als 1 % pro mm, und kein Lauf auf dem oberen Ast ist länger als 0,8 mm. Für jede volle
+`steps`, wo ihr Verlust mehr als 5 % über dem kleinsten der ersten Stufe derselben Probe (mit
+beiden Numeriken) im Umkreis von 1 mm liegt; ein Wechsel ist ein Paar von Nachbarn auf
+verschiedenen Ästen. Die Numerik verschiebt den Verlust der ersten Stufe um weniger als
+0,01 %, und die Punkte der Numerik 3 liegen außerhalb des Minimums zu dünn für ein eigenes
+Minimum im Umkreis: Bei 87,9 mm läge sonst kein anderer Punkt der Numerik 3 im Umkreis, der
+Punkt fiele auf den unteren Ast, und 82,9–87,9 mm erschiene als Wechsel um 2,5 %. Die Äste des
+Zahns liegen 8–11 % auseinander, auf einem Ast ändert sich der Verlust um weniger als 1 % pro
+mm, und von jedem Punkt auf dem oberen Ast liegt einer auf dem unteren höchstens 0,4 mm
+entfernt. Für jede volle
 Rekonstruktion, deren erste Stufe bekannt ist, gibt `steps` außerdem den Ast an, und für jedes
 Paar benachbarter voller Rekonstruktionen auf verschiedenen Ästen höchstens 2 µm auseinander,
 um wie viel die MFE auf dem oberen Ast über der auf dem unteren liegt (`branches`). Auf 2 µm
@@ -546,14 +551,18 @@ letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kle
    80,716–80,717 mm (+655 ppm) und eine Umkehr von 80,900 nach 80,910 mm (−272 ppm), mit
    Numerik 3 die Stufe bei 80,678–80,6926 mm (+648 ppm) und eine Umkehr von 80,869 nach
    80,893 mm (−138 ppm). Beide Umkehren sind der zweite Wechsel der ersten Stufe, zurück auf den
-   unteren Ast (5.2, Punkte 1 und 3) ‹TODO Numerik 3 bei 80,869/80,893 mm›.
+   unteren Ast: mit Numerik 1 bei 80,901–80,902 mm (5.2, Punkte 1 und 3), mit Numerik 3 genau
+   zwischen 80,869 und 80,893 mm (−9,6 %), den beiden Punkten der Umkehr. Hinauf wechselt die
+   erste Stufe mit Numerik 3 bei 80,684–80,686 mm, innerhalb ihrer Stufe der MFE.
 2. **Die erste Stufe in ganz $\Omega_z$.** Alle 200 µm in ganz $\Omega_z$ gescannt
    (Abb. 3 unten links), ist die erste Stufe bei Spinnenhaar, Kaktusnadel und Mg-Draht glatt:
    Nachbarn liegen höchstens 0,16 %, 0,02 % und 0,01 % auseinander, kein Punkt liegt auf einem
    zweiten Ast (`first_stage` in `steps.json`). Beim Zahn liegt sie in ganz $\Omega_z$ auf
-   einem der beiden Äste: 22 der 51 Punkte auf dem oberen, in Läufen von einem bis vier
-   Punkten, mit 23 Wechseln zwischen Nachbarn des Rasters, dazu die beiden des dichten Scans
-   (5.2, Punkt 1). Über einen Wechsel ändert sich ihr Verlust um 8,1–10,7 %, und der Abstand
+   einem der beiden Äste: 22 der 51 Punkte auf dem oberen, in 13 Läufen von einem bis vier
+   Punkten, mit 25 Wechseln zwischen Nachbarn des Rasters. Mit den dichten Scans und den
+   $z_{01}$ der Suchen sind es 205 Punkte, 66 davon oben, und 27 Wechsel, darunter die beiden
+   um das Minimum (5.2, Punkt 1); der längste Lauf oben beginnt zwischen 77,9 und 78,1 mm und
+   endet zwischen 78,834 und 78,9 mm. Über einen Wechsel ändert sich ihr Verlust um 8,1–10,7 %, und der Abstand
    der Äste nimmt mit $z_{01}$ ab (10,6 % bei 78 mm, 8,8 % bei 88 mm); auf einem Ast liegen
    Nachbarn höchstens 0,20 % auseinander. Das Fenster von 80,717–80,901 mm ist also eines von
    vielen. Bei keiner Probe liegt der kleinste Verlust der ersten Stufe am Fokus: beim
