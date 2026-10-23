@@ -379,8 +379,8 @@ def first_stage_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     first = steps.get("first_stage", {})
     ones = [p for p in points if p["numerics"] == 1]
     smallest = {key: min(p[key] for p in ones) for key in ("mfe", "object_loss")}
-    fig = plt.figure(figsize=(12, 7.5), layout="constrained")
-    grid = fig.add_gridspec(2, 3)
+    fig = plt.figure(figsize=(14, 7.5), layout="constrained")
+    grid = fig.add_gridspec(2, 4)
     ax = fig.add_subplot(grid[0, 0])
     _first_stage_panel(ax, points, 0.0805, 0.0809, smallest)
     ax.set_title("tooth, first stage of the plan", fontsize=9)
@@ -391,28 +391,39 @@ def first_stage_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     metrics = {
         "tooth_switches": {n: v["switches"] for n, v in first.get("tooth", {}).items()},
     }
-    ax = fig.add_subplot(grid[0, 2])
     switches = first.get("tooth", {}).get("1", {}).get("switches", [])
     by_z = {p["z01"]: p for p in ones}
     pair = [by_z.get(z) for z in switches[0]["z01"]] if switches else []
-    if len(pair) == 2 and all(p is not None and (REPO / p["arrays"]).exists() for p in pair):
-        a, b = (np.load(REPO / p["arrays"])["phase"].astype(np.float64) for p in pair)
+    present = len(pair) == 2 and all(p is not None and (REPO / p["arrays"]).exists() for p in pair)
+    for col, (name, unit, scale) in enumerate(
+        (("phase", "mrad", 1e3), ("absorption", "1e-3", 1e3)), start=2
+    ):
+        ax = fig.add_subplot(grid[0, col])
+        ax.set_axis_off()
+        if not present:
+            continue
+        a, b = (np.load(REPO / p["arrays"])[name].astype(np.float64) for p in pair)
         diff = b - a
         limit = float(np.abs(diff).max())
-        image = ax.imshow(diff * 1e3, cmap="RdBu_r", vmin=-limit * 1e3, vmax=limit * 1e3)
-        fig.colorbar(image, ax=ax, shrink=0.8, label="difference of phase (mrad)")
+        image = ax.imshow(diff * scale, cmap="RdBu_r", vmin=-limit * scale, vmax=limit * scale)
+        fig.colorbar(image, ax=ax, shrink=0.8, label=f"difference of {name} ({unit})")
+        rms = float(np.sqrt(np.mean(diff**2)))
+        span = (
+            f"range of the phase {a.max() - a.min():.1f} rad"
+            if name == "phase"
+            else f"largest {a.max():.3f} and {b.max():.3f}"
+        )
         ax.set_title(
-            f"phase after stage 1, field of view:\n{pair[1]['z01'] * 1e3:.3f} minus "
-            f"{pair[0]['z01'] * 1e3:.3f} mm (RMS {1e3 * np.sqrt(np.mean(diff**2)):.1f} mrad, "
-            f"range of the phase {a.max() - a.min():.1f} rad)",
+            f"{name} after stage 1, field of view:\n{pair[1]['z01'] * 1e3:.3f} minus "
+            f"{pair[0]['z01'] * 1e3:.3f} mm (RMS {rms * scale:.1f} {unit}, {span})",
             fontsize=8,
         )
-        metrics["tooth_first_switch_phase"] = {
-            "rms_rad": float(np.sqrt(np.mean(diff**2))),
-            "max_abs_rad": limit,
-            "phase_range_rad": float(a.max() - a.min()),
+        metrics[f"tooth_first_switch_{name}"] = {
+            "rms": rms,
+            "max_abs": limit,
+            "largest": [float(a.max()), float(b.max())],
+            "range": float(a.max() - a.min()),
         }
-    ax.set_axis_off()
     ax = fig.add_subplot(grid[1, :])
     for name, color in zip(
         MEASURED_SAMPLES, ("tab:green", "tab:purple", "tab:orange", "tab:brown"), strict=False

@@ -763,6 +763,22 @@ Doppelte. Mit nur einer CPU (Zeile `host` im Log) dauert es etwa dreimal so lang
 `--sbatch --cpus-per-task=8` angeben. Das Ergebnis steht in `bias-35.json`; `run` kopiert
 nichts nach DUST.
 
+### 8.4 Etappe 9: die Numerik der MFE (Laborbuch 09)
+
+Etappe 9 braucht keine GPU. Für die Läufe hier gilt aber:
+
+- Seit Etappe 9 gibt eine Rekonstruktion auf der CPU mit jeder Threadzahl die Bits eines Laufs
+  mit einem Thread (Laborbuch 09, 3.1), auf derselben CPU und mit derselben Version von torch.
+  Auf der GPU und auf einer anderen CPU (anderer Befehlssatz, andere Pfade in MKL) gilt das
+  nicht, und die Läufe der VM, gegen die 6.4 prüft, liefen mit 3 Threads und der Numerik von
+  vor Etappe 9. MFE-Werte verschiedener Geräte oder Maschinen unterscheiden sich deshalb um
+  einige ppm; zu vergleichen sind die Lagen, nicht die MFE-Werte (Laborbuch 09, E2).
+- Beim Zahn trifft die erste Stufe des Plans je nach $z_{01}$ eine von zwei Lösungen, und wo
+  sie wechselt, hängt an der Numerik (Laborbuch 09, 5.2): mit einem Thread zwischen 80,716 und
+  80,717 mm, mit 3 Threads vor Etappe 9 zwischen 80,684 und 80,686 mm. Dort springt die MFE
+  um etwa 700 ppm. Auf der GPU kann der Wechsel woanders liegen; geprüft ist das nicht, denn
+  `scripts/run_stage9_study.py scan` rechnet nur auf der CPU (Laborbuch 09, 6, Punkt 5).
+
 ## 9 Ergebnisse sichern und zurückgeben
 
 Jeder Job außer `run` kopiert am Ende sein Laufverzeichnis ohne HDF5-Dateien nach DUST, an

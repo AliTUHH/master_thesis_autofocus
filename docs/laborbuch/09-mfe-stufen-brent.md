@@ -258,7 +258,10 @@ spart, gepaart über die Samples (E9; `results/stage9/compare.json`, `measured.c
 Nur zwei Arten von Operationen hängen an der Threadzahl (3.1), beide sind durch den Speicher
 begrenzt, und auf einem Thread verlängern sie eine Rekonstruktion mit drei Threads um 6 %.
 Eine feste Threadzahl hätte jeden Vergleich an eine Einstellung der Maschine gebunden; die Lane
-mit einem Thread neben der mit drei (Regel der VM) hätte nie dieselbe MFE gerechnet.
+mit einem Thread neben der mit drei (Regel der VM) hätte nie dieselbe MFE gerechnet. Unabhängig
+von der Threadzahl heißt nicht unabhängig von der Numerik: Auf einer anderen CPU, mit einer
+anderen Version von torch oder auf der GPU gibt die MFE andere Bits, und beim Zahn kann der
+Wechsel der ersten Stufe dann woanders liegen (5.2, Punkt 5; 6, Punkt 5).
 
 **E2 – Die Numerik eines Threads.** Statt die Reduktionen und Produkte auf einem Thread zu
 rechnen, ginge auch eine eigene, von der Threadzahl unabhängige Summe (paarweise oder in
@@ -327,7 +330,10 @@ Etappe 8 bitgenau mit beiden Numeriken und dort, wo die Suchen mit Numerik 3 ein
 Unregelmäßigkeit zeigen (80,87–80,91 mm). Beim Spinnenhaar an der Schulter der oberen Flanke und
 am lokalen Minimum bei 80,1 mm, das die kalte Suche mit Brent fand. Sonst nur dort, wo die Punkte
 aller Suchen innerhalb ±250 µm um das Minimum Lücken über 50 µm lassen. Ein Punkt kostet mit
-einem Thread etwa 9 min.
+einem Thread etwa 9 min. Als sich zeigte, dass die Stufe schon nach der ersten Stufe des Plans
+angelegt ist (5.2), habe ich diese allein gescannt, mit 15 s pro Punkt 36-mal billiger: beim
+Zahn dicht um die Wechsel, mit beiden Numeriken, und bei allen Proben in ganz $\Omega_z$ alle
+200 µm als Suche nach Stufen, die die Punkte der Suchen nicht zeigen.
 
 **E12 – Keine GPU.** ‹TODO: Kernstunden›; nichts davon braucht Maxwell, `docs/maxwell-gpu.md`
 bleibt unverändert.
@@ -364,9 +370,9 @@ Verlust der letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder übe
 
 *Abb. 3 – Der Verlust nach der ersten Stufe des Plans (512² px, 700 Iterationen) über $z_{01}$,
 über dem kleinsten derselben Numerik, am Vorgriff (Linie) und am zurückgegebenen Objekt
-(gepunktet): oben links der Zahn in 80,50–80,90 mm, oben in der Mitte um die Wechsel, oben
-rechts die Differenz der Phase im Sichtfeld über den Wechsel mit einem Thread; unten alle vier
-Proben in ganz $\Omega_z$ mit einem Thread, über dem Schätzwert.*
+(gepunktet): oben links der Zahn in 80,50–80,90 mm, daneben um die Wechsel, oben rechts die
+Differenz der Phase und der Absorption im Sichtfeld über den Wechsel mit einem Thread; unten
+alle vier Proben in ganz $\Omega_z$ mit einem Thread, über dem Schätzwert.*
 
 ![Die Objekte auf beiden Seiten der Stufe](figures/stage9-tooth-objects.png)
 
@@ -383,13 +389,30 @@ denselben Farben.*
    zurück. Mit der Numerik von vorher wechselt die erste Stufe schon zwischen 80,684 und
    80,686 mm nach oben und zwischen 80,850 und 80,900 mm wieder nach unten. Am zurückgegebenen
    Objekt unterscheiden sich die Äste um 2,0 %.
-2. **Wie sich die Objekte der ersten Stufe unterscheiden.** Über den Wechsel mit einem Thread
-   (80,717 gegen 80,716 mm) um 1,1 mrad RMS in der Phase im Sichtfeld, bis ±12 mrad an einem
-   Bogen und einer Kante des Zahns, mit Streifen daneben, und um 0,8 mrad außerhalb des
-   Sichtfelds (Abb. 3 oben rechts); die Phase umfasst dort 5,8 rad.
+   Vor dem Wechsel wird der untere Ast unruhig. Mit einem Thread steigt der Verlust in den
+   letzten 6 µm davor in Sprüngen von 12–25 ppm statt um 0–8 ppm pro µm, und bei jedem Sprung
+   ändert sich die Phase im Sichtfeld um 0,09–0,39 mrad RMS statt um 0,01–0,04 mrad
+   (`to_previous` unter `first_stage`). Mit der Numerik von vorher liegt der letzte Punkt vor dem
+   Wechsel (80,684 mm) 155 ppm und 2,1 mrad neben seinem Vorgänger, die Punkte davor 11–14 ppm
+   und höchstens 0,13 mrad auseinander.
+2. **Wie sich die Objekte der ersten Stufe unterscheiden.** Vor allem in der Absorption: Auf dem
+   unteren Ast hat das Objekt nach der ersten Stufe an einem Bogen des Zahns einen Fleck mit
+   Absorption bis 0,060, auf dem oberen fehlt er (größte Absorption im Sichtfeld 0,018). Über
+   den Wechsel mit einem Thread (80,717 gegen 80,716 mm) unterscheidet sich die Absorption im
+   Sichtfeld um 2,2·10⁻³ RMS, höchstens um 0,055 (`first_stage` in `steps.json`); zwei Nachbarn
+   1 µm auseinander auf demselben Ast um 7·10⁻⁷ RMS. Die Phase unterscheidet sich am selben Bogen und an einer
+   Kante um 1,1 mrad RMS, bis ±12 mrad, mit Streifen daneben, und um 0,8 mrad außerhalb des
+   Sichtfelds (Abb. 3 oben rechts); die Phase umfasst dort 5,8 rad, die Nachbarn unterscheiden
+   sich um 0,39 mrad. Über beide Wechsel mit der Numerik von vorher ist es derselbe Fleck
+   (Absorption 2,2·10⁻³ RMS, höchstens 0,055–0,056). Die folgenden Stufen löschen ihn: Am Ende
+   ist die Absorption auf beiden Ästen höchstens 0,015, und über den Wechsel unterscheidet sie
+   sich um 2,5·10⁻⁶ RMS, so wenig wie zwischen Nachbarn auf demselben Ast (1,9·10⁻⁶).
 3. **Die MFE folgt der ersten Stufe.** Jeder volle Scan liegt auf dem Ast, den seine erste
-   Stufe trifft: mit einem Thread bis 80,716 mm auf dem unteren, ab ‹TODO› mm auf dem oberen,
-   und die MFE springt dort um ‹TODO› ppm (Abb. 2). Mit der Numerik von vorher ebenso:
+   Stufe trifft: mit einem Thread bis 80,716 mm auf dem unteren, ab ‹TODO 80,717› mm auf dem
+   oberen, und die MFE springt dort von 222 auf 911 ppm über ihrer kleinsten (80,716 und
+   80,719 mm, Abb. 2). Das Objekt springt mit: Seine Phase ändert sich über diese 3 µm um
+   3,1 mrad RMS (höchstens 8,8 mrad), auf demselben Ast über 3 µm um 0,9–1,0 mrad
+   (`steps-objects.json`). Mit der Numerik von vorher ebenso:
    80,678 mm liegt 29 ppm über ihrer kleinsten MFE, 80,6926 mm 677 ppm (Laborbuch 08, 5.6,
    Punkt 9). Bei 80,6926 und 80,694 mm treffen die beiden Numeriken verschiedene Äste, und ihre
    MFE unterscheidet sich um 675 und 679 ppm (5.1). Die Stufe ist also der Wechsel der ersten
@@ -424,16 +447,19 @@ die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.
    Referenzcode tut dasselbe: Auf dem synthetischen Sample 0 ist der Verlust der letzten Stufe
    bei Iteration 1007 am kleinsten und endet 2325 ppm darüber, in holowizard wie hier
    (`results/crosscheck/reconstruct_0.json`, Laborbuch 03).
-2. **Die Äste trennen sich am Ende.** Am kleinsten Verlust der letzten Stufe liegen die Äste
-   beieinander: Über $z_{01}$ hat er keinen Sprung (80,713 → 80,725 mm: +31 ppm), und am selben
-   $z_{01}$ (80,694 mm) unterscheiden sich die beiden Numeriken bei Iteration 1230 nur um
-   4·10⁻⁶ (Abb. 5). Die 675–800 ppm der MFE entstehen in den letzten knapp 300 Iterationen, in
-   denen der Verlust auf dem oberen Ast stärker steigt. Der Unterschied schwingt dabei: bei
-   80,694 mm 6,4·10⁻⁴ bei Iteration 1310, 4·10⁻⁶ bei 1430 und 6,8·10⁻⁴ bei der letzten.
+2. **Die Äste trennen sich am Ende.** Über den Wechsel (80,716 → 80,719 mm) liegt der obere Ast
+   nach der ersten Stufe 10,6 % über dem unteren, am Ende der zweiten 346 ppm, am kleinsten
+   Verlust der letzten Stufe 26 ppm darunter und am Ende 689 ppm darüber. Am selben $z_{01}$
+   (80,694 mm) unterscheiden sich die beiden Numeriken bei Iteration 1230 nur um 4·10⁻⁶
+   (Abb. 5). Die Stufe der MFE entsteht also in den letzten knapp 300 Iterationen, in denen der
+   Verlust auf dem oberen Ast stärker steigt. Der Unterschied schwingt dabei: bei 80,694 mm
+   6,4·10⁻⁴ bei Iteration 1310, 4·10⁻⁶ bei 1430 und 6,8·10⁻⁴ bei der letzten.
 3. **Drei Verluste, drei Minima.** Bei den Scans mit einem Thread ist die MFE bei 80,665 mm am
    kleinsten, der kleinste Verlust der letzten Stufe bei 80,650 mm, und der Verlust am
-   zurückgegebenen Objekt fällt über 80,56–80,725 mm monoton um 4953 ppm, ohne Stufe am Wechsel
-   ‹TODO›; sein Minimum liegt jenseits von 80,725 mm ‹TODO› (Abb. 2 unten rechts). Die MFE von
+   zurückgegebenen Objekt fällt über 80,56–80,725 mm um 4953 ppm, um 27–30 ppm pro µm, nur über
+   den Wechsel nicht: Von 80,716 nach 80,719 mm steigt er um 8 ppm, eine Stufe von etwa 90 ppm,
+   ein Achtel der Stufe der MFE. Sein Minimum liegt jenseits von 80,725 mm ‹TODO› (Abb. 2 unten
+   rechts). Die MFE von
    [2] ist der Verlust am Vorgriff $y = \tilde O - \gamma v$ der letzten Iteration, mit dem
    ganzen Impuls ($\gamma = 1$); was sie misst, ist neben dem Objekt auch der Zustand des
    Impulses, und den bestimmt der Ast.
@@ -444,7 +470,25 @@ die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.
 
 ## 6 Offene Punkte
 
-‹TODO›
+1. **Ein Fokusmaß ohne Stufe.** Der kleinste Verlust der letzten Stufe hat beim Zahn keine
+   Stufe, der Verlust am Objekt nur eine von etwa 90 ppm (5.3). Ob eines davon den Fokus
+   besser trifft als die MFE von [2], zeigten die synthetischen Samples mit ihrer Wahrheit; dazu
+   müssten die Suchen die Verlustkurven speichern oder die Punkte neu rechnen. Nicht gerechnet;
+   das Fokusmaß bleibt die MFE von [2].
+2. **Die Iterationen der letzten Stufe.** Die MFE liegt in einem Anstieg der letzten Stufe, und
+   dort entsteht die Stufe (5.3). Ob sie mit mehr oder weniger Iterationen oder mit gedämpftem
+   Impuls ($\gamma < 1$) verschwindet, ist nicht geprüft (vgl. Laborbuch 04, 9.1, und
+   `docs/maxwell-gpu.md`, 8.3).
+3. **Welcher Ast ist richtig?** Am selben $z_{01}$ unterscheiden sich die Objekte der beiden Äste
+   um 3 mrad RMS (5.2, Punkt 4); welches näher an der Wahrheit liegt, sagt das Messhologramm
+   nicht. Ein synthetisches Sample mit einem solchen Wechsel zeigte es; gesucht ist danach nicht.
+4. **Wie weit reichen beide Lösungen?** Beide Äste sind zwischen 80,686 und 80,716 mm und
+   jenseits von 80,85 mm erreichbar (5.2, Punkt 5). Ob es sie auch außerhalb gibt, zeigte eine
+   kleine Störung des Starts an jedem $z_{01}$; nicht gerechnet.
+5. **Die Numerik der GPU.** Wo der Wechsel auf der GPU liegt, ist nicht geprüft
+   (`docs/maxwell-gpu.md`, 8.4).
+
+‹TODO Teil 2›
 
 ## 7 Nächste Schritte
 

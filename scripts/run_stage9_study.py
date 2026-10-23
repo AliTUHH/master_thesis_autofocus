@@ -642,8 +642,9 @@ def scan_objects(stage9: Path) -> dict:
 
 def object_difference(record: dict, a: dict, b: dict) -> dict:
     """RMS differences between the objects of two scan points of the first stage: in the field
-    of view, and in the padded array outside it, where the object is mirrored from the field
-    of view and the rest is the momentum of the last update."""
+    of view (also the largest difference there, and the largest absorption of each), and in
+    the padded array outside it, where the object is mirrored from the field of view and the
+    rest is the momentum of the last update."""
     paths = [REPO / p["arrays"] for p in (a, b)]
     if not all(path.exists() for path in paths):
         return {}
@@ -660,6 +661,9 @@ def object_difference(record: dict, a: dict, b: dict) -> dict:
     for name in ("phase", "absorption"):
         x, y = (arr[name].astype(np.float64) for arr in arrays)
         out[f"{name}_rms_fov"] = float(np.sqrt(np.mean((x - y) ** 2)))
+        out[f"{name}_max_abs_fov"] = float(np.abs(x - y).max())
+        if name == "absorption":
+            out["absorption_largest_fov"] = [float(x.max()), float(y.max())]
         if f"{name}_padded" in arrays[0].files and f"{name}_padded" in arrays[1].files:
             x, y = (arr[f"{name}_padded"].astype(np.float64)[outside] for arr in arrays)
             out[f"{name}_rms_outside"] = float(np.sqrt(np.mean((x - y) ** 2)))
@@ -669,8 +673,8 @@ def object_difference(record: dict, a: dict, b: dict) -> dict:
 def first_stage(stage9: Path) -> dict:
     """The scans of the first stage of the plan (:data:`FIRST_STAGE`), per probe and numerics:
     its loss at the lookahead (``loss``, the ``mfe`` of the scan) and at the returned object
-    against ``z01``, and the switches between neighbouring points (:data:`SWITCH`) with the
-    objects on both sides against each other."""
+    against ``z01``, its object against that of the point before (``to_previous``), and the
+    switches between neighbouring points (:data:`SWITCH`)."""
     out = defaultdict(dict)
     for directory, before in ((stage9 / FIRST_STAGE, False), (stage9 / FIRST_STAGE / BEFORE, True)):
         for path in sorted(directory.glob("scan-*.json")):
@@ -680,8 +684,14 @@ def first_stage(stage9: Path) -> dict:
                 by_numerics[numerics(p["threads"], before)].append(p)
             for n, points in sorted(by_numerics.items()):
                 points.sort(key=lambda p: p["z01"])
+                summary = [
+                    {"z01": p["z01"], "loss": p["mfe"], "object_loss": p["object_loss"]}
+                    for p in points
+                ]
                 switches = []
-                for a, b in zip(points, points[1:], strict=False):
+                for k, (a, b) in enumerate(zip(points, points[1:], strict=False)):
+                    difference = object_difference(record, a, b)
+                    summary[k + 1]["to_previous"] = difference
                     change = b["mfe"] / a["mfe"] - 1.0
                     if abs(change) > SWITCH:
                         switches.append(
@@ -691,16 +701,13 @@ def first_stage(stage9: Path) -> dict:
                                 "relative_change": change,
                                 "object_loss_relative_change": b["object_loss"] / a["object_loss"]
                                 - 1.0,
-                                **object_difference(record, a, b),
+                                **difference,
                             }
                         )
                 out[record["sample"]][str(n)] = {
                     "n_points": len(points),
                     "z01_range": [points[0]["z01"], points[-1]["z01"]],
-                    "points": [
-                        {"z01": p["z01"], "loss": p["mfe"], "object_loss": p["object_loss"]}
-                        for p in points
-                    ],
+                    "points": summary,
                     "switches": switches,
                 }
     return dict(out)

@@ -838,14 +838,21 @@ holofocus-baseline run configs/baseline/paper2-cpu-brent.yaml --data data/cpu-4x
   `results/stage9/lanes.csv`.
 - `scan`: reconstructions of a measured hologram at given `z01` (`--z01-mm`, or `--z01` in
   metres to hit a recorded point exactly) with the settings of the padding-4 searches: MFE,
-  loss history, losses at the ends of the stages and object statistics per point. Points
+  loss history, losses at the ends of the stages, object statistics and the loss at the
+  returned object (`object_loss`: one more iteration of the last stage from the object without
+  momentum; the MFE is the loss at the lookahead of the last iteration) per point. Points
   already in `results/stage9/scan-<sample>.json` are skipped. The objects go to
-  `results/stage9/scan-<sample>/*.npz` (not tracked).
+  `results/stage9/scan-<sample>/*.npz` (not tracked). `--stages 1` runs only the first stage
+  of the plan (about 15 s instead of 9 min with one thread; its loss is bit for bit
+  `stage_losses[0]` of the full reconstruction) and keeps the padded arrays; write those scans
+  to `results/stage9/first-stage`.
 - `steps`: every padding-4 reconstruction of the measured holograms (all searches and scans)
   as MFE against `z01`, per probe and numerics, screened for steps (jumps between close
   neighbours, reversals away from the minimum), with the density of the points about the
   minimum, the same `z01` with the same and with the other numerics, where the loss histories
-  of two scans part and the scan objects against each other.
+  of two scans part and the scan objects against each other; the loss at the returned object
+  and the smallest loss of the last stage screened the same way; the first-stage scans and
+  where they switch between two solutions, with the objects on both sides.
 - `compare`: Brent against Nelder–Mead, cold and in the learned intervals, on the measured
   holograms (against the references of [2] and the full search) and on the synthetic samples
   (against the truth): error, share within 100 µm, reconstructions, time at the 3-thread rate,
@@ -867,6 +874,8 @@ python scripts/run_stage9_study.py --threads 3 queue --lane a    # next to: --th
 python scripts/run_stage9_study.py merge
 python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth \
     --z01-mm 80.694 80.696 80.698 80.702 80.710 80.725      # the points of Laborbuch 09, 5.1
+python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth --stages 1 \
+    --z01-mm $(seq -f %.3f 80.700 0.001 80.730) --out results/stage9/first-stage
 python scripts/run_stage9_study.py steps
 python scripts/run_stage9_study.py compare
 python scripts/make_stage9_figures.py
@@ -888,6 +897,7 @@ The results:
 results/stage9/scan-<sample>.json          scans with this stage's library, one thread
 results/stage9/threads-3/                  the same points with 3 threads (the same bits)
 results/stage9/threads-3-4349d6a/          the same points with the library before, 3 threads
+results/stage9/first-stage/                the first stage only, both numerics (threads-3-4349d6a/)
 results/stage9/steps.json, mfe-points.csv, steps-objects.json   the screening for steps
 results/stage9/compare.json, measured.csv, synthetic.csv        Brent against Nelder–Mead
 results/stage9/lanes.csv, intervals-cnn-test.{csv,json}
