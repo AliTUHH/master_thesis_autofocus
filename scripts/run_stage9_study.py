@@ -641,8 +641,9 @@ def scan_pairs(stage9: Path, minima: dict) -> list[dict]:
 
 
 def synthetic_repeat(stage3: Path, repeat: Path) -> list[dict]:
-    """The Stage 3 search (3 threads) against itself with the numerics of this stage: the MFE
-    at the truth and along the common start of the two paths, and where they part."""
+    """The Stage 3 search (3 threads) against itself with the numerics of this stage, as the MFE
+    with 3 threads before over one thread (like :func:`across_numerics`): at the truth, along
+    the common start of the two paths and at the points both reconstruct after they part."""
     old_rows = {row["index"]: row for row in read_rows(stage3 / "results.csv")}
     old_traces = {t["index"]: t for t in read_traces(stage3 / "traces.jsonl")}
     new_traces = {t["index"]: t for t in read_traces(repeat / "traces.jsonl")}
@@ -654,15 +655,21 @@ def synthetic_repeat(stage3: Path, repeat: Path) -> list[dict]:
         common = 0
         while common < min(len(old), len(new)) and old[common]["z01"] == new[common]["z01"]:
             common += 1
+        ones = {e["z01"]: e["mfe"] for e in new[common:]}
         values = sorted(e["mfe"] for e in old)
         gaps = np.diff(values) / np.asarray(values[:-1])
         out.append(
             {
                 "index": i,
-                "mfe_true_relative_ppm": (row["mfe_true"] / old_rows[i]["mfe_true"] - 1.0) * 1e6,
+                "mfe_true_relative_ppm": (old_rows[i]["mfe_true"] / row["mfe_true"] - 1.0) * 1e6,
                 "common_points": common,
                 "common_relative_ppm": [
-                    (new[k]["mfe"] / old[k]["mfe"] - 1.0) * 1e6 for k in range(common)
+                    (old[k]["mfe"] / new[k]["mfe"] - 1.0) * 1e6 for k in range(common)
+                ],
+                "later_same_z01": [
+                    {"z01": e["z01"], "relative_ppm": (e["mfe"] / ones[e["z01"]] - 1.0) * 1e6}
+                    for e in old[common:]
+                    if e["z01"] in ones
                 ],
                 "smallest_gap_ppm": float(gaps.min() * 1e6) if gaps.size else None,
                 "z01_est": [old_rows[i]["z01_est"], row["z01_est"]],
@@ -1261,7 +1268,7 @@ def width_bins(runs, nm, brent, idx, widths: dict, bins: int = 3) -> list[dict]:
     """:func:`paired_savings` in ``bins`` groups of equal size by the width of the interval."""
     order = sorted(idx, key=lambda i: widths[i])
     out = []
-    for group in np.array_split(np.array(order), bins):
+    for group in np.array_split(np.array(order), min(bins, len(order))):
         group = [int(i) for i in group]
         s = paired_savings(runs, nm, brent, group)
         out.append(
@@ -1360,6 +1367,8 @@ def synthetic_comparison(baseline: Path, lanes: Path) -> tuple[dict, list[dict]]
         nm, brent = ("nm-cold", f"nm-box95-{key}"), ("brent-cold", f"brent-box95-{key}")
         if all(m in runs for m in (*nm, *brent)):
             idx = sorted(set.intersection(*(set(runs[m]) for m in (*nm, *brent))))
+            if not idx:
+                continue
             comparisons[key] = {
                 "searches": [*nm, *brent],
                 "width_um": {

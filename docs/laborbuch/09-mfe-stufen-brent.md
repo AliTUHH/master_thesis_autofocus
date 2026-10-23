@@ -419,7 +419,13 @@ der Wiederholung (E8).*
    unterscheiden sich auch Punkte auf demselben Ast um mehr: bei 79,15 mm, 6 µm über dem
    Wechsel bei 79,143/79,144 mm, um −175 ppm, bei 80,869 mm, dem letzten Punkt der Numerik 3
    auf dem oberen Ast, um +76 ppm und bei 87,9 mm, neben dem Wechsel bei 87,7–87,9 mm, um
-   −74 ppm. Auf den synthetischen Samples ‹TODO› (Abb. 1).
+   −74 ppm. Auf den acht synthetischen Samples der Wiederholung (E8) verschiebt die Numerik
+   die MFE an der Wahrheit um −36 bis +7,5 ppm und an den 92 Punkten, die beide Suchen
+   rekonstruieren, im Median um 2,8 ppm (Betrag), an 84 davon um höchstens 50 ppm
+   (`synthetic_repeat` in `steps.json`, Abb. 1). Sechs der acht übrigen gehören zu Sample 5:
+   Dort liegt die MFE mit Numerik 3 bei 103,594 mm 2,8 %, bei 104,375 mm 2,0 % und bei
+   103,125 mm 0,15 % unter der mit einem Thread, bei 103,75–103,906 mm nur 11–15 ppm
+   (5.4, Punkt 5).
 
 ### 5.2 Die Stufe des Zahns: zwei Lösungen der ersten Stufe
 
@@ -622,6 +628,18 @@ letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kle
    auseinander (5.3, Punkt 3). Der Verlust am Objekt ist zwischen 79,70 und 79,95 mm nicht
    monoton: bei 79,80 mm 52 ppm über 79,70 mm, eine Umkehr nach E10 knapp über der Schwelle, an
    Punkten 100–150 µm auseinander; die MFE steigt dort glatt.
+5. **Zwei Lösungen auf einem synthetischen Sample.** Die Wiederholung der Suche von Etappe 3
+   (E8) zeigt auch auf Sample 5 zwei Lösungen am selben $z_{01}$ (5.1, Punkt 2). Seine Wahrheit
+   liegt bei 103,625 mm, seine MFE dort mit beiden Numeriken bei 6,578·10⁻⁵. Bei 103,594 mm,
+   31 µm darunter, liegt sie mit einem Thread 3,0 % darüber, mit Numerik 3 nur 0,12 %; bei
+   104,375 mm mit einem Thread 4,6 %, mit Numerik 3 2,5 %. Mit einem Thread fällt die MFE
+   erst zwischen 103,594 und 103,75 mm um 3,1 %, mit Numerik 3 schon zwischen 103,438 und
+   103,594 mm um 3,4 %, rund 45-mal so viel wie an der Stufe des Zahns; ob dazwischen eine
+   Stufe liegt, zeigen Punkte 156 µm auseinander nicht. Mit einem Thread ist die MFE bei
+   103,125 mm kleiner als bei 104,375 mm, mit Numerik 3 größer; die Suchen werten danach zwei
+   Punkte in anderer Reihenfolge aus und enden doch beide bei 103,75 mm mit 12 Rekonstruktionen, 125 µm über
+   der Wahrheit (`traces.jsonl` von `results/baseline/cpu-4x-test` und
+   `cpu-4x-test-repeat`). ‹TODO erste Stufe, Endphase›
 
 ### 5.5 Brent auf den Messhologrammen
 
@@ -757,12 +775,14 @@ NPE-Ensemble, rechts für das CNN.*
    zeigte eine kleine Störung des Starts; nicht gerechnet.
 5. **Die Numerik der GPU.** Wo der Wechsel auf der GPU liegt, ist nicht geprüft
    (`docs/maxwell-gpu.md`, 8.4).
-6. **Warum nur der Zahn?** Nur beim Zahn hat die erste Stufe zwei Äste; bei Spinnenhaar,
-   Kaktusnadel und Mg-Draht liegt sie in ganz $\Omega_z$ auf einem (5.4, Punkt 2). Was den Zahn
-   auszeichnet, ist nicht untersucht; ein Hinweis ist der Fleck in der Absorption, den der
-   untere Ast an einem Bogen des Zahns hat und der obere nicht (5.2, Punkt 2). Ob synthetische
-   Samples zwei Äste haben, zeigte die erste Stufe über $\Omega_z$, ein Bruchteil einer
-   vollen Rekonstruktion pro Punkt; nicht gerechnet.
+6. **Warum der Zahn und Sample 5?** Unter den Messhologrammen hat nur beim Zahn die erste
+   Stufe zwei Äste; bei Spinnenhaar, Kaktusnadel und Mg-Draht liegt sie in ganz $\Omega_z$ auf
+   einem (5.4, Punkt 2). Was den Zahn auszeichnet, ist nicht untersucht; ein Hinweis ist der
+   Fleck in der Absorption, den der untere Ast an einem Bogen des Zahns hat und der obere nicht
+   (5.2, Punkt 2). Von den acht synthetischen Samples der Wiederholung hat Sample 5 zwei
+   Lösungen am selben $z_{01}$, 2–3 % auseinander (5.4, Punkt 5). Wie viele der 48 es sind,
+   zeigte die erste Stufe über $\Omega_z$, ein Bruchteil einer vollen Rekonstruktion pro Punkt,
+   und für Sample 5 ein dichter Scan um 103,4–104,4 mm; nicht gerechnet.
 
 ‹TODO Teil 2›
 

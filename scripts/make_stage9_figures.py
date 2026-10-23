@@ -580,7 +580,11 @@ def numerics_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     repeat = steps.get("synthetic_repeat", [])
     if repeat:
         groups["synthetic, at the truth"] = [r["mfe_true_relative_ppm"] for r in repeat]
-        groups["synthetic, common path"] = [x for r in repeat for x in r["common_relative_ppm"]]
+        groups["synthetic, points of the search"] = [
+            x
+            for r in repeat
+            for x in [*r["common_relative_ppm"], *(p["relative_ppm"] for p in r["later_same_z01"])]
+        ]
     if not groups:
         return None
     fig, ax = plt.subplots(figsize=(7, 3.8), layout="constrained")
