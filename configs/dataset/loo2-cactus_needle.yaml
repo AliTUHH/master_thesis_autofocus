@@ -1,0 +1,51 @@
+# Leave-one-out training data for the measured cactus needle (Stage 10).
+#
+# loo-cactus_needle.yaml of Stage 6 with the texture fits whose objective also holds the levels
+# of the spectrum (holofocus.learned.objectmodel.TEXTURE_FITS_LEVELS): what the measured
+# holograms show comes from the other three (spider hair, tooth, Mg wire) as ranges, widened by
+# a factor of 2; the setup and delta/beta = 1300 stay. Gaussian detector PSF of 1.34-2.01
+# unbinned pixels, 1.55e4-1.36e5 photons per binned pixel (log-uniform), flat-field residual of
+# 1.25-7.8 % RMS with the corner frequency 0.145 per binned pixel; fibers of 5-100 % of the
+# field of view (log-uniform) with 0.0107-0.0723 rad per binned pixel of projected thickness
+# (log-uniform); a texture with the power-law slope 1.5-3.5 inside the fiber and as a film over
+# the field of view, each 0.005-0.6 rad RMS (log-uniform). Own seed.
+name: loo2-cactus_needle
+seed: 20261103
+geometry:
+  energy_kev: 17.0
+  z02: 19.652
+  z01_guess: 0.2861
+  z01_guess_range: null
+  detector_pixel_size: 6.5e-06
+  detector_shape: [2048, 2048]
+  binning: 4
+sampling:
+  dz01_range: [-0.005, 0.005]
+simulation:
+  padding_margin: 1.0
+  oversample: 2
+  a0_range: [1.0, 1.0]
+  psf_sigma_range: [1.34, 2.01]
+  device: auto
+  precision: single
+phantoms:
+  types: {fiber: 1.0}
+  delta_beta: 1300.0
+  phase_shift_range: [0.5, 2.0]
+  size_range: [0.15, 0.6]
+  margin: 0.05
+  supersample: 4
+  fiber_diameter_range: [0.05, 1.0]
+  phase_per_pixel_range: [0.0107, 0.0723]
+  texture_rms_range: [0.005, 0.6]
+  background_texture_rms_range: [0.005, 0.6]
+  texture_slope_range: [1.5, 3.5]
+  texture_cutoff: 0.01
+noise:
+  model: poisson_gaussian
+  photons_range: [15500.0, 136000.0]
+  read_noise: 2.0
+  flat_field_range: [0.0125, 0.078]
+  flat_field_cutoff: 0.145
+storage: {store_phase: false, store_clean: false, compression: gzip, compression_level: 4}
+splits: {train: 6000, val: 250, test: 250}

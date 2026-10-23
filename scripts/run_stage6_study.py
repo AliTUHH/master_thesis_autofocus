@@ -166,11 +166,13 @@ def loo_header(name: str, large: bool) -> str:
     return "".join(f"# {line}".rstrip() + "\n" for line in lines)
 
 
-def own_values(name: str) -> dict:
+def own_values(name: str, fits: dict[str, Texture] | None = None) -> dict:
     """What the measured hologram of ``name`` itself shows, in the keys of
     :class:`~holofocus.learned.objectmodel.LooRanges`; ``None`` where it shows nothing (the
-    detector of the Mg wire, the slope of an untextured fit)."""
-    model, detector, texture = MEASURED_MODELS[name], DETECTOR_FITS[name], TEXTURE_FITS[name]
+    detector of the Mg wire, the slope of an untextured fit). ``fits``: the texture fits
+    (default :data:`~holofocus.learned.objectmodel.TEXTURE_FITS`)."""
+    texture = (TEXTURE_FITS if fits is None else fits)[name]
+    model, detector = MEASURED_MODELS[name], DETECTOR_FITS[name]
     return {
         "psf_sigma": None if detector is None else detector.psf_sigma,
         "photons": model.photons,
@@ -184,10 +186,10 @@ def own_values(name: str) -> dict:
     }
 
 
-def loo_coverage(name: str) -> dict:
+def loo_coverage(name: str, fits: dict[str, Texture] | None = None) -> dict:
     """The leave-one-out ranges of ``name`` and whether its own values lie inside them."""
-    ranges = dataclasses.asdict(loo_ranges(name))
-    own = own_values(name)
+    ranges = dataclasses.asdict(loo_ranges(name, fits))
+    own = own_values(name, fits)
     inside = {}
     for key, value in own.items():
         texture = key in ("texture_rms", "background_texture_rms")

@@ -16,7 +16,8 @@ sets that never saw the hologram they are tested on:
 * :func:`texture_grid`, :func:`refined_grid` and :func:`fit_objective`: the textures tried for
   each sample and the distance of the spectral features of a simulated set from those of the
   measured hologram (``scripts/run_stage6_study.py fit``); :data:`TEXTURE_FITS` holds the
-  result;
+  result, :data:`TEXTURE_FITS_LEVELS` that of the objective with the levels of the spectrum
+  (Stage 10);
 * :func:`loo_ranges` and :func:`loo_changes`: the training set of one sample from the other
   three (leave one out). Every property estimated from a measured hologram (detector, bulk
   object, texture) becomes a range over the other three, widened by :data:`LOO_FACTOR`; the
@@ -330,6 +331,17 @@ TEXTURE_FITS: dict[str, Texture] = {
 none on the tooth, mostly inside the cactus needle, inside and around the Mg wire. The fit sees
 the whole hologram only; the Mg wire fills most of the field of view, so there texture and
 film are nearly interchangeable."""
+
+TEXTURE_FITS_LEVELS: dict[str, Texture] = {
+    "spider_hair": Texture(0.0, 0.1, 3.0),
+    "tooth": Texture(0.0, 0.0, 2.0),
+    "cactus_needle": Texture(0.0, 0.1, 2.75),
+    "magnesium_wire": Texture(0.3, 0.0533, 2.0),
+}
+"""The same fit with the levels of the spectrum in the objective (``levels=True``, Stage 10,
+``results/objectmodel/levels/fit-<sample>.json``). The spider hair and the tooth keep their
+fits; the cactus needle has a film instead of a texture inside, the Mg wire a tenth of the film
+and a steeper slope: less power at high frequencies on both."""
 
 
 LOO_FACTOR = 2.0
