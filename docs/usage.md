@@ -809,8 +809,10 @@ one thread for every `torch.set_num_threads` (`holofocus.device.one_thread`: the
 complex arrays, the norm of `Im(y)` and the loss run on one thread; about 6 % slower with 3
 threads). Reconstructions made before with one thread keep their MFE bit for bit; those made
 with 3 threads (most searches on the measured holograms, the Stage 3 baseline) differ by a few
-ppm, and at the step of the tooth by about 700 ppm. Compare MFE values of older runs only within
-one thread count; `steps` labels every reconstruction with its numerics.
+to a few tens of ppm; where the two numerics reach different solutions of the reconstruction,
+by about 700 ppm (the tooth at its step) and by 2–3 % (two points of synthetic sample 5).
+Compare MFE values of older runs only within one thread count; `steps` labels every
+reconstruction with its numerics.
 
 **Brent's bounded method.** `find_focus(..., method="brent")` searches with
 `scipy.optimize.minimize_scalar(method="bounded")` instead of Nelder–Mead, in the same interval,
