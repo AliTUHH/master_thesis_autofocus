@@ -282,9 +282,10 @@ levels (Stage 10)."""
 LEVEL_SCALE = 0.5
 """Scale of each level difference (natural log of the power) in :func:`fit_objective` with
 levels: half a unit of log power counts as much as 0.1 of CTF correlation. Without levels the
-objective cannot see how much power a texture adds, and the fits of Stage 6 put 18 (cactus
-needle) and 30 times (Mg wire) the measured power into the texture from ``f^2 = 0.02`` up
-(Laborbuch 10)."""
+objective cannot see how much power a texture adds: from ``f^2 = 0.02`` up, the textures of
+Stage 6 give the cactus needle and the Mg wire 5.8 and 20 times the power of the measured
+hologram, the texture alone 18 and 29 times what the measured hologram has above the
+untextured simulation (Laborbuch 10, 5.1)."""
 
 
 def median_features(features: Sequence[Mapping]) -> dict:
