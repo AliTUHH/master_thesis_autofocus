@@ -382,6 +382,9 @@ Rekonstruktion der Suchen ihren Ast hat. Weil die Biegung der MFE über 0,2 mm s
 der Versatz zwischen den Ästen (3.4), habe ich dann drei Wechsel des Rasters (79,1–79,3,
 81,7–81,9 und 83,9–84,1 mm) mit der ersten Stufe auf 1 µm eingegabelt und an beiden Punkten
 jedes Paares voll gescannt, ebenso am zweiten Wechsel beim Minimum (80,901 und 80,902 mm).
+Für die Steigung am Paar bei 79,143/79,144 mm, wo der einzige Nachbar auf dem unteren Ast
+(79,15 mm) eine Suche ist, deren MFE die beiden Numeriken um 175 ppm verschieden geben, kamen
+zwei volle Scans 20 µm daneben hinzu, auf jedem Ast einer (79,123 und 79,164 mm).
 
 **E12 – Keine GPU.** ‹TODO: Kernstunden›; nichts davon braucht Maxwell. Neu in
 `docs/maxwell-gpu.md` ist nur Abschnitt 8.4: Auf der GPU ist die Numerik eine andere, MFE-Werte
@@ -433,7 +436,8 @@ Objekt, jeder über seinem kleinsten.*
 rechts die Differenz der Phase und der Absorption im Sichtfeld über den ersten Wechsel mit
 einem Thread; unten links alle vier Proben in ganz $\Omega_z$ alle 200 µm mit einem Thread, über
 dem Schätzwert; unten rechts die volle MFE des Zahns über die Wechsel der ersten Stufe, die auf
-dem oberen Ast über der des Nachbarn auf dem unteren, höchstens 2 µm daneben.*
+dem oberen Ast über der des Nachbarn auf dem unteren, höchstens 2 µm daneben: am selben
+$z_{01}$, ohne die Steigung auf den Ästen (gefüllt), und wie gerechnet (offen).*
 
 ![Die Objekte auf beiden Seiten der Stufe](figures/stage9-tooth-objects.png)
 
@@ -450,7 +454,7 @@ denselben Farben.*
    1 µm auseinander, und kein Punkt dazwischen springt zurück: Der obere Ast ist hier ein
    Fenster von 185 µm, das 52 µm über dem Minimum der MFE (80,665 mm) beginnt, eines von vielen
    in $\Omega_z$ (5.4, Punkt 2). Mit der Numerik von
-   vorher reicht das Fenster von 80,686 mm bis 80,850–80,900 mm. Am zurückgegebenen Objekt
+   vorher reicht das Fenster von 80,686 mm bis 80,869–80,893 mm. Am zurückgegebenen Objekt
    unterscheiden sich die Äste um 1,9–2,0 %.
    Vor jedem Wechsel wird der Ast unruhig. Mit einem Thread steigt der Verlust in den letzten
    6 µm vor dem ersten Wechsel in Sprüngen von 12–25 ppm statt um 0–8 ppm pro µm, und bei jedem
@@ -503,10 +507,11 @@ denselben Farben.*
    Ende der ersten Stufe 10,6 % auseinander, am Ende der zweiten 134 ppm und am Ende 679 ppm
    (Abb. 5). Zwei Nachbarn 1,4 µm auseinander auf demselben Ast bleiben in allen drei Stufen
    unter 7·10⁻⁵ und enden 6 ppm auseinander. Zwischen etwa 80,686 und 80,716 mm und wieder
-   jenseits von 80,85 mm erreichen die beiden Numeriken verschiedene Äste; dort gibt es beide
-   Lösungen, und welche eine Rekonstruktion trifft, hängt an Unterschieden im letzten Bit. Bei
-   fester Numerik wechselt der Ast dagegen an scharfen Stellen, ohne Hin und Her auf 1 µm:
-   in 80,5–81,1 mm zweimal, in ganz $\Omega_z$ mindestens 25-mal (5.4, Punkt 2).
+   zwischen dem Rückwechsel der Numerik 3 (80,869–80,893 mm) und 80,901 mm erreichen die beiden
+   Numeriken verschiedene Äste; dort gibt es beide Lösungen, und welche eine Rekonstruktion
+   trifft, hängt an Unterschieden im letzten Bit. Bei fester Numerik wechselt der Ast dagegen
+   an scharfen Stellen, ohne Hin und Her auf 1 µm: in 80,5–81,1 mm zweimal, in ganz
+   $\Omega_z$ an den gerechneten Punkten 27-mal (5.4, Punkt 2).
 
 ### 5.3 Wo die Stufe der MFE entsteht
 
@@ -736,6 +741,12 @@ NPE-Ensemble, rechts für das CNN.*
    zeigte eine kleine Störung des Starts; nicht gerechnet.
 5. **Die Numerik der GPU.** Wo der Wechsel auf der GPU liegt, ist nicht geprüft
    (`docs/maxwell-gpu.md`, 8.4).
+6. **Warum nur der Zahn?** Nur beim Zahn hat die erste Stufe zwei Äste; bei Spinnenhaar,
+   Kaktusnadel und Mg-Draht liegt sie in ganz $\Omega_z$ auf einem (5.4, Punkt 2). Was den Zahn
+   auszeichnet, ist nicht untersucht; ein Hinweis ist der Fleck in der Absorption, den der
+   untere Ast an einem Bogen des Zahns hat und der obere nicht (5.2, Punkt 2). Ob synthetische
+   Samples zwei Äste haben, zeigte die erste Stufe über $\Omega_z$, ein Bruchteil einer
+   vollen Rekonstruktion pro Punkt; nicht gerechnet.
 
 ‹TODO Teil 2›
 
