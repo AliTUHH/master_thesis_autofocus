@@ -1,0 +1,165 @@
+{
+  "sample": "cactus_needle",
+  "label": "cactus needle",
+  "binning": 1,
+  "cutting_band": 0,
+  "input_shape": [
+    2048,
+    2048
+  ],
+  "padding_factor": 4.0,
+  "padding_factor_input": 4.0,
+  "stage_arrays": [
+    [
+      512,
+      512
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "settings": {
+    "stages": [
+      {
+        "iterations": 700,
+        "step": 0.9,
+        "down_sampling": 16,
+        "momentum": 1.0,
+        "momentum_fwhm": 8.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 0.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 300,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 500,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 1.0
+      }
+    ],
+    "padding_factor": 4.0,
+    "fade_width": 80,
+    "a0": 0.98,
+    "update": "reference",
+    "gradient": "reference",
+    "pin_phase": true
+  },
+  "geometry_guess": {
+    "energy_kev": 17.0,
+    "z01": 0.2861,
+    "z02": 19.652,
+    "pixel_size": 6.5e-06,
+    "wavelength": 7.293188143129427e-11,
+    "z12": 19.3659,
+    "magnification": 68.68926948619364,
+    "effective_pixel_size": 9.46290453897822e-08,
+    "effective_distance": 0.281934866171382,
+    "fresnel_number": 0.0004354945390048874
+  },
+  "paper2": {
+    "simplex": [
+      0.2811,
+      0.2911
+    ],
+    "z01_nm": 0.2842,
+    "z01_visual": 0.2842,
+    "samples": 12,
+    "padding_factor": 7.0
+  },
+  "result": {
+    "z01": 0.2849225986307161,
+    "z01_guess": 0.2861,
+    "bounds": [
+      0.2829541684621778,
+      0.2899881026927104
+    ],
+    "initial_simplex": null,
+    "mfe": 0.0002295547747053206,
+    "nm_iterations": 6,
+    "converged": true,
+    "seconds": 1311.8556852860202,
+    "evaluations": [
+      {
+        "z01": 0.2856408922636099,
+        "mfe": 0.00022958999034017324,
+        "seconds": 219.55131876800442,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.28730137889127827,
+        "mfe": 0.00022994718165136874,
+        "seconds": 207.87367785300012,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.2846146550898462,
+        "mfe": 0.00022956074099056423,
+        "seconds": 211.1290535480075,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.2849225986307161,
+        "mfe": 0.0002295547747053206,
+        "seconds": 218.09547141799703,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.28488926107129764,
+        "mfe": 0.0002295548329129815,
+        "seconds": 221.4331416710047,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.28495593619013454,
+        "mfe": 0.0002295548329129815,
+        "seconds": 233.762109244999,
+        "reconstructed": true
+      }
+    ],
+    "n_reconstructions": 6,
+    "n_evaluations": 6,
+    "method": "brent"
+  },
+  "z01_minus_paper2_nm_um": 722.5986307161091,
+  "z01_minus_visual_um": 722.5986307161091,
+  "seconds_per_reconstruction": 218.6407954171688,
+  "git_commit": "7a0f7ed",
+  "torch_version": "2.14.1+cpu",
+  "threads": 3,
+  "host": "cursor",
+  "cpu_count": 4,
+  "box": {
+    "source": "results/measured/cnn-loo-ensemble/cactus_needle.json",
+    "sha256": "482f32c880175f781071c62b9502809d217b7c5c9692d263dbff93af6f659a44",
+    "level": "95",
+    "interval": [
+      0.2829541684621778,
+      0.2899881026927104
+    ],
+    "bounds": [
+      0.2829541684621778,
+      0.2899881026927104
+    ]
+  },
+  "revisit_tolerance": 1e-09,
+  "method": "brent"
+}

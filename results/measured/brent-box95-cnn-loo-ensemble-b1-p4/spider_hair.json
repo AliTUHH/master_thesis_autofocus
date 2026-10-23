@@ -1,0 +1,177 @@
+{
+  "sample": "spider_hair",
+  "label": "spider hair",
+  "binning": 1,
+  "cutting_band": 0,
+  "input_shape": [
+    2048,
+    2048
+  ],
+  "padding_factor": 4.0,
+  "padding_factor_input": 4.0,
+  "stage_arrays": [
+    [
+      512,
+      512
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "settings": {
+    "stages": [
+      {
+        "iterations": 700,
+        "step": 0.9,
+        "down_sampling": 16,
+        "momentum": 1.0,
+        "momentum_fwhm": 8.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 0.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 300,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 500,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 1.0
+      }
+    ],
+    "padding_factor": 4.0,
+    "fade_width": 80,
+    "a0": 0.98,
+    "update": "reference",
+    "gradient": "reference",
+    "pin_phase": true
+  },
+  "geometry_guess": {
+    "energy_kev": 11.0,
+    "z01": 0.07980000000000001,
+    "z02": 19.661,
+    "pixel_size": 6.5e-06,
+    "wavelength": 1.1271290766654569e-10,
+    "z12": 19.581200000000003,
+    "magnification": 246.3784461152882,
+    "effective_pixel_size": 2.638217791567062e-08,
+    "effective_distance": 0.07947610803112763,
+    "fresnel_number": 7.769821554674424e-05
+  },
+  "paper2": {
+    "simplex": [
+      0.0748,
+      0.0848
+    ],
+    "z01_nm": 0.0794,
+    "z01_visual": 0.0794,
+    "samples": 13,
+    "padding_factor": 7.0
+  },
+  "result": {
+    "z01": 0.07949737936877789,
+    "z01_guess": 0.07980000000000001,
+    "bounds": [
+      0.07782552683604936,
+      0.08077200580621623
+    ],
+    "initial_simplex": null,
+    "mfe": 0.00013823476911056787,
+    "nm_iterations": 8,
+    "converged": true,
+    "seconds": 1699.1573784119973,
+    "evaluations": [
+      {
+        "z01": 0.07895098165551631,
+        "mfe": 0.00014338883920572698,
+        "seconds": 210.30748645600397,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.07964655098674928,
+        "mfe": 0.00013867783127352595,
+        "seconds": 214.36762683000416,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08007643647498326,
+        "mfe": 0.00013985189434606582,
+        "seconds": 208.91596973501146,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.07969978596413368,
+        "mfe": 0.00013889047841075808,
+        "seconds": 189.24203680301434,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.07938086714375032,
+        "mfe": 0.00013842579210177064,
+        "seconds": 231.1167817520036,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.0794640448568023,
+        "mfe": 0.0001382444315822795,
+        "seconds": 219.6290338060062,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.07949737936877789,
+        "mfe": 0.00013823476911056787,
+        "seconds": 221.45908534599585,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.07953071388124791,
+        "mfe": 0.00013826142821926624,
+        "seconds": 204.05251962001785,
+        "reconstructed": true
+      }
+    ],
+    "n_reconstructions": 8,
+    "n_evaluations": 8,
+    "method": "brent"
+  },
+  "z01_minus_paper2_nm_um": 97.37936877789177,
+  "z01_minus_visual_um": 97.37936877789177,
+  "seconds_per_reconstruction": 212.38631754350718,
+  "git_commit": "7a0f7ed",
+  "torch_version": "2.14.1+cpu",
+  "threads": 3,
+  "host": "cursor",
+  "cpu_count": 4,
+  "box": {
+    "source": "results/measured/cnn-loo-ensemble/spider_hair.json",
+    "sha256": "b497573ea1aaf5cf5d58ad828619757eb73184625b5612e5d1e22dbb37942b01",
+    "level": "95",
+    "interval": [
+      0.07782552683604936,
+      0.08077200580621623
+    ],
+    "bounds": [
+      0.07782552683604936,
+      0.08077200580621623
+    ]
+  },
+  "revisit_tolerance": 1e-09,
+  "method": "brent"
+}

@@ -1,0 +1,171 @@
+{
+  "sample": "magnesium_wire",
+  "label": "Mg wire",
+  "binning": 1,
+  "cutting_band": 0,
+  "input_shape": [
+    2048,
+    2048
+  ],
+  "padding_factor": 4.0,
+  "padding_factor_input": 4.0,
+  "stage_arrays": [
+    [
+      512,
+      512
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "settings": {
+    "stages": [
+      {
+        "iterations": 700,
+        "step": 0.9,
+        "down_sampling": 16,
+        "momentum": 1.0,
+        "momentum_fwhm": 8.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 0.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 300,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 500,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 1.0
+      }
+    ],
+    "padding_factor": 4.0,
+    "fade_width": 80,
+    "a0": 1.1,
+    "update": "reference",
+    "gradient": "reference",
+    "pin_phase": true
+  },
+  "geometry_guess": {
+    "energy_kev": 11.0,
+    "z01": 0.4724,
+    "z02": 19.661,
+    "pixel_size": 6.5e-06,
+    "wavelength": 1.1271290766654569e-10,
+    "z12": 19.1886,
+    "magnification": 41.619390347163424,
+    "effective_pixel_size": 1.5617720360103756e-07,
+    "effective_distance": 0.4610495213875184,
+    "fresnel_number": 0.00046936862502965245
+  },
+  "paper2": {
+    "simplex": [
+      0.4674,
+      0.4774
+    ],
+    "z01_nm": 0.4708,
+    "z01_visual": 0.4707,
+    "samples": 9,
+    "padding_factor": 4.0
+  },
+  "result": {
+    "z01": 0.4712248223649824,
+    "z01_guess": 0.4724,
+    "bounds": [
+      0.4676355689501188,
+      0.4754325686848073
+    ],
+    "initial_simplex": null,
+    "mfe": 0.0011739252367988229,
+    "nm_iterations": 7,
+    "converged": true,
+    "seconds": 1496.464166167978,
+    "evaluations": [
+      {
+        "z01": 0.4706137578384959,
+        "mfe": 0.001174028730019927,
+        "seconds": 193.2196966650081,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.47245437979643023,
+        "mfe": 0.001174297882243991,
+        "seconds": 227.85450980701717,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.46947619090805315,
+        "mfe": 0.0011747601674869657,
+        "seconds": 226.47297385899583,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.47125816268820386,
+        "mfe": 0.001173927914351225,
+        "seconds": 214.12647485898924,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.4712248223649824,
+        "mfe": 0.0011739252367988229,
+        "seconds": 204.4512195860152,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.47113785391258894,
+        "mfe": 0.0011739296605810523,
+        "seconds": 206.37613648700062,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.4711914820422554,
+        "mfe": 0.001173927914351225,
+        "seconds": 223.94934941199608,
+        "reconstructed": true
+      }
+    ],
+    "n_reconstructions": 7,
+    "n_evaluations": 7,
+    "method": "brent"
+  },
+  "z01_minus_paper2_nm_um": 424.8223649824245,
+  "z01_minus_visual_um": 524.8223649824135,
+  "seconds_per_reconstruction": 213.7786229535746,
+  "git_commit": "00f08ab",
+  "torch_version": "2.14.1+cpu",
+  "threads": 3,
+  "host": "cursor",
+  "cpu_count": 4,
+  "box": {
+    "source": "results/measured/npe-loo-ensemble/magnesium_wire.json",
+    "sha256": "a7e288f840eeeaac094ca1f49cf7064c20df0dbd11bfc8f8f7238776c698ea47",
+    "level": "95",
+    "interval": [
+      0.4676355689501188,
+      0.4754325686848073
+    ],
+    "bounds": [
+      0.4676355689501188,
+      0.4754325686848073
+    ]
+  },
+  "revisit_tolerance": 1e-09,
+  "method": "brent"
+}

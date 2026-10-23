@@ -1,0 +1,177 @@
+{
+  "sample": "tooth",
+  "label": "tooth",
+  "binning": 1,
+  "cutting_band": 80,
+  "input_shape": [
+    1888,
+    1888
+  ],
+  "padding_factor": 4.0,
+  "padding_factor_input": 4.338983050847458,
+  "stage_arrays": [
+    [
+      512,
+      512
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ]
+  ],
+  "settings": {
+    "stages": [
+      {
+        "iterations": 700,
+        "step": 0.9,
+        "down_sampling": 16,
+        "momentum": 1.0,
+        "momentum_fwhm": 8.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 0.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 300,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 10.0
+      },
+      {
+        "iterations": 500,
+        "step": 1.1,
+        "down_sampling": 4,
+        "momentum": 1.0,
+        "momentum_fwhm": 16.0,
+        "phase_fwhm": 2.0,
+        "absorption_fwhm": 8.0,
+        "l2_weight": 1.0
+      }
+    ],
+    "padding_factor": 4.338983050847458,
+    "fade_width": 80,
+    "a0": 0.96,
+    "update": "reference",
+    "gradient": "reference",
+    "pin_phase": true
+  },
+  "geometry_guess": {
+    "energy_kev": 17.0,
+    "z01": 0.0829,
+    "z02": 19.652,
+    "pixel_size": 6.5e-06,
+    "wavelength": 7.293188143129427e-11,
+    "z12": 19.569100000000002,
+    "magnification": 237.05669481302775,
+    "effective_pixel_size": 2.7419601058416443e-08,
+    "effective_distance": 0.08255029462650113,
+    "fresnel_number": 0.0001248780816566809
+  },
+  "paper2": {
+    "simplex": [
+      0.0779,
+      0.0879
+    ],
+    "z01_nm": 0.0809,
+    "z01_visual": 0.081,
+    "samples": 11,
+    "padding_factor": 4.0
+  },
+  "result": {
+    "z01": 0.08065071602954406,
+    "z01_guess": 0.0829,
+    "bounds": [
+      0.0788336998988999,
+      0.0824387529140265
+    ],
+    "initial_simplex": null,
+    "mfe": 0.00031601201044395566,
+    "nm_iterations": 8,
+    "converged": true,
+    "seconds": 1705.397621193988,
+    "evaluations": [
+      {
+        "z01": 0.08021070761943298,
+        "mfe": 0.00031928514363244176,
+        "seconds": 200.46670999299386,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08106174519349343,
+        "mfe": 0.0003173488948959857,
+        "seconds": 190.94035056198481,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08158771533996605,
+        "mfe": 0.0003190287097822875,
+        "seconds": 212.89636414599954,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.0809226561823285,
+        "mfe": 0.0003169806150253862,
+        "seconds": 219.25407440800336,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08065071602954406,
+        "mfe": 0.00031601201044395566,
+        "seconds": 220.92165793001186,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08048264777221743,
+        "mfe": 0.0003167100076097995,
+        "seconds": 213.00114431598922,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08068511397615787,
+        "mfe": 0.00031601806404069066,
+        "seconds": 206.4856106399966,
+        "reconstructed": true
+      },
+      {
+        "z01": 0.08061738149996729,
+        "mfe": 0.00031606099219061434,
+        "seconds": 241.3838420700049,
+        "reconstructed": true
+      }
+    ],
+    "n_reconstructions": 8,
+    "n_evaluations": 8,
+    "method": "brent"
+  },
+  "z01_minus_paper2_nm_um": -249.28397045594076,
+  "z01_minus_visual_um": -349.28397045594363,
+  "seconds_per_reconstruction": 213.16871925812302,
+  "git_commit": "7a0f7ed",
+  "torch_version": "2.14.1+cpu",
+  "threads": 3,
+  "host": "cursor",
+  "cpu_count": 4,
+  "box": {
+    "source": "results/measured/cnn-loo-ensemble/tooth.json",
+    "sha256": "dca10526c62c427ed815c2ba3a528a7bdd46f3ec97a456e943280b53590ef827",
+    "level": "95",
+    "interval": [
+      0.0788336998988999,
+      0.0824387529140265
+    ],
+    "bounds": [
+      0.0788336998988999,
+      0.0824387529140265
+    ]
+  },
+  "revisit_tolerance": 1e-09,
+  "method": "brent"
+}
