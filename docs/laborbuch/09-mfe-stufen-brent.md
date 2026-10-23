@@ -34,9 +34,18 @@ synthetische Sample 5 hat zwei Lösungen am selben $z_{01}$, 2–3 % auseinander
 **Brent.** Auf den Messhologrammen braucht Brent kalt 30 Rekonstruktionen für die vier Proben,
 Nelder–Mead 49, und endet höchstens 42 µm neben Nelder–Mead, außer beim Spinnenhaar: Dort fällt
 es in eine flache Mulde der Schulter über dem Minimum (+626 µm), die beide gelernten
-Intervalle vermeiden. ‹K-SYNTH› **Die Hauptfrage: nein.** Ein gelerntes Intervall spart mit
-Brent weniger als mit Nelder–Mead: auf den Messhologrammen 2–3 statt 7–8 der kalten
-Rekonstruktionen, ‹K-MAIN›
+Intervalle vermeiden. Auf den 48 synthetischen Samples braucht Brent kalt 27 % weniger (8,17
+statt 11,15 pro Autofokus) und ist so genau wie Nelder–Mead: MAE 164 statt 166 µm, 35 statt
+31 % innerhalb 100 µm (McNemar $p = 0{,}69$). Den Fehler setzt bei beiden der Versatz des
+Minimums der MFE von im Median etwa 120 µm, nicht die Suche; kalt fallen beide auf je zwei
+Samples in ein Nebenminimum. **Die Hauptfrage: nein.** Ein gelerntes Intervall spart mit Brent
+weniger als mit Nelder–Mead: auf den Messhologrammen 2–3 statt 7–8 der kalten
+Rekonstruktionen, auf den synthetischen Samples mit dem NPE-Ensemble 2,35 statt 4,48 pro
+Autofokus (29 statt 40 %, gepaart 2,12 [1,56, 2,71] weniger)‹K-CNN›. Nelder–Mead spart mit dem
+Logarithmus der Startbreite, Brent hängt kaum an ihr, und den Vorsprung, den Brents Parabeln
+kalt haben, nimmt das Intervall fast ganz weg. Am schnellsten ist trotzdem Brent im Intervall:
+48 % weniger Rekonstruktionen als Nelder–Mead kalt auf den synthetischen Samples, 45 % auf den
+Messhologrammen.
 
 ## 1 Ziel
 
@@ -400,7 +409,8 @@ von Etappe 3 zwei MFE-Werte weniger als die Numerik auseinanderliegen (11 und 46
 ganze Zeit einer Suche sind ihre Rekonstruktionen, und ihre Zahl hängt nicht an der Maschine.
 Die Zeit gebe ich als Zahl der Rekonstruktionen mal der Rate mit 3 Threads an: auf den
 Messhologrammen der Median der Sekunden pro Rekonstruktion der Suchen dieser Etappe mit 3 Threads
-derselben Probe, auf den synthetischen Samples der Median der Suchen der Lane mit 3 Threads.
+derselben Probe, auf den synthetischen Samples die Sekunden aller Suchen der Lane mit 3 Threads
+durch ihre Rekonstruktionen.
 
 **E10 – Wann ein Sprung eine Stufe ist.** Die Numerik verschiebt die MFE in ±1,6 mm um das
 Minimum um höchstens 32 ppm, wo die erste Stufe beider Numeriken auf demselben Ast liegt und
@@ -432,7 +442,10 @@ zwei volle Scans 20 µm daneben hinzu, auf jedem Ast einer (79,123 und 79,164 mm
 selbst, voll mit beiden Numeriken. Beim synthetischen Sample 5, an dem die Numerik die MFE der
 Suche um 2–3 % verschiebt (5.1, Punkt 2), habe ich mit beiden Numeriken vier Punkte der Suchen
 voll gerechnet und die erste Stufe in ganz $\Omega_z$ alle 200 µm, in 103,3–104,5 mm alle
-25 µm und an allen zwölf Punkten der Suchen.
+25 µm und an allen zwölf Punkten der Suchen. Bei Sample 27, wo ein Punkt von Nelder–Mead kalt
+(Numerik 3) und einer von Nelder–Mead im NPE-Intervall (Numerik 1) 0,03 µm auseinanderliegen,
+ihre MFE aber 4,6 % (5.6, Punkt 3), habe ich diese beiden und einen dritten Punkt der Suche im
+Intervall (96,119 mm) mit beiden Numeriken voll und mit der ersten Stufe gerechnet.
 
 **E12 – Keine GPU.** ‹TODO: Kernstunden›; nichts davon braucht Maxwell. Neu in
 `docs/maxwell-gpu.md` ist nur Abschnitt 8.4: Auf der GPU ist die Numerik eine andere, MFE-Werte
@@ -810,10 +823,10 @@ Fehler gegen die Wahrheit, Rekonstruktionen und Zeit pro Autofokus mit 3 Threads
 
 1. **Kalt ist Brent so genau wie Nelder–Mead, mit 27 % weniger Rekonstruktionen.** Brent
    braucht 8,17 statt 11,15 pro Autofokus, gepaart 2,98 [2,46, 3,50] weniger, weniger auf 44
-   der 48 Samples und mehr auf 2 (`pairs` unter `synthetic`). Sample für Sample unterscheidet sich der Betrag des
-   Fehlers im Mittel um −1 µm [−51, +50]; auf 100 µm trifft nur Brent 4 Samples, nur
-   Nelder–Mead 2 (exakter McNemar-Test, $p = 0{,}69$; `pairs` unter `synthetic`). Auf 45 der
-   48 Samples enden beide höchstens 100 µm auseinander, im Median 17 µm.
+   der 48 Samples und mehr auf 2. Sample für Sample unterscheidet sich der Betrag des Fehlers
+   im Mittel um −1 µm [−51, +50]; auf 100 µm trifft nur Brent 4 Samples, nur Nelder–Mead 2
+   (exakter McNemar-Test, $p = 0{,}69$; `pairs` unter `synthetic`). Auf 45 der 48 Samples enden
+   beide höchstens 100 µm auseinander, im Median 17 µm.
 2. **Der Fehler ist der der MFE.** Bei allen vier Suchen (kalt und im NPE-Intervall) liegen
    85–88 % der Ergebnisse über der Wahrheit, im Median um 120–124 µm: Das ist der Versatz des
    Minimums der MFE, den in Etappe 3 die Objektfilter der Rekonstruktion erklärten (Laborbuch 03,
@@ -877,11 +890,83 @@ Verfahrens spart, relativ.*
 für Nelder–Mead um 0,15 nach unten, für Brent um 0,15 nach oben versetzt; Linie: Mittel in drei
 gleich großen Klassen der Breite), links für das NPE-Ensemble, rechts für das CNN.*
 
-‹TODO›
+Was das 95-%-Intervall gegen die kalte Suche desselben Verfahrens spart, pro Autofokus und
+gepaart über die Samples (E7; `savings` unter `synthetic` in `compare.json`), in Klammern
+95-%-Bootstrap-Intervalle:
+
+| Intervall | Verfahren | kalt | im Intervall | gespart | relativ | weniger / gleich / mehr |
+|---|---|---|---|---|---|---|
+| NPE-Ensemble, im Median 894 µm | Nelder–Mead | 11,15 | 6,67 | 4,48 [4,04, 4,92] | 40,2 % [36,8, 43,5] | 48 / 0 / 0 |
+| | Brent | 8,17 | 5,81 | 2,35 [1,90, 2,79] | 28,8 % [23,9, 33,2] | 44 / 1 / 3 |
+| | Brent − Nelder–Mead | | | −2,12 [−2,71, −1,56] | −11,4 Punkte [−16,4, −6,6] | |
+| ‹CNN-SAVE-NM› |
+| ‹CNN-SAVE-BR› |
+| ‹CNN-SAVE-GAP› |
+
+1. **Nein.** Das Intervall des NPE-Ensembles spart Brent 2,35 Rekonstruktionen pro
+   Autofokus, Nelder–Mead 4,48: 29 statt 40 % der kalten Suche, gepaart 2,12 [1,56, 2,71]
+   weniger. Nelder–Mead spart auf jedem der 48 Samples, Brent auf 44. ‹CNN-MAIN› Auf den
+   Messhologrammen waren es 2–3 statt 7–8 Rekonstruktionen für die vier Proben (5.5, Punkt 4).
+2. **Warum.** Nelder–Mead vergleicht nur Werte; was es braucht, hängt an der Breite, mit der
+   es beginnt. Auf der Parabel von Laborbuch 08 (5.6, Punkt 4) kostet jede Halbierung der
+   Startbreite 1,5 Rekonstruktionen; von 7–10 mm aus braucht es 11,2, von 1–1,5 mm aus, mit
+   vier Halbierungen bis 100 µm wie 894 µm, drei weniger, 6,7. Auf den synthetischen Samples
+   sind es 11,15 und 6,67. Brent legt Parabeln durch seine Punkte; was es braucht, hängt an der
+   Form der MFE und kaum an der Breite: auf einer Parabel 6,0 von 10 mm und 5,5 von 1 mm aus,
+   auf einer Kurve wie $|d|$ 8,9 und 5,7 (Laborbuch 08, 7, Punkt 1; `brent` in
+   `results/measured/warmstart.json`). Auf den synthetischen Samples braucht es kalt 8,17,
+   zwischen den beiden Kurven, und im Intervall 5,81, etwa so viele wie auf beiden bei 1 mm.
+   Das Intervall spart Nelder–Mead also Halbierungen, Brent nur, was die Form der MFE weit vom
+   Minimum kostet. Von der anderen Seite: Kalt braucht Brent 2,98 Rekonstruktionen weniger als
+   Nelder–Mead (5.6, Punkt 1), im Intervall nur noch 0,85 [0,48, 1,23] weniger (`pairs`). Den
+   Vorsprung, den Brents Parabeln kalt haben, nimmt das Intervall fast ganz weg.
+3. **Nach der Breite.** In drei gleich großen Klassen der Breite des NPE-Intervalls
+   (`by_width` unter `savings`; Abb. 10):
+
+   | Breite | Samples | Nelder–Mead kalt → im Intervall | Brent kalt → im Intervall |
+   |---|---|---|---|
+   | 418–746 µm | 16 | 11,2 → 5,4 (51 %) | 8,2 → 5,4 (34 %) |
+   | 779–970 µm | 16 | 11,2 → 7,1 (36 %) | 7,9 → 5,4 (32 %) |
+   | 992–3806 µm | 16 | 11,1 → 7,4 (33 %) | 8,3 → 6,6 (20 %) |
+
+   In jeder Klasse spart Nelder–Mead mehr. In der schmalsten brauchen beide im Intervall 5,4;
+   dort ist der Unterschied der Ersparnis ganz der der kalten Suchen. Mehr als kalt kostet das
+   Intervall Brent auf drei Samples (11, 16 und 43), gleich viel auf Sample 14 mit seiner
+   flachen MFE (5.6, Punkt 3). Alle 48 Samples haben den Schätzwert 100 mm; Brent kalt rechnet
+   deshalb immer zuerst 98,82 und 101,18 mm und dann 97,36 oder 102,64 mm, je nachdem, welcher
+   der beiden besser ist (`traces.jsonl`). Bei 11, 16 und 43 liegen die Ergebnisse aller vier
+   Suchen 0–90 µm neben 101,18 mm: Der zweite Punkt trifft das Minimum, der dritte schließt die
+   Klammer, und Brent kalt endet nach 5–6 Rekonstruktionen, sonst im Mittel nach 8,4. Dieses
+   Glück hat die Suche im Intervall nicht; sie braucht dort 6–8.
+4. **Am schnellsten ist trotzdem Brent im Intervall.** Mit 5,81 Rekonstruktionen braucht es
+   gepaart 5,33 [4,88, 5,77] weniger als Nelder–Mead kalt, die Suche von [2], 48 % [45, 51];
+   davon spart Brent kalt schon 27 Punkte, das Intervall 21. Gegen Nelder–Mead im selben
+   Intervall sind es 0,85 [0,48, 1,23] weniger, 13 % [8, 18], gegen Brent kalt 29 % (`pairs`).
+   Auf den Messhologrammen waren es 45 % gegen Nelder–Mead kalt und 10 % gegen Brent kalt
+   (5.5, Punkt 4). Was ein gelerntes Intervall beiträgt, hängt also an der Suche, gegen die
+   man es zählt: Gegen Nelder–Mead kalt schriebe man ihm auch zu, was Brent allein spart.
+‹CNN-5.7›
 
 ### 5.8 Rechenaufwand
 
-‹TODO›
+Alles lief auf der CPU der VM mit 4 Kernen, in Lane A mit 3 Threads und daneben in Lane B mit
+einem (3.5). Eine volle Rekonstruktion eines synthetischen Samples kostete in Lane A 31,8 s, in
+Lane B 84,0 s (`seconds_per_reconstruction` unter `synthetic`), in Etappe 3 mit 3 Threads
+29,4 s (Laborbuch 03); 6 % mehr kostet `one_thread` (3.1), und neben Lane A lief immer Lane B.
+Die erste Stufe allein kostet etwa 15 s. Kernstunden sind Sekunden mal Threads:
+
+| Was | Rekonstruktionen | Kernstunden |
+|---|---|---|
+| Suchen auf den Messhologrammen (Brent kalt und in beiden Intervallen, `b1-p4-repeat`) | 135 | 24,8 |
+| Volle Scans der Messhologramme, beide Numeriken | ‹C-FULL-N› | ‹C-FULL-H› |
+| Erste Stufe allein, Messhologramme | ‹C-FIRST-N› | ‹C-FIRST-H› |
+| Suchen auf den synthetischen Samples (248) | ‹C-SYN-N› | ‹C-SYN-H› |
+| Punkte der synthetischen Samples 5 und 27, voll und erste Stufe | ‹C-PTS-N› | ‹C-PTS-H› |
+| zusammen | ‹C-ALL-N› | ‹C-ALL-H› |
+
+Die 248 synthetischen Suchen liefen in Lane A von 06:39 bis ‹C-END› UTC, in Lane B ab 08:16,
+als ihre Scans fertig waren. Nicht gezählt sind die Prüfungen der Threadzahl in 3.1, die nicht
+versioniert sind.
 
 ## 6 Offene Punkte
 
@@ -916,17 +1001,20 @@ gleich großen Klassen der Breite), links für das NPE-Ensemble, rechts für das
    und 2). Ein Schutz wäre ein grobes Raster vor Brent, etwa fünf Punkte über $\Omega_z$ und
    Brent zwischen den Nachbarn des besten. Das gelernte Intervall schützte hier, obwohl beide
    Intervalle die Mulde enthielten (5.5, Punkt 2), aber nur, weil seine ersten Punkte nahe am
-   Minimum lagen. Was ein Raster kostet und was es auf den synthetischen Samples ändert, ist
-   nicht gerechnet. ‹TODO je nach 5.6›
+   Minimum lagen. Auf den synthetischen Samples fiel Brent kalt so oft in ein Nebenminimum wie
+   Nelder–Mead, auf 2 der 48 (5.6, Punkt 3). Was ein Raster kostet und was es dort ändert, ist
+   nicht gerechnet.
 8. **Ein CNN-Ensemble auf cpu-4x** (E6). Fünf Seeds des Gauß-CNN von Etappe 4 kosteten je
    etwa 38 min Training auf einem Kern (Laborbuch 04, 5.9), dazu die Nachkalibrierung auf dem
    Val-Split; keine GPU. Ob das Ensemble auf den synthetischen Samples engere oder besser
    deckende Intervalle gibt als das einzelne Netz und was die beiden Verfahren darin sparen,
    ist offen.
 9. **Gleiche Genauigkeit.** Brent hört auf, wenn das Minimum auf etwa ±67 µm eingeschlossen
-   ist, Nelder–Mead, wenn seine zwei Punkte höchstens 100 µm auseinanderliegen (E3). Ein
-   Vergleich bei gleicher Genauigkeit, etwa mit einem `xatol` für Brent, bei dem sein Anteil
-   innerhalb 100 µm dem von Nelder–Mead gleicht, ist nicht gerechnet. ‹TODO je nach 5.6›
+   ist, Nelder–Mead, wenn seine zwei Punkte höchstens 100 µm auseinanderliegen (E3). Gegen die
+   Wahrheit sind beide auf den synthetischen Samples gleich genau, weil der Versatz der MFE den
+   Fehler setzt (5.6, Punkte 1 und 2). Wie nahe beide dem Minimum der MFE selbst kommen und was
+   Brent mit einem `xatol` braucht, bei dem es dieses so nahe trifft wie Nelder–Mead, zeigte ein
+   dichter Scan um die Ergebnisse; nicht gerechnet.
 10. **Brent mit Warmstart.** Brent beginnt beim 0,382-Fachen der Breite, nicht an der
    Schätzung (5.5, Punkt 3; E4). Ein Brent, der an der Schätzung beginnt und die Klammer
    selbst sucht (`minimize_scalar(method="brent")` mit `bracket`), oder ein Intervall, dessen
@@ -936,15 +1024,17 @@ gleich großen Klassen der Breite), links für das NPE-Ensemble, rechts für das
 ## 7 Nächste Schritte
 
 1. **Die klassische Suche, gegen die das Gelernte zählt** (Plan-Schritt 15). Brent findet
-   kalt dasselbe Minimum wie Nelder–Mead mit 39 % (Messhologramme) und ‹S7-COLD› %
-   (synthetische Samples) weniger Rekonstruktionen (5.5, 5.6). Was ein gelerntes Intervall
-   beiträgt, ist deshalb gegen Brent kalt anzugeben, nicht gegen Nelder–Mead: auf den
-   synthetischen Samples ‹S7-BRENT› statt ‹S7-NM› % (5.7). Nelder–Mead nach [2] bleibt die
-   Referenz der Genauigkeit und der Vergleich mit [2].
+   kalt dasselbe Minimum wie Nelder–Mead mit 39 % (Messhologramme) und 27 % (synthetische
+   Samples) weniger Rekonstruktionen (5.5, 5.6). Was ein gelerntes Intervall beiträgt, ist
+   deshalb gegen Brent kalt anzugeben, nicht gegen Nelder–Mead: Auf den synthetischen Samples
+   spart Brent im Intervall des NPE-Ensembles 29 % gegen Brent kalt, gegen Nelder–Mead kalt
+   wären es 48 % (5.7, Punkt 4). Nelder–Mead nach [2] bleibt die Referenz der Genauigkeit und
+   der Vergleich mit [2].
 2. **Ein Schutz für Brent** (6, Punkt 7). Brent setzt ein Minimum zwischen seinen
-   Klammerpunkten voraus; kalt fiel es beim Spinnenhaar in die Mulde der Schulter, ‹S7-TRAP›.
-   Ein grobes Raster vor Brent oder Brent im gelernten Intervall sind die beiden Wege; was das
-   Raster kostet, zeigen die synthetischen Samples, deren Wahrheit bekannt ist.
+   Klammerpunkten voraus; kalt fiel es beim Spinnenhaar in die Mulde der Schulter und auf den
+   synthetischen Samples bei 2 der 48 in ein Nebenminimum, so oft wie Nelder–Mead (5.6,
+   Punkt 3). Ein grobes Raster vor Brent oder Brent im gelernten Intervall sind die beiden
+   Wege; was das Raster kostet, zeigen die synthetischen Samples, deren Wahrheit bekannt ist.
 3. **Maxwell** (Laborbuch 07, 9.10, Punkt 1; `docs/maxwell-gpu.md`, 8.4): die großen Läufe;
    auf der GPU zuerst die erste Stufe des Zahns in 80,5–81,1 mm alle 1 µm (600 Punkte, auf der
    CPU je etwa 15 s), um zu sehen, wo dort die Äste wechseln, bevor dort MFE-Werte verglichen
@@ -959,18 +1049,23 @@ gleich großen Klassen der Breite), links für das NPE-Ensemble, rechts für das
 - **Geschwindigkeit bei gleicher Genauigkeit (Plan-Schritt 15):** Laborbuch 08 hatte gezeigt,
   dass Nelder–Mead in einer Dimension nur mit dem Logarithmus der Startbreite spart, und eine
   Suche erwartet, die die Werte der MFE nutzt. Brents Verfahren tut das und braucht kalt 39 %
-  (Messhologramme) und ‹S8-COLD› % (synthetisch) weniger Rekonstruktionen als Nelder–Mead, bei
-  ‹S8-ACC›. Ein gelerntes Intervall spart mit Brent weniger als mit Nelder–Mead (5.7), am
-  schnellsten ist trotzdem Brent im Intervall: ‹S8-BEST›. Für die Arbeit heißt das: den Gewinn
-  der Modelle gegen die schnellste klassische Suche angeben, sonst schreibt man ihnen zu, was
-  das Verfahren leistet.
+  (Messhologramme) und 27 % (synthetisch) weniger Rekonstruktionen als Nelder–Mead, bei
+  gleicher Genauigkeit gegen die Wahrheit (MAE 164 statt 166 µm, 35 statt 31 % innerhalb
+  100 µm). Ein gelerntes Intervall spart mit Brent weniger als mit Nelder–Mead (5.7), am
+  schnellsten ist trotzdem Brent im Intervall: 48 % weniger Rekonstruktionen als Nelder–Mead
+  kalt auf den synthetischen Samples und 45 % auf den Messhologrammen, ohne gesicherten Verlust
+  an Genauigkeit (gepaart ändert sich der Betrag des Fehlers um −30 µm [−81, +13]; `pairs`).
+  Für die Arbeit heißt das: den Gewinn der Modelle gegen die
+  schnellste klassische Suche angeben, sonst schreibt man ihnen zu, was das Verfahren leistet.
 - **Fehleranalyse (Plan-Schritt 16):** Wo die klassische Suche versagt, liegt es an der Form
   der MFE: ein zweites Minimum in der Schulter des Spinnenhaars, in das Brent kalt fällt
   (626 µm daneben), und beim Zahn eine Stufe, wo die Rekonstruktion zwischen zwei Lösungen
   wechselt, 52 µm über dem Minimum; welche Lösung sie dort trifft, entscheidet die Rundung. Ein
   Fokusmaß aus einer iterativen Rekonstruktion ist danach eine Funktion mit Ästen, nicht nur
-  eine verrauschte Kurve. Das gelernte Intervall hat die Mulde beim Spinnenhaar umgangen,
-  ‹S8-TRAP›.
+  eine verrauschte Kurve. Das gelernte Intervall hat die Mulde beim Spinnenhaar umgangen und
+  auf den synthetischen Samples zwei Nebenminima ausgeschlossen (40 und 41), aber auch zweimal
+  das Minimum der MFE abgeschnitten (19 und 37) und Nelder–Mead einmal in ein Nebenminimum
+  geführt (30; 5.6, Punkt 3).
 - **Methodik:** Die MFE einer Rekonstruktion hängt an der Numerik; mit `one_thread` an keiner
   Einstellung der Maschine mehr, wohl aber an CPU, Version von torch und GPU (E1). MFE-Werte
   vergleiche ich deshalb nur innerhalb einer Numerik, Lagen über alle, und wo zwei Suchen mit
