@@ -587,7 +587,19 @@ letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kle
    Nachbarn höchstens 0,20 % auseinander. Das Fenster von 80,717–80,901 mm ist also eines von
    vielen. Bei keiner Probe liegt der kleinste Verlust der ersten Stufe am Fokus: beim
    Spinnenhaar bei 80,2 mm, bei den drei anderen am unteren Ende von $\Omega_z$.
-   ‹TODO volle MFE in Ωz›
+   Die volle MFE trägt den Ast aber nur am Minimum. An fünf Wechseln, jeder an zwei Punkten
+   1 µm auseinander voll gerechnet, liegt sie auf dem oberen Ast am selben $z_{01}$
+   (`offset_ppm`, 3.4) bei 80,716/80,717 mm 649 ppm über der des unteren und bei
+   80,901/80,902 mm ‹TODO› ppm, aber bei 79,143/79,144 mm ‹TODO› ppm, bei 81,848/81,849 mm
+   98 ppm und bei 83,929/83,930 mm 99 ppm darunter (`pairs` unter `branches` in `steps.json`;
+   Abb. 3 unten rechts). Dort, 1,2–3,3 mm vom Minimum, liegt die MFE 1,5–8,7 % über ihrer
+   kleinsten, und 100 ppm verschieben keine Suche; am Minimum, wo sie auf 50 µm um 220 ppm
+   steigt, ist der Versatz die Stufe von 5.2. Nach der zweiten Stufe liegt der obere Ast bei
+   79,14, 80,72, 81,85 und 83,93 mm 609, 324, −84 und −367 ppm über dem unteren, am kleinsten
+   Verlust der letzten Stufe 106, −34, −73 und −137 ppm (`losses_upper_over_lower_ppm`, wie
+   gerechnet, ohne die Steigung);
+   beide fallen mit $z_{01}$. Nur am Minimum weicht die MFE davon ab, in den letzten knapp
+   300 Iterationen (5.3, Punkt 2).
 3. **Die Schulter des Spinnenhaars.** Über dem Minimum (79,49 mm) steigt die MFE bis 79,95 mm
    glatt auf 11 150 ppm, im Mittel um 24 ppm pro µm, danach bis 80,25 mm nur noch um 2–3 ppm
    pro µm (11 930 ppm). Zwischen 80,035 und 80,147 mm liegen sechs Punkte innerhalb von 32 ppm,

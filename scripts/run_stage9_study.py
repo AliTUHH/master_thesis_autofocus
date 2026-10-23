@@ -155,6 +155,10 @@ BRANCH_SLOPE_UM = 250.0
 """How far from a pair of :data:`BRANCH_PAIR_UM` the full reconstructions on the same branch
 may lie that give the slope of the MFE there: up to 42 ppm per um on the tooth, as much over
 1 um as the offset far from the focus; over 250 um the slope itself changes by far less."""
+PAIR_LOSSES = ("first_stage_loss", "second_stage_loss", "last_stage_smallest", "object_loss")
+"""The losses of the full scans that ``branches`` sets upper over lower for every pair too, as
+computed (without the slope): at the end of the first and second stage, the smallest of the
+last stage and at the returned object."""
 BRANCH_SLOPE_POINTS = 2
 """How many of them at most, the nearest: near a switch single reconstructions lie 150 ppm
 off the line through their neighbours (79.15 mm on the tooth)."""
@@ -400,7 +404,7 @@ def mfe_points(measured: Path, stage9: Path) -> list[dict]:
     searches and the scans, with its MFE relative to the smallest of the probe and numerics."""
     rows = []
 
-    def add(sample, source, before, z01, mfe, seconds, env, scanned=None):
+    def add(sample, source, before, z01, mfe, seconds, env, scanned=None, every=None):
         rows.append(
             {
                 "sample": sample,
@@ -410,6 +414,10 @@ def mfe_points(measured: Path, stage9: Path) -> list[dict]:
                 "mfe": mfe,
                 "object_loss": scanned.get("object_loss") if scanned else None,
                 "first_stage_loss": scanned["stage_losses"][0] if scanned else None,
+                "second_stage_loss": scanned["stage_losses"][1] if scanned else None,
+                "last_stage_smallest": min(scanned["loss"][scanned["stage_ends"][-2] // every :])
+                if scanned
+                else None,
                 "seconds": seconds,
                 "threads": env["threads"],
                 "git_commit": env["git_commit"],
@@ -425,7 +433,17 @@ def mfe_points(measured: Path, stage9: Path) -> list[dict]:
                     add(record["sample"], name, before, e["z01"], e["mfe"], e["seconds"], record)
     for record, source, before in scan_records(stage9):
         for p in record["points"]:
-            add(record["sample"], source, before, p["z01"], p["mfe"], p["seconds"], p, p)
+            add(
+                record["sample"],
+                source,
+                before,
+                p["z01"],
+                p["mfe"],
+                p["seconds"],
+                p,
+                p,
+                record["loss_every"],
+            )
     smallest = defaultdict(lambda: np.inf)
     for row in rows:
         key = row["sample"], row["numerics"]
@@ -868,6 +886,11 @@ def branches(losses: dict, rows: list[dict]) -> dict:
                     "offset_ppm": None
                     if slope is None
                     else float(offset - slope * (high["z01"] - low["z01"]) * 1e6),
+                    "losses_upper_over_lower_ppm": {
+                        name: (high[name] / low[name] - 1.0) * 1e6
+                        for name in PAIR_LOSSES
+                        if high.get(name) is not None and low.get(name) is not None
+                    },
                     "sources": [a["source"], b["source"]],
                 }
             )
@@ -941,7 +964,8 @@ def cmd_steps(args) -> None:
     """Part 1 of Laborbuch 09: the MFE of the measured holograms as a function of ``z01``.
 
     ``mfe-points.csv``: every reconstruction (searches and scans) with its numerics, for the
-    scans also the loss at the returned object and at the end of the first stage.
+    scans also the loss at the returned object, at the end of the first and second stage and
+    the smallest of the last stage.
     ``steps.json``: per probe and numerics the smallest MFE, repeated points and the screening
     for steps; the same screening of the loss at the object (``object_loss``) and of the
     smallest loss of the last stage of the plan in the scans (``last_stage``); the scans of the
