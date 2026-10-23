@@ -151,6 +151,10 @@ BRANCH_PAIR_UM = 2.0
 offset of the MFE between the branches where they lie at most this far apart: the MFE on one
 branch changes by far less over so short a distance than between the branches. Farther apart,
 the bend of the MFE over ``z01`` is as large as the offset."""
+BRANCH_SLOPE_UM = 250.0
+"""How far from a pair of :data:`BRANCH_PAIR_UM` the next full reconstruction on the same
+branch may lie to give the slope of the MFE there: up to 42 ppm per um on the tooth, as much
+over 1 um as the offset far from the focus; over 250 um the slope itself changes by far less."""
 WINDOWS_UM = (250.0, 500.0)
 """Half-widths of the windows about the minimum in which ``steps`` reports how densely the
 points lie (:func:`coverage`)."""
@@ -785,12 +789,28 @@ def upper_branch(losses: dict, reference: dict) -> dict:
     return out
 
 
+def branch_slope(points: list[dict], k: int, step: int) -> float | None:
+    """The slope of ``ln`` MFE in ppm per um from ``points[k]`` to the nearest point in
+    direction ``step`` on the same branch within :data:`BRANCH_SLOPE_UM`, ``None`` without one."""
+    j = k + step
+    while (
+        0 <= j < len(points) and abs(points[j]["z01"] - points[k]["z01"]) * 1e6 <= BRANCH_SLOPE_UM
+    ):
+        if points[j]["upper"] == points[k]["upper"]:
+            a, b = sorted((points[j], points[k]), key=lambda p: p["z01"])
+            return float(np.log(b["mfe"] / a["mfe"]) / (b["z01"] - a["z01"]))
+        j += step
+    return None
+
+
 def branches(losses: dict, rows: list[dict]) -> dict:
     """The full reconstructions (searches and scans) whose first stage is known
     (:func:`first_stage_losses`), per probe and numerics: on which branch the first stage lies
     (:func:`upper_branch`), and the pairs of neighbouring ones on different branches at most
     :data:`BRANCH_PAIR_UM` apart, with the MFE of the one on the upper branch over that of the
-    one on the lower (``upper_over_lower_ppm``)."""
+    one on the lower (``upper_over_lower_ppm``) and the same at one ``z01`` (``offset_ppm``):
+    less the slope on the branches (``slope_ppm_per_um``, :func:`branch_slope`, the mean below
+    and above the pair) times the spacing."""
     groups = defaultdict(list)
     for row in rows:
         groups[row["sample"], row["numerics"]].append(row)
@@ -806,11 +826,15 @@ def branches(losses: dict, rows: list[dict]) -> dict:
             if point_key(p["z01"]) in known
         ]
         pairs = []
-        for a, b in zip(points, points[1:], strict=False):
+        for k, (a, b) in enumerate(zip(points, points[1:], strict=False)):
             spacing = (b["z01"] - a["z01"]) * 1e6
             if a["upper"] == b["upper"] or spacing > BRANCH_PAIR_UM + 1e-6:
                 continue
             high, low = (a, b) if a["upper"] else (b, a)
+            slopes = [branch_slope(points, k, -1), branch_slope(points, k + 1, 1)]
+            slopes = [s for s in slopes if s is not None]
+            slope = float(np.mean(slopes)) if slopes else None
+            offset = np.log(high["mfe"] / low["mfe"]) * 1e6
             pairs.append(
                 {
                     "z01": [a["z01"], b["z01"]],
@@ -818,6 +842,10 @@ def branches(losses: dict, rows: list[dict]) -> dict:
                     "ppm": [a["ppm"], b["ppm"]],
                     "spacing_um": spacing,
                     "upper_over_lower_ppm": (high["mfe"] / low["mfe"] - 1.0) * 1e6,
+                    "slope_ppm_per_um": slope,
+                    "offset_ppm": None
+                    if slope is None
+                    else float(offset - slope * (high["z01"] - low["z01"]) * 1e6),
                     "sources": [a["source"], b["source"]],
                 }
             )
@@ -1002,6 +1030,7 @@ def cmd_steps(args) -> None:
             where = ", ".join(
                 f"{p['z01'][0] * 1e3:.3f}/{p['z01'][1] * 1e3:.3f} mm "
                 f"{p['upper_over_lower_ppm']:+.0f} ppm"
+                + ("" if p["offset_ppm"] is None else f" ({p['offset_ppm']:+.0f} at one z01)")
                 for p in summary["pairs"]
             )
             print(

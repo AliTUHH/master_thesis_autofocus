@@ -209,8 +209,12 @@ mm, und von jedem Punkt auf dem oberen Ast liegt einer auf dem unteren höchsten
 entfernt. Für jede volle
 Rekonstruktion, deren erste Stufe bekannt ist, gibt `steps` außerdem den Ast an, und für jedes
 Paar benachbarter voller Rekonstruktionen auf verschiedenen Ästen höchstens 2 µm auseinander,
-um wie viel die MFE auf dem oberen Ast über der auf dem unteren liegt (`branches`). Auf 2 µm
-ändert sich die MFE auf einem Ast um höchstens ‹TODO› ppm. Weiter auseinander taugt das nicht:
+um wie viel die MFE auf dem oberen Ast über der auf dem unteren liegt (`branches`), so
+gerechnet und am selben $z_{01}$ (`offset_ppm`): Auf einem Ast steigt die MFE um bis zu
+42 ppm pro µm (bei 84,1 mm; nahe am Minimum um 1–10 ppm), über 1 µm also um so viel wie der
+Versatz fern vom Fokus. Abgezogen wird deshalb die Steigung auf beiden Ästen mal dem Abstand,
+gemittelt aus den Sekanten zur nächsten vollen Rekonstruktion auf demselben Ast höchstens
+250 µm unter und über dem Paar (`slope_ppm_per_um`). Weiter auseinander taugt das Paar nicht:
 Über 0,2 mm biegt sich die MFE so stark wie der Versatz. Bei 81,9 mm (oberer Ast) liegt sie
 389 ppm unter der Geraden durch ihre Nachbarn auf dem unteren Ast bei 81,7 und 82,1 mm, aber
 205 ppm über der Parabel durch 81,5, 81,7 und 82,1 mm.
@@ -352,8 +356,9 @@ Die Zeit gebe ich als Zahl der Rekonstruktionen mal der Rate mit 3 Threads an: a
 Messhologrammen der Median der Sekunden pro Rekonstruktion der Suchen dieser Etappe mit 3 Threads
 derselben Probe, auf den synthetischen Samples der Median der Suchen der Lane mit 3 Threads.
 
-**E10 – Wann ein Sprung eine Stufe ist.** Die Numerik verschiebt die MFE um höchstens 9 ppm,
-wo keine Stufe ist; die MFE steigt nahe am Minimum um 1–10 ppm pro µm. Eine Stufe wie die des
+**E10 – Wann ein Sprung eine Stufe ist.** Die Numerik verschiebt die MFE in ±1,6 mm um das
+Minimum um höchstens 32 ppm, wo die erste Stufe beider Numeriken auf demselben Ast liegt und
+kein Wechsel nahe ist (5.1, Punkt 2); die MFE steigt nahe am Minimum um 1–10 ppm pro µm. Eine Stufe wie die des
 Zahns (etwa 700 ppm auf wenigen µm) fällt mit 50 ppm zwischen Nachbarn im Abstand von höchstens
 50 µm, dreimal so steil wie die Sekanten daneben, sicher auf; die Krümmung einer glatten Kurve
 nicht. Weiter auseinanderliegende Punkte prüft die Regel nicht, deshalb steht die Dichte der
@@ -395,9 +400,17 @@ der Wiederholung (E8).*
    dieser Etappe und drei Threads gescannt (`results/stage9/threads-3/`), gibt bitgenau die MFE
    der Suche mit einem Thread aus Etappe 8, 3,160280757583678·10⁻⁴ (`repeats` in
    `steps.json`); ebenso das synthetische Sample 0 mit 1–4 Threads (3.1) und die Tests (3.7).
-2. **Die Numerik von vorher** liegt am selben $z_{01}$ beim Mg-Draht (467,4 mm) 4,2 ppm unter
-   der eines Threads, beim Zahn bei 80,6926 und 80,694 mm 675 und 679 ppm darüber (`same_z01`);
-   auf den synthetischen Samples ‹TODO› (Abb. 1).
+2. **Die Numerik von vorher** gegen die eines Threads am selben $z_{01}$, an 51 Punkten der
+   Messhologramme, fast alle aus der Wiederholung der kalten Suche (`same_z01` in
+   `steps.json`): bei der Kaktusnadel an allen 13 Punkten −8,3 bis −10,7 ppm, beim Mg-Draht
+   an 12 Punkten −1,0 bis −8,0 ppm, beim Spinnenhaar in ±1,6 mm um sein Minimum −6,6 bis
+   +3,0 ppm und 2,8 und 5,3 mm darüber −35 und −57 ppm. Beim Zahn −11 bis +32 ppm, wo die
+   erste Stufe beider Numeriken auf demselben Ast liegt, +675 bis +698 ppm, wo sie auf
+   verschiedenen liegt (80,6926, 80,694 und 80,7125 mm). Nahe an einem Wechsel der ersten Stufe
+   unterscheiden sich auch Punkte auf demselben Ast um mehr: bei 79,15 mm, 6 µm über dem
+   Wechsel bei 79,143/79,144 mm, um −175 ppm, bei 80,869 mm, dem letzten Punkt der Numerik 3
+   auf dem oberen Ast, um +76 ppm und bei 87,9 mm, neben dem Wechsel bei 87,7–87,9 mm, um
+   −74 ppm. Auf den synthetischen Samples ‹TODO› (Abb. 1).
 
 ### 5.2 Die Stufe des Zahns: zwei Lösungen der ersten Stufe
 

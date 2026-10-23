@@ -488,7 +488,8 @@ def first_stage_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
 def _branches_panel(ax, steps: dict) -> dict:
     """The full MFE of the tooth across the switches of its first stage: that of the
     reconstruction on the upper branch over that of its neighbour on the lower one, at most
-    ``branch_pair_um`` apart."""
+    ``branch_pair_um`` apart, at one ``z01`` (filled; less the slope on the branches) and as
+    computed (open)."""
     guess = MEASURED_SAMPLES["tooth"].z01_guess
     out = {}
     for n, (label, color) in NUMERICS.items():
@@ -497,8 +498,13 @@ def _branches_panel(ax, steps: dict) -> dict:
             continue
         pairs = record["pairs"]
         z = [(sum(p["z01"]) / 2 - guess) * 1e3 for p in pairs]
-        ppm = [p["upper_over_lower_ppm"] for p in pairs]
-        ax.plot(z, ppm, "o" if n == 1 else "D", ms=4, color=color, label=label)
+        raw = [p["upper_over_lower_ppm"] for p in pairs]
+        ppm = [
+            p["upper_over_lower_ppm"] if p["offset_ppm"] is None else p["offset_ppm"] for p in pairs
+        ]
+        marker = "o" if n == 1 else "D"
+        ax.plot(z, raw, marker, ms=4, mfc="none", color=color, alpha=0.6)
+        ax.plot(z, ppm, marker, ms=4, color=color, label=label)
         for x, y, p in zip(z, ppm, pairs, strict=True):
             ax.annotate(
                 f"{p['z01'][0] * 1e3:.3f}/{p['z01'][1] * 1e3 % 1:.3f}".replace("/0.", "/."),
@@ -507,7 +513,7 @@ def _branches_panel(ax, steps: dict) -> dict:
                 xytext=(3, 3),
                 fontsize=6,
             )
-        out[str(n)] = {"n_pairs": len(pairs), "upper_over_lower_ppm": ppm}
+        out[str(n)] = {"n_pairs": len(pairs), "upper_over_lower_ppm": raw, "offset_ppm": ppm}
     ax.axhline(0.0, color="0.5", lw=0.8)
     ax.margins(y=0.15)
     ax.set_xlim(-5.0, 5.0)
@@ -517,7 +523,7 @@ def _branches_panel(ax, steps: dict) -> dict:
     ax.grid(alpha=0.3)
     ax.set_title(
         f"tooth: full MFE across a switch, neighbours "
-        f"<= {steps.get('branch_pair_um', 2.0):g} um apart",
+        f"<= {steps.get('branch_pair_um', 2.0):g} um apart (open: without the slope)",
         fontsize=9,
     )
     if out:
