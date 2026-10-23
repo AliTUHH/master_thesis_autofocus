@@ -20,11 +20,12 @@ measured holograms.
 * ``ensembles``: the seeds of a CNN family on a test split as one equal-weight mixture of
   their Gaussians (calibrated ``sigma``), in the columns of the NPE predictions
   (``results/stage10/cpu-4x/<family>-ensemble/test``,
-  ``results/stage10/loo2/<family>/ensemble/loo-<sample>/test``).
+  ``results/stage10/loo2/<family>/ensemble/loo-<sample>/test``); ``mixture``: the same for
+  predictions given by path, e.g. the seeds trained on Maxwell.
 * ``measured``: the seeds of a family trained on the leave-one-out set of a measured hologram
   on that hologram, binned 4x, with the 16 phases of the binning grid, and their ensemble
   (``results/measured/<family>-loo2-ensemble/<sample>.json``, the interval of the bounded
-  search).
+  search); ``--runs`` and ``--out`` take the runs of Maxwell instead.
 * ``search``: Brent's bounded method in the 95 % interval of a family's ensemble on one of the
   synthetic samples (``runs/stage10/search/<family>/<index>``); ``merge`` joins them
   (``results/stage10/baseline/cpu-4x-test-brent-box95-<family>``).
@@ -210,8 +211,8 @@ def loo2_ensemble(family: str, sample: str) -> str:
     return f"results/stage10/loo2/{family}/ensemble/loo-{sample}/test"
 
 
-def measured_ensemble(family: str) -> str:
-    return f"results/measured/{family}-loo2-ensemble"
+def measured_ensemble(family: str, root: str | Path = "results/measured") -> str:
+    return f"{root}/{family}-loo2-ensemble"
 
 
 def measured_search(family: str) -> str:
@@ -731,6 +732,25 @@ def ensemble_members(family: str, which: str) -> list[Path]:
     return [Path(loo2_run(family, which, k)) / "test" / "predictions.csv" for k in SEEDS]
 
 
+def write_mixture(paths: list[Path], out: Path) -> dict:
+    """:func:`mixture_rows` of the predictions ``paths`` as ``<out>/predictions.csv``, with
+    ``<out>/run.yaml`` naming the members."""
+    rows = mixture_rows([read_predictions(p) for p in paths])
+    write_exact_csv(out / "predictions.csv", rows)
+    covered = np.mean([r["z01_lower_95"] <= r["z01_true"] <= r["z01_upper_95"] for r in rows])
+    info = {
+        "what": "equal-weight mixture of the Gaussians (calibrated sigma) of the seeds",
+        "members": [{"predictions": repo_relative(p), "sha256": file_sha256(p)} for p in paths],
+        "n_samples": len(rows),
+        "mae_um": float(np.mean([r["abs_error_um"] for r in rows])),
+        "coverage_95": float(covered),
+        "predictions_sha256": file_sha256(out / "predictions.csv"),
+        **environment(),
+    }
+    (out / "run.yaml").write_text(yaml.safe_dump(info, sort_keys=False))
+    return info
+
+
 def cmd_ensembles(args) -> None:
     for family in args.families:
         if FAMILIES[family].npe:
@@ -742,30 +762,22 @@ def cmd_ensembles(args) -> None:
             if missing:
                 print(f"{family} {which}: {missing} missing, skipped")
                 continue
-            rows = mixture_rows([read_predictions(p) for p in paths])
             out = Path(
                 cpu4x_ensemble(family) if which == "cpu-4x" else loo2_ensemble(family, which)
             )
-            write_exact_csv(out / "predictions.csv", rows)
-            covered = np.mean(
-                [r["z01_lower_95"] <= r["z01_true"] <= r["z01_upper_95"] for r in rows]
-            )
-            info = {
-                "what": "equal-weight mixture of the Gaussians (calibrated sigma) of the seeds",
-                "members": [
-                    {"predictions": repo_relative(p), "sha256": file_sha256(p)} for p in paths
-                ],
-                "n_samples": len(rows),
-                "mae_um": float(np.mean([r["abs_error_um"] for r in rows])),
-                "coverage_95": float(covered),
-                "predictions_sha256": file_sha256(out / "predictions.csv"),
-                **environment(),
-            }
-            (out / "run.yaml").write_text(yaml.safe_dump(info, sort_keys=False))
+            info = write_mixture(paths, out)
             print(
-                f"{family} {which}: {len(rows)} samples, MAE {info['mae_um']:.0f} um, "
-                f"95 % coverage {covered:.2f}"
+                f"{family} {which}: {info['n_samples']} samples, MAE {info['mae_um']:.0f} um, "
+                f"95 % coverage {info['coverage_95']:.2f}"
             )
+
+
+def cmd_mixture(args) -> None:
+    info = write_mixture(args.predictions, args.out)
+    print(
+        f"{repo_relative(args.out)}: {info['n_samples']} samples, MAE {info['mae_um']:.0f} um, "
+        f"95 % coverage {info['coverage_95']:.2f}"
+    )
 
 
 # --- measured ------------------------------------------------------------------------------
@@ -785,10 +797,10 @@ def cmd_measured(args) -> None:
         f = FAMILIES[family]
         for name in args.samples:
             if f.npe:
-                out = Path("results/stage10/loo2/npe/measured")
+                out = args.runs / "npe" / "measured"
                 npe_measured(
                     argparse.Namespace(
-                        npe=Path("results/stage10/loo2/npe"),
+                        npe=args.runs / "npe",
                         seeds=list(SEEDS),
                         samples=[name],
                         holograms=args.holograms,
@@ -804,7 +816,7 @@ def cmd_measured(args) -> None:
             else:
                 estimates = []
                 for seed in SEEDS:
-                    learned = Path(f"results/stage10/loo2/{family}/seed-{seed}")
+                    learned = args.runs / family / f"seed-{seed}"
                     cnn_measured(
                         argparse.Namespace(
                             samples=[name],
@@ -819,7 +831,7 @@ def cmd_measured(args) -> None:
                     estimates.append(learned / "measured" / f"{name}.json")
                 record = mixture_record(name, estimates, measured_references(name))
             record["family"] = {"key": family, "label": f.label, "config": f.config}
-            out = Path(measured_ensemble(family)) / f"{name}.json"
+            out = Path(measured_ensemble(family, args.out)) / f"{name}.json"
             write_json(out, {**record, **environment()})
             i95 = record["intervals"]["95"]
             print(
@@ -1393,16 +1405,13 @@ against the radial spectrum, and the ensembles of this stage against the interva
 Stage 9 (one CNN, five NPE seeds)."""
 
 
-def synthetic_searches() -> tuple[dict, list[dict]]:
-    runs, boxes, provenance = {}, {}, {}
-    for method, (folder, intervals, what) in SYNTHETIC_SEARCHES.items():
-        path = Path(folder) / "results.csv"
-        if not path.exists():
-            continue
-        runs[method] = {r["index"]: r for r in read_rows(path) if r["index"] in SYNTHETIC}
-        provenance[method] = {"folder": folder, "what": what, "intervals": intervals}
-        if intervals is not None:
-            boxes[method] = Box.from_csv(intervals)
+def search_table(
+    runs: dict[str, dict[int, dict]], boxes: dict[str, Box], pairs, indices
+) -> tuple[dict, dict, list[dict]]:
+    """Summaries of the searches ``runs[method][index]`` (rows of ``results.csv``), for those
+    in ``boxes`` with the truth inside the interval cut to ``Omega_z``, and the MFE at each
+    result against that of the search named ``brent-cold``; the ``pairs`` of searches both
+    present; one row per sample of ``indices``."""
     confidence = BaselineConfig.from_yaml(BRENT).search.confidence
     brent = runs.get("brent-cold", {})
     summaries, inside, bounds = {}, {}, {}
@@ -1433,11 +1442,9 @@ def synthetic_searches() -> tuple[dict, list[dict]]:
                 "lower": int(np.sum(ppm < -MFE_APART_PPM)),
             }
         summaries[method] = s
-    pairs = {
-        f"{a} vs {b}": search_pair(runs, a, b) for a, b in SEARCH_PAIRS if a in runs and b in runs
-    }
+    pairs = {f"{a} vs {b}": search_pair(runs, a, b) for a, b in pairs if a in runs and b in runs}
     rows = []
-    for i in SYNTHETIC:
+    for i in indices:
         first = next((by_index[i] for by_index in runs.values() if i in by_index), None)
         if first is None:
             continue
@@ -1451,6 +1458,20 @@ def synthetic_searches() -> tuple[dict, list[dict]]:
                 row[f"{method}_width_um"] = None if lo is None else (hi - lo) * 1e6
                 row[f"{method}_truth_inside"] = None if lo is None else int(inside[method][i])
         rows.append(row)
+    return summaries, pairs, rows
+
+
+def synthetic_searches() -> tuple[dict, list[dict]]:
+    runs, boxes, provenance = {}, {}, {}
+    for method, (folder, intervals, what) in SYNTHETIC_SEARCHES.items():
+        path = Path(folder) / "results.csv"
+        if not path.exists():
+            continue
+        runs[method] = {r["index"]: r for r in read_rows(path) if r["index"] in SYNTHETIC}
+        provenance[method] = {"folder": folder, "what": what, "intervals": intervals}
+        if intervals is not None:
+            boxes[method] = Box.from_csv(intervals)
+    summaries, pairs, rows = search_table(runs, boxes, SEARCH_PAIRS, SYNTHETIC)
     record = {"searches": provenance, "summaries": summaries, "pairs": pairs}
     return record, rows
 
@@ -1478,12 +1499,15 @@ MEASURED_SEARCHES = {
 (``results/measured/<folder>``)."""
 
 
-def measured_searches() -> tuple[dict, list[dict]]:
+def measured_search_table(folders: dict[str, Path]) -> tuple[dict, list[dict]]:
+    """The searches with ``<folder>/<sample>.json`` on each measured hologram against [2] and
+    the search named ``nm-cold`` (probes without it are left out), the MFE at each result
+    against that of ``brent-cold``, and the totals over the probes."""
     out, rows = {}, []
     for name in PROBES:
         records = {}
-        for method, (folder, _) in MEASURED_SEARCHES.items():
-            path = MEASURED / folder / f"{name}.json"
+        for method, folder in folders.items():
+            path = folder / f"{name}.json"
             if path.exists():
                 records[method] = (path, json.loads(path.read_text()))
         if "nm-cold" not in records:
@@ -1525,7 +1549,7 @@ def measured_searches() -> tuple[dict, list[dict]]:
             )
         out[name] = {"paper2_nm": paper2, "searches": entries}
     totals = {}
-    for method in MEASURED_SEARCHES:
+    for method in folders:
         found = [s["searches"][method] for s in out.values() if method in s["searches"]]
         if not found:
             continue
@@ -1545,6 +1569,12 @@ def measured_searches() -> tuple[dict, list[dict]]:
             n, c = t["n_reconstructions"], totals[cold]["n_reconstructions"]
             t[f"fewer_than_{cold}"] = {"saved": c - n, "relative": 1.0 - n / c}
     return {"samples": out, "totals": totals}, rows
+
+
+def measured_searches() -> tuple[dict, list[dict]]:
+    return measured_search_table(
+        {method: MEASURED / folder for method, (folder, _) in MEASURED_SEARCHES.items()}
+    )
 
 
 def cmd_compare(args) -> None:
@@ -1632,7 +1662,13 @@ def evaluated_table(paths: list[Path]) -> dict[str, np.ndarray]:
 def evaluated_estimates(sources: dict[str, list[Path]]) -> dict:
     tables = {m: evaluated_table(paths) for m, paths in sources.items()}
     common = sorted(set.intersection(*({int(i) for i in t["index"]} for t in tables.values())))
+    if not common:
+        raise SystemExit("the predictions have no sample in common")
     tables = {m: restrict(t, common) for m, t in tables.items()}
+    first = next(iter(tables))
+    for m, t in tables.items():
+        if np.abs(t["z01_true"] - tables[first]["z01_true"]).max() > 1e-12:
+            raise SystemExit(f"{m} and {first} are predictions of different test splits")
     return {
         "sources": {m: [repo_relative(p) for p in paths] for m, paths in sources.items()},
         "n_samples": len(common),
@@ -1644,26 +1680,60 @@ def evaluated_estimates(sources: dict[str, list[Path]]) -> dict:
     }
 
 
+def search_box(folder: Path, given: Path | None) -> Box | None:
+    """The intervals the search in ``folder`` ran in (``box`` of its ``run.yaml``): the CSV
+    named there or ``given``, which must have the SHA-256 recorded there."""
+    recorded = yaml.safe_load((folder / "run.yaml").read_text()).get("box")
+    if recorded is None:
+        if given is not None:
+            raise SystemExit(f"{folder} did not search in intervals, {given} is not its box")
+        return None
+    path = given or Path(recorded["source"])
+    if not path.exists():
+        raise SystemExit(f"{folder} searched in {path}, which is missing: give NAME=DIR,CSV")
+    box = Box.from_csv(path, recorded["level"])
+    if box.sha256 != recorded["sha256"]:
+        raise SystemExit(f"{path} is not the CSV that {folder} searched in (SHA-256)")
+    return box
+
+
 def evaluated_searches(sources: dict[str, list[Path]]) -> dict:
-    runs = {}
+    runs, boxes = {}, {}
     for name, paths in sources.items():
-        if len(paths) != 1:
-            raise SystemExit(f"{name}: one run directory per search")
+        if len(paths) > 2:
+            raise SystemExit(f"{name}: one run directory and the CSV of its intervals at most")
         runs[name] = {r["index"]: r for r in read_rows(paths[0] / "results.csv")}
+        box = search_box(paths[0], paths[1] if len(paths) > 1 else None)
+        if box is not None:
+            boxes[name] = box
     common = sorted(set.intersection(*(set(by_index) for by_index in runs.values())))
+    if not common:
+        raise SystemExit("the searches have no sample in common")
     for i in common:
         truths = [by_index[i]["z01_true"] for by_index in runs.values()]
         if max(truths) - min(truths) > 1e-12:
             raise ValueError(f"sample {i} differs between the searches")
     runs = {name: {i: by_index[i] for i in common} for name, by_index in runs.items()}
+    summaries, pairs, _ = search_table(runs, boxes, itertools.combinations(runs, 2), common)
     return {
-        "sources": {name: repo_relative(paths[0]) for name, paths in sources.items()},
+        "sources": {name: [repo_relative(p) for p in paths] for name, paths in sources.items()},
+        "intervals": {name: box.identity() for name, box in boxes.items()},
         "n_samples": len(common),
-        "summaries": {name: search_summary(list(r.values()), None) for name, r in runs.items()},
-        "pairs": {
-            f"{a} vs {b}": search_pair(runs, a, b) for a, b in itertools.combinations(runs, 2)
-        },
+        "summaries": summaries,
+        "pairs": pairs,
     }
+
+
+def evaluated_measured_searches(sources: dict[str, list[Path]]) -> dict:
+    """The searches of Stages 3 and 9 in ``Omega_z`` as ``nm-cold`` and ``brent-cold`` unless
+    given."""
+    folders = {"nm-cold": MEASURED / "b1-p4", "brent-cold": MEASURED / "brent-b1-p4"}
+    for name, paths in sources.items():
+        if len(paths) != 1:
+            raise SystemExit(f"{name}: one folder per search")
+        folders[name] = paths[0]
+    record, _ = measured_search_table(folders)
+    return {"sources": {m: repo_relative(f) for m, f in folders.items()}, **record}
 
 
 def evaluated_measured(sources: dict[str, list[Path]]) -> dict:
@@ -1700,14 +1770,16 @@ def evaluated_measured(sources: dict[str, list[Path]]) -> dict:
 
 def cmd_evaluate(args) -> None:
     """The metrics of ``compare`` for estimates and searches given by path, e.g. the runs of
-    Maxwell (docs/maxwell-gpu.md 8.5): on a test split every predictions file and every two
+    Maxwell (docs/maxwell-gpu.md 8.5): on one test split every predictions file and every two
     paired, on the samples all of them have; every search and every two paired, likewise;
-    the estimates on the measured holograms against [2] and Nelder-Mead cold."""
+    the estimates and the searches on the measured holograms against [2] and Nelder-Mead
+    cold."""
     record = {"what": "metrics of compare for estimates and searches given by path"}
     parts = (
         ("learned", evaluated_estimates, args.predictions),
         ("searches", evaluated_searches, args.searches),
         ("measured", evaluated_measured, args.measured),
+        ("measured_searches", evaluated_measured_searches, args.measured_searches),
     )
     for key, evaluate, values in parts:
         if values:
@@ -1724,12 +1796,23 @@ def cmd_evaluate(args) -> None:
         print(
             f"search {method}: {s['n_samples']} samples, MAE {s['mae_um']:.0f} um, within "
             f"100 um {s['within_um']['100']:.2f}, {s['reconstructions']:.2f} reconstructions"
+            + (
+                f", truth outside the interval {len(s['truth_outside'])}/{s['n_samples']}"
+                if "truth_outside" in s
+                else ""
+            )
         )
     for method, m in record.get("measured", {}).get("summaries", {}).items():
         p = m["paper2_nm"]
         print(
             f"measured {method}: within 100 um of [2] {p['within_100um']['k']}/{m['n']}, MAE "
             f"{p['mae_um']:.0f} um, [2] in the 95 % interval {p['inside_95']['k']}/{m['n']}"
+        )
+    for method, t in record.get("measured_searches", {}).get("totals", {}).items():
+        within = t["within_100um_of_paper2_nm"]
+        print(
+            f"measured search {method}: {t['n_reconstructions']} reconstructions on "
+            f"{len(t['samples'])} probes, within 100 um of [2] {within['k']}/{within['n']}"
         )
     print(f"written to {repo_relative(args.out)}")
 
@@ -1770,11 +1853,28 @@ def main() -> None:
     en.add_argument("--sets", nargs="+", choices=["cpu-4x", *PROBES], default=["cpu-4x", *PROBES])
     en.set_defaults(func=cmd_ensembles)
 
+    mx = sub.add_parser("mixture", help="the CNN seeds given by path as one mixture")
+    mx.add_argument("--predictions", type=Path, nargs="+", required=True, help="predictions.csv")
+    mx.add_argument("--out", type=Path, required=True, help="folder for predictions.csv, run.yaml")
+    mx.set_defaults(func=cmd_mixture)
+
     me = sub.add_parser("measured", help="the seeds and the ensemble on the measured holograms")
     me.add_argument("--holograms", type=Path, required=True)
     me.add_argument("--families", **families)
     me.add_argument("--samples", **samples)
     me.add_argument("--repeats", type=int, default=20, help="timed estimates")
+    me.add_argument(
+        "--runs",
+        type=Path,
+        default=Path("results/stage10/loo2"),
+        help="<runs>/<family>/seed-<k>/loo-<sample> and <runs>/npe/matched-<sample>[-seed<k>]",
+    )
+    me.add_argument(
+        "--out",
+        type=Path,
+        default=Path("results/measured"),
+        help="<out>/<family>-loo2-ensemble/<sample>.json",
+    )
     me.set_defaults(func=cmd_measured)
 
     se = sub.add_parser("search", help="Brent in the 95 % interval of an ensemble, one sample")
@@ -1809,12 +1909,25 @@ def main() -> None:
         metavar="NAME=CSV[,CSV...]",
         help="predictions.csv on one test split; several CSVs: the seeds of a CNN ensemble",
     )
-    ev.add_argument("--searches", nargs="+", metavar="NAME=DIR", help="runs with results.csv")
+    ev.add_argument(
+        "--searches",
+        nargs="+",
+        metavar="NAME=DIR[,CSV]",
+        help="runs with results.csv; CSV: the intervals a run searched in, if its run.yaml names "
+        "a path that is missing here; brent-cold: the reference of the MFE",
+    )
     ev.add_argument(
         "--measured",
         nargs="+",
         metavar="NAME=DIR[,DIR...]",
         help="folders with <sample>.json; several folders: the seeds of a CNN ensemble",
+    )
+    ev.add_argument(
+        "--measured-searches",
+        nargs="+",
+        metavar="NAME=DIR",
+        help="folders with <sample>.json of run_stage3_experiments.py measured; nm-cold and "
+        "brent-cold are those of Stages 3 and 9 unless given",
     )
     ev.add_argument("--out", type=Path, required=True, help="JSON file")
     ev.set_defaults(func=cmd_evaluate)
