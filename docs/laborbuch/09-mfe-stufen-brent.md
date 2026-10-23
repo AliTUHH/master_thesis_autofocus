@@ -196,7 +196,10 @@ am selben $z_{01}$; das Objekt geht mit dem ganzen Feld samt Rand nach
 `results/stage9/first-stage/scan-<probe>/` (nicht versioniert). Gescannt ist die erste Stufe
 beim Zahn alle 10 µm in 80,50–80,90 mm und alle 1 µm in 80,700–80,730 mm, mit der Numerik von
 vorher alle 2 µm in 80,660–80,700 mm und alle 50 µm in 80,50–80,90 mm, und bei allen vier
-Proben in ganz $\Omega_z$ alle 200 µm.
+Proben in ganz $\Omega_z$ alle 200 µm. Als Wechsel der ersten Stufe zählt `steps` eine
+Änderung ihres Verlusts zwischen Nachbarn, die um mehr als 1 % von dem abweicht, was der Median
+der Steigungen der bis zu zwei Paare auf jeder Seite erwarten lässt: Eine steile Flanke in
+$\Omega_z$ ist so kein Wechsel, und ein einzelner Punkt auf dem anderen Ast gibt zwei.
 
 `steps` sammelt alle Rekonstruktionen der Messhologramme mit Padding 4 (die Suchen der Etappen
 3, 5, 8 und 9 und die Scans) als MFE über $z_{01}$, getrennt nach Numerik (E2), und
@@ -250,7 +253,24 @@ spart, gepaart über die Samples (E9; `results/stage9/compare.json`, `measured.c
 
 ### 3.7 Tests
 
-‹TODO: Zahl der Tests, ruff, CI-Schritt›
+Neu sind neun Tests, zwei davon mit drei bzw. zwei Fällen (13 Fälle; zusammen 377, in `main`
+364):
+
+- `tests/test_asrm.py`: `one_thread()` setzt die Threadzahl danach zurück; eine kleine volle
+  Rekonstruktion (320² px) gibt mit 1, 2 und 3 Threads dieselbe Verlustkurve, dasselbe Objekt,
+  denselben Kern, dasselbe propagierte Feld und dieselbe MFE, Bit für Bit.
+- `tests/test_autofocus.py`: `find_focus` mit Brent fragt bitgenau die Punkte von
+  `minimize_scalar` ab (drei Lagen des Minimums), sucht in gegebenen Grenzen und gibt für
+  einen wiederholten Punkt dessen MFE zurück; `search_points` mit Brent gibt die Punkte von
+  `find_focus`, in $\Omega_z$ und in Grenzen.
+- `tests/test_baseline.py`: `Box` schneidet die Intervalle der Tabelle mit $\Omega_z$; eine
+  Baseline mit Brent im Intervall, auch über `holofocus-baseline run --box`; `search.method`
+  in den drei Konfigurationen.
+
+Der CI-Schritt von Etappe 9 sucht mit Brent auf drei Samples des Demo-Datensatzes in den
+95-%-Intervallen des CNN aus dem Schritt von Etappe 4 (`configs/baseline/ci-brent.yaml`) und
+rechnet `steps`, `compare` und alle Abbildungen aus den versionierten Ergebnissen.
+‹TODO: Ergebnis der Tests, ruff, Zeit des CI-Schritts›
 
 ## 4 Entscheidungen und Begründung
 
@@ -414,11 +434,11 @@ denselben Farben.*
    Wechsel unterscheidet sie sich um 2,5·10⁻⁶ RMS, so wenig wie zwischen Nachbarn auf demselben
    Ast (1,9·10⁻⁶).
 3. **Die MFE folgt der ersten Stufe.** Jeder volle Scan liegt auf dem Ast, den seine erste
-   Stufe trifft: mit einem Thread bis 80,716 mm auf dem unteren, ab ‹TODO 80,717› mm auf dem
-   oberen, und die MFE springt dort von 222 auf 911 ppm über ihrer kleinsten (80,716 und
-   80,719 mm, Abb. 2). Das Objekt springt mit: Seine Phase ändert sich über diese 3 µm um
+   Stufe trifft: mit einem Thread bis 80,716 mm auf dem unteren, ab 80,717 mm auf dem
+   oberen, und die MFE springt dort, über 1 µm, von 222 auf 877 ppm über ihrer kleinsten
+   (Abb. 2). Das Objekt springt mit: Seine Phase ändert sich von 80,716 nach 80,719 mm um
    3,1 mrad RMS (höchstens 8,8 mrad), auf demselben Ast über 3 µm um 0,9–1,0 mrad
-   (`steps-objects.json`). Mit der Numerik von vorher ebenso:
+   (`steps-objects.json`) ‹TODO 80,716 → 80,717›. Mit der Numerik von vorher ebenso:
    80,678 mm liegt 29 ppm über ihrer kleinsten MFE, 80,6926 mm 677 ppm (Laborbuch 08, 5.6,
    Punkt 9). Bei 80,6926 und 80,694 mm treffen die beiden Numeriken verschiedene Äste, und ihre
    MFE unterscheidet sich um 675 und 679 ppm (5.1). Die Stufe ist also der Wechsel der ersten
@@ -453,7 +473,7 @@ die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.
    Referenzcode tut dasselbe: Auf dem synthetischen Sample 0 ist der Verlust der letzten Stufe
    bei Iteration 1007 am kleinsten und endet 2325 ppm darüber, in holowizard wie hier
    (`results/crosscheck/reconstruct_0.json`, Laborbuch 03).
-2. **Die Äste trennen sich am Ende.** Über den Wechsel (80,716 → 80,719 mm) liegt der obere Ast
+2. **Die Äste trennen sich am Ende.** ‹TODO 80,717› Über den Wechsel (80,716 → 80,719 mm) liegt der obere Ast
    nach der ersten Stufe 10,6 % über dem unteren, am Ende der zweiten 346 ppm, am kleinsten
    Verlust der letzten Stufe 26 ppm darunter und am Ende 689 ppm darüber. Am selben $z_{01}$
    (80,694 mm) unterscheiden sich die beiden Numeriken bei Iteration 1230 nur um 4·10⁻⁶
@@ -463,7 +483,7 @@ die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.
 3. **Drei Verluste, drei Minima.** Bei den Scans mit einem Thread ist die MFE bei 80,665 mm am
    kleinsten, der kleinste Verlust der letzten Stufe bei 80,650 mm, und der Verlust am
    zurückgegebenen Objekt fällt über 80,56–80,725 mm um 4953 ppm, um 27–30 ppm pro µm, nur über
-   den Wechsel nicht: Von 80,716 nach 80,719 mm steigt er um 8 ppm, eine Stufe von etwa 90 ppm,
+   den Wechsel nicht: ‹TODO 80,717› Von 80,716 nach 80,719 mm steigt er um 8 ppm, eine Stufe von etwa 90 ppm,
    ein Achtel der Stufe der MFE. Sein Minimum liegt jenseits von 80,725 mm ‹TODO› (Abb. 2 unten
    rechts). Er ist 3,6-mal so groß wie die MFE, wohl weil am Vorgriff auch der Rand außerhalb
    des Sichtfelds den Impuls trägt, am zurückgegebenen Objekt dagegen nur das gespiegelte
@@ -473,7 +493,43 @@ die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.
 
 ### 5.4 Stufen bei den anderen Proben
 
-‹TODO›
+![Die MFE der anderen Proben](figures/stage9-probes.png)
+
+*Abb. 6 – Spinnenhaar, Kaktusnadel und Mg-Draht: die MFE über $z_{01}$, über der kleinsten
+derselben Numerik, oben in ±1,2 mm (Spinnenhaar) bzw. ±0,6 mm um das Minimum, in der Mitte in
+±0,1 bzw. ±0,25 mm; unten für die Scans mit einem Thread die MFE, der kleinste Verlust der
+letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kleinsten.*
+
+1. **Keine Stufe in der MFE.** Nach der Regel von E10 hat die MFE von Spinnenhaar, Kaktusnadel
+   und Mg-Draht keinen Sprung und keine Umkehr, mit jeder Numerik für sich und mit beiden
+   zusammen (`probes` in `steps.json`). Mit beiden zusammen liegen in ±250 µm um das Minimum
+   keine zwei Nachbarn mehr als 42 µm auseinander; mit einer Numerik allein sind 54–90 % von
+   ±250 µm so dicht, die größte Lücke ist 50–138 µm. Um das Minimum ist die MFE der Kaktusnadel
+   am flachsten: 180 µm darunter und darüber (284,755 und 285,116 mm) liegt sie 8 und 12 ppm
+   über ihrer kleinsten. Beim Zahn findet die Regel mit Numerik 1 nur die Stufe bei
+   80,716–80,717 mm (+655 ppm), mit Numerik 3 die bei 80,678–80,6926 mm (+648 ppm) und eine
+   Umkehr: Von 80,869 nach 80,893 mm fällt die MFE um 138 ppm, dort, wo die erste Stufe mit
+   Numerik 3 auf den unteren Ast zurückwechselt (80,850–80,900 mm, 5.2, Punkt 1).
+   ‹TODO Numerik 1 in 80,87–80,91 mm›
+2. **Die erste Stufe in ganz $\Omega_z$.** ‹TODO›
+3. **Die Schulter des Spinnenhaars.** Über dem Minimum (79,49 mm) steigt die MFE bis 79,95 mm
+   glatt auf 11 150 ppm, im Mittel um 24 ppm pro µm, danach bis 80,25 mm nur noch um 2–3 ppm
+   pro µm (11 930 ppm). Zwischen 80,035 und 80,147 mm liegen sechs Punkte innerhalb von 32 ppm,
+   am tiefsten 80,114 mm, das Ergebnis der kalten Suche mit Brent (5.5): eine flache Mulde in
+   der Schulter, keine Stufe. Die Scans in 79,60–80,11 mm, 20–160 µm auseinander, steigen ohne
+   Sprung.
+4. **Die anderen Verluste beim Spinnenhaar.** Von elf Scans in 79,27–80,11 mm hat der kleinste
+   Verlust der letzten Stufe sein Minimum bei 79,80 mm, der Verlust am Objekt bei 79,95 mm,
+   0,3 und 0,46 mm über dem der MFE (`last_stage`, `object_loss` in `steps.json`; Abb. 6
+   unten). Die MFE trifft die visuelle Referenz von [2] (79,4 mm) auf 90 µm, die beiden anderen
+   verfehlen sie um 0,4 und 0,55 mm. Am kleinsten ist der Verlust der letzten Stufe hier bei
+   Iteration 1010–1060; bis zur letzten steigt er dann um 1,1 % (79,27 mm), 2,2 % (79,48 mm)
+   bis 4,3 % (79,95 mm). Erst dieser Anstieg, der von 79,27 bis 79,95 mm wächst, legt das
+   Minimum der MFE unter das des kleinsten Verlusts. Beim Zahn steigt der Verlust nach seinem
+   Minimum überall um 1,55–1,63 %, und die Minima von MFE und kleinstem Verlust liegen 15 µm
+   auseinander (5.3, Punkt 3). Der Verlust am Objekt ist zwischen 79,70 und 79,95 mm nicht
+   monoton: bei 79,80 mm 52 ppm über 79,70 mm, eine Umkehr nach E10 knapp über der Schwelle, an
+   Punkten 100–150 µm auseinander; die MFE steigt dort glatt.
 
 ### 5.5 Brent auf den Messhologrammen
 
@@ -483,7 +539,65 @@ die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.
 oben Nelder–Mead (kalt in $\Omega_z$ und in den 95-%-Intervallen der Ensembles), unten Brent;
 waagrecht die Referenzen von [2] und das Ergebnis der kalten Suche mit Nelder–Mead.*
 
-‹TODO›
+Rekonstruktionen jeder Suche, in Klammern ihr Ergebnis minus das der kalten Suche mit
+Nelder–Mead in µm (bei dieser selbst das Ergebnis in mm); die Zeit ist die Zahl der
+Rekonstruktionen mal der Rate mit 3 Threads (E9; `results/stage9/compare.json`, `measured.csv`):
+
+| Probe | NM kalt | NM, 95 % CNN-Ens. | NM, 95 % NPE-Ens. | Brent kalt | Brent, 95 % CNN-Ens. | Brent, 95 % NPE-Ens. |
+|---|---|---|---|---|---|---|
+| Spinnenhaar | 13 (79,4875) | 8 (−5) | 8 (−5) | 6 (+626) | 8 (+10) | 6 (+4) |
+| Zahn | 11 (80,6344) | 12 (+2) | 12 (+43) | 10 (+26) | 8 (+16) | 8 (+57) |
+| Kaktusnadel | 13 (284,9281) | 12 (+4) | 10 (+28) | 5 (−42) | 6 (−6) | ‹› |
+| Mg-Draht | 12 (471,2281) | 9 (+9) | 12 (+1) | 9 (−42) | 6 (+17) | ‹› |
+| zusammen | 49 | 41 | 42 | 30 | 28 | ‹› |
+| Zeit, min | 176 | 147 | 151 | 107 | 100 | ‹› |
+
+Die Suchen mit Nelder–Mead sind die von Etappe 3, 5 und 8, mit Numerik 3 bis auf die im
+Intervall des CNN-Ensembles (Numerik 1, Tabelle in 2); alle mit Brent haben Numerik 1.
+
+1. **Brent findet dasselbe, bis auf das Spinnenhaar kalt.** Jedes andere Ergebnis von Brent
+   liegt höchstens 57 µm neben dem der kalten Suche mit Nelder–Mead, kaum weiter als die
+   Suchen mit Nelder–Mead im Intervall (höchstens 43 µm). Kalt endet Brent beim Spinnenhaar bei
+   80,114 mm, 626 µm über der kalten Suche mit Nelder–Mead und 714 µm über [2], in der flachen
+   Mulde der Schulter (5.4, Punkt 3) und 11 680 ppm über der kleinsten MFE.
+2. **Wie Brent in die Mulde gerät.** Seine ersten Punkte, 78,620 und 80,980 mm, liegen 0,87 mm
+   unter und 1,49 mm über dem Minimum. Weil die MFE unter dem Minimum steil steigt und darüber
+   in die Schulter übergeht, ist der obere der bessere (der untere 4,3 % darüber); der dritte,
+   82,439 mm, ist schlechter. Die Parabel durch die drei legt ihren Scheitel auf 80,114 mm, die
+   beiden Punkte daneben (80,065 und 80,147 mm) liegen 32 und 27 ppm darüber, und damit gilt das
+   Minimum als auf 82 µm eingeschlossen. Die 1,4 mm zwischen 78,62 und 80,07 mm, in denen das
+   Minimum liegt, wertet Brent nie aus: Es setzt voraus, dass die Funktion zwischen seinen
+   Klammerpunkten nur ein Minimum hat, und die Mulde ist ein zweites. Nelder–Mead beginnt an
+   den Enden von $\Omega_z$, hat mit dem dritten Punkt (79,8 mm, 8400 ppm über dem Minimum) einen
+   besseren als jeden in der Schulter und lässt sie hinter sich. In den
+   Intervallen der Ensembles liegen schon die beiden ersten Punkte nahe am Minimum (CNN: 78,951
+   und 79,647 mm, NPE: 79,317 und 79,648 mm); Brent findet 79,497 und 79,492 mm, obwohl beide
+   Intervalle die Mulde enthalten und die Suche im CNN-Intervall dort einen Punkt rechnet
+   (80,076 mm).
+3. **Wo Brent beginnt.** Der erste Punkt liegt beim 0,382-Fachen der Breite, kalt also
+   1,18 mm unter dem Schätzwert. Bei Kaktusnadel und Mg-Draht liegt der Schätzwert 1,17 mm über
+   dem Ergebnis von Nelder–Mead, und der erste Punkt trifft es auf 8 µm (284,920 und
+   471,220 mm). Die Kaktusnadel kostet dann 5 Rekonstruktionen. Beim Mg-Draht liegen die drei
+   Punkte um das Minimum innerhalb von 2 ppm, Brent verwirft die Parabel durch sie, geht mit
+   einem Schritt des Goldenen Schnitts 0,54 mm in den größeren Teil der Klammer (470,642 mm) und
+   braucht drei weitere Punkte zurück, zusammen 9. Wie viel Brent kalt braucht, hängt also daran, wo der
+   Fokus im Intervall liegt; Nelder–Mead beginnt an den Enden und braucht 11–13, wo er auch
+   liegt. Etappe 8 hatte aus Modellkurven etwa 6 Rekonstruktionen bei Kaktusnadel und Mg-Draht
+   und 9 beim Zahn erwartet (Laborbuch 08, 7, Punkt 1); gemessen sind 5, 9 und 10. Gewarnt war
+   dort vor der Stufe des Zahns. Die Suchen mit Brent rechnen Punkte nahe an ihr, kalt bei
+   80,693 mm (unterer Ast), im NPE-Intervall bei 80,725 mm (oberer Ast, 928 ppm über dem
+   besten Punkt der Suche), und enden davor; die Falle war die Schulter des Spinnenhaars.
+4. **Was das Intervall spart.** Mit Nelder–Mead spart das 95-%-Intervall 8 (CNN-Ensemble) und
+   7 (NPE-Ensemble) der 49 Rekonstruktionen der kalten Suche, mit Brent 2 (CNN) und ‹› (NPE) von
+   30. Pro Probe sind es mit Nelder–Mead −1 bis +5, mit Brent −2 bis +3; beim Spinnenhaar kostet
+   das CNN-Intervall Brent 2 Rekonstruktionen mehr als kalt, verhindert aber die Mulde. Kalt
+   braucht Brent schon 39 % weniger als Nelder–Mead, und das Intervall nimmt ihm nur noch
+   wenig. Mit vier Hologrammen ist das ein Hinweis; die Statistik geben die synthetischen
+   Samples (5.6, 5.7).
+5. **Gegen [2].** Bis auf die Mulde liegen alle Suchen einer Probe innerhalb von 70 µm, und der
+   Abstand zu [2] bleibt der von Etappe 8: Spinnenhaar +82 bis +97 µm, Zahn −209 bis −266 µm,
+   Kaktusnadel +686 bis +756 µm, Mg-Draht +386 bis +445 µm (`z01_minus_paper2_nm_um`).
+6. **Nelder–Mead noch einmal (E8).** ‹TODO b1-p4-repeat›
 
 ### 5.6 Brent auf den synthetischen Samples
 

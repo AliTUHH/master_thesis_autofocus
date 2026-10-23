@@ -136,8 +136,10 @@ FIRST_STAGE = "first-stage"
 """Where the scans of the first stage of the plan go (``scan --stages 1``), under
 ``results/stage9``; those with the library of before this stage under ``first-stage/BEFORE``."""
 SWITCH = 0.01
-"""A switch of the first stage: its loss at the lookahead changes by more than this share
-between neighbouring points."""
+"""A switch of the first stage: between neighbouring points its loss at the lookahead changes
+by more than this share beyond what the median slope of the (up to) two pairs on either side
+predicts, so that a steep flank over all of ``Omega_z`` is no switch and a single point on the
+other branch is two."""
 WINDOWS_UM = (250.0, 500.0)
 """Half-widths of the windows about the minimum in which ``steps`` reports how densely the
 points lie (:func:`coverage`)."""
@@ -688,17 +690,22 @@ def first_stage(stage9: Path) -> dict:
                     {"z01": p["z01"], "loss": p["mfe"], "object_loss": p["object_loss"]}
                     for p in points
                 ]
+                pairs = list(zip(points, points[1:], strict=False))
+                changes = [b["mfe"] / a["mfe"] - 1.0 for a, b in pairs]
+                slopes = [c / (b["z01"] - a["z01"]) for c, (a, b) in zip(changes, pairs)]
                 switches = []
-                for k, (a, b) in enumerate(zip(points, points[1:], strict=False)):
+                for k, (a, b) in enumerate(pairs):
                     difference = object_difference(record, a, b)
                     summary[k + 1]["to_previous"] = difference
-                    change = b["mfe"] / a["mfe"] - 1.0
-                    if abs(change) > SWITCH:
+                    around = slopes[max(k - 2, 0) : k] + slopes[k + 1 : k + 3]
+                    trend = float(np.median(around)) * (b["z01"] - a["z01"]) if around else 0.0
+                    if abs(changes[k] - trend) > SWITCH:
                         switches.append(
                             {
                                 "z01": [a["z01"], b["z01"]],
                                 "loss": [a["mfe"], b["mfe"]],
-                                "relative_change": change,
+                                "relative_change": changes[k],
+                                "trend": trend,
                                 "object_loss_relative_change": b["object_loss"] / a["object_loss"]
                                 - 1.0,
                                 **difference,

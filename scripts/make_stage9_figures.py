@@ -46,6 +46,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+from matplotlib.ticker import MaxNLocator  # noqa: E402
 
 from holofocus.measured import MEASURED_SAMPLES  # noqa: E402
 from make_stage7_figures import _csv, _json, _legend, _save  # noqa: E402
@@ -58,11 +59,11 @@ BEFORE, AFTER = "threads-3-4349d6a", "threads-3"
 ONE, THREE = "tab:blue", "tab:red"
 NUMERICS = {1: ("one thread (this stage)", ONE), 3: ("3 threads, before this stage", THREE)}
 METHODS = {
-    "nm-cold": ("NM, guess +- 5 mm", "black", "o", "-"),
-    "nm-cold-repeat": ("NM, guess +- 5 mm, again", "0.5", "o", ":"),
+    "nm-cold": ("NM, guess ±5 mm", "black", "o", "-"),
+    "nm-cold-repeat": ("NM, guess ±5 mm, again", "0.5", "o", ":"),
     "nm-box95-cnn": ("NM, 95 % CNN", "tab:blue", "s", "-"),
     "nm-box95-npe": ("NM, 95 % NPE", "tab:red", "D", "-"),
-    "brent-cold": ("Brent, guess +- 5 mm", "tab:green", "o", "--"),
+    "brent-cold": ("Brent, guess ±5 mm", "tab:green", "o", "--"),
     "brent-box95-cnn": ("Brent, 95 % CNN", "tab:cyan", "s", "--"),
     "brent-box95-npe": ("Brent, 95 % NPE", "tab:pink", "D", "--"),
 }
@@ -557,7 +558,8 @@ def measured_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
                     refs["z01_visual"] * 1e3, color="black", ls=":", lw=0.8, label="[2] visual"
                 )
             cold = s["searches"]["nm-cold"]["z01"] * 1e3
-            ax.axhline(cold, color="0.5", ls="-.", lw=0.8, label="NM, guess +- 5 mm: result")
+            ax.axhline(cold, color="0.5", ls="-.", lw=0.8, label="NM, guess ±5 mm: result")
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
             ax.set_xlabel("evaluation", fontsize=8)
             ax.set_ylabel("z01 (mm)", fontsize=8)
             ax.tick_params(labelsize=7)
