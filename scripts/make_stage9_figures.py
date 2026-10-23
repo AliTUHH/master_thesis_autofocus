@@ -389,7 +389,7 @@ def first_stage_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     fig = plt.figure(figsize=(14, 7.5), layout="constrained")
     grid = fig.add_gridspec(2, 4)
     ax = fig.add_subplot(grid[0, 0])
-    _first_stage_panel(ax, points, 0.0805, 0.0809, smallest)
+    _first_stage_panel(ax, points, 0.0805, 0.0811, smallest)
     ax.set_title("tooth, first stage of the plan", fontsize=9)
     ax = fig.add_subplot(grid[0, 1])
     _first_stage_panel(ax, points, 0.08066, 0.08073, smallest)
