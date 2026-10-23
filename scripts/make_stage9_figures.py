@@ -9,6 +9,10 @@
 * ``stage9-tooth-loss.png``: the relative difference of the loss histories of two scans against
   the iteration: the same ``z01`` with both numerics, neighbours across the step and on the
   same side.
+* ``stage9-first-stage.png``: the loss after the first stage of the plan, at the lookahead and
+  at the returned object, against ``z01``: the tooth around its switches with both numerics,
+  where the padded arrays on both sides of a switch differ, and all four probes over
+  ``Omega_z``.
 * ``stage9-probes.png``: the MFE of spider hair, cactus needle and Mg wire against ``z01``
   with both numerics.
 * ``stage9-numerics.png``: the MFE at exactly the same ``z01`` with 3 threads before this stage
@@ -49,6 +53,7 @@ REPO = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = REPO / "docs" / "laborbuch" / "figures"
 RESULTS = REPO / "results"
 STAGE9 = RESULTS / "stage9"
+BEFORE, AFTER = "threads-3-4349d6a", "threads-3"
 ONE, THREE = "tab:blue", "tab:red"
 NUMERICS = {1: ("one thread (this stage)", ONE), 3: ("3 threads, before this stage", THREE)}
 METHODS = {
@@ -72,13 +77,15 @@ def _points(stage9: Path) -> list[dict]:
 
 
 def _scans(stage9: Path, sample: str) -> list[dict]:
-    """The scan points of ``sample`` with both numerics, with ``numerics`` set."""
+    """The scan points of ``sample`` with both numerics, with ``numerics`` set; those with
+    3 threads and the library of this stage have the bits of one thread and count where no
+    scan with one thread has their ``z01``."""
     out = []
-    for directory, threads in ((stage9, None), (stage9 / "threads-3-4349d6a", 3)):
+    for directory, n in ((stage9, 1), (stage9 / AFTER, 1), (stage9 / BEFORE, 3)):
         record = _json(directory / f"scan-{sample}.json")
         if record is not None:
-            for p in record["points"]:
-                out.append({**p, "numerics": 1 if threads is None else 3})
+            seen = {p["z01"] for p in out if p["numerics"] == n}
+            out += [{**p, "numerics": n} for p in record["points"] if p["z01"] not in seen]
     return sorted(out, key=lambda p: (p["z01"], p["numerics"]))
 
 
@@ -287,6 +294,118 @@ def tooth_loss_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     ax.grid(alpha=0.3)
     ax.legend(fontsize=7)
     _save(fig, out / "stage9-tooth-loss.png", dpi)
+    return metrics
+
+
+def _first_stage(stage9: Path, sample: str) -> tuple[list[dict], dict | None]:
+    """The scan points of the first stage of ``sample`` with both numerics, and the record of
+    the one-thread scan (for its grid)."""
+    out, header = [], None
+    for directory, n in ((stage9 / "first-stage", 1), (stage9 / "first-stage" / BEFORE, 3)):
+        record = _json(directory / f"scan-{sample}.json")
+        if record is not None:
+            out += [{**p, "numerics": n} for p in record["points"]]
+            header = header or record
+    return sorted(out, key=lambda p: (p["z01"], p["numerics"])), header
+
+
+def _first_stage_panel(ax, points: list[dict], lo: float, hi: float, smallest: dict) -> None:
+    """Both losses after the first stage, each relative to its smallest with one thread."""
+    for n, (label, color) in NUMERICS.items():
+        sel = [p for p in points if p["numerics"] == n and lo <= p["z01"] <= hi]
+        if not sel:
+            continue
+        z = [p["z01"] * 1e3 for p in sel]
+        for key, style, what in (("mfe", "-o", "lookahead"), ("object_loss", ":s", "object")):
+            ax.plot(
+                z,
+                [100 * (p[key] / smallest[key] - 1) for p in sel],
+                style if n == 1 else ("D" if key == "mfe" else "x"),
+                ms=2.5,
+                lw=0.8,
+                color=color,
+                alpha=1.0 if key == "mfe" else 0.6,
+                label=f"at the {what}, {label}",
+            )
+    ax.set_xlim(lo * 1e3, hi * 1e3)
+    ax.ticklabel_format(axis="x", useOffset=False)
+    ax.set_xlabel("z01 (mm)", fontsize=8)
+    ax.set_ylabel("loss after stage 1, above its smallest (%)", fontsize=8)
+    ax.tick_params(labelsize=7)
+    ax.grid(alpha=0.3)
+
+
+def first_stage_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
+    steps = _json(stage9 / "steps.json")
+    points, _ = _first_stage(stage9, "tooth")
+    if steps is None or not points:
+        return None
+    first = steps.get("first_stage", {})
+    ones = [p for p in points if p["numerics"] == 1]
+    smallest = {key: min(p[key] for p in ones) for key in ("mfe", "object_loss")}
+    fig = plt.figure(figsize=(12, 7.5), layout="constrained")
+    grid = fig.add_gridspec(2, 3)
+    ax = fig.add_subplot(grid[0, 0])
+    _first_stage_panel(ax, points, 0.0805, 0.0809, smallest)
+    ax.set_title("tooth, first stage of the plan", fontsize=9)
+    ax = fig.add_subplot(grid[0, 1])
+    _first_stage_panel(ax, points, 0.08066, 0.08073, smallest)
+    ax.set_title("around the switches", fontsize=9)
+    handles, labels = ax.get_legend_handles_labels()
+    metrics = {
+        "tooth_switches": {n: v["switches"] for n, v in first.get("tooth", {}).items()},
+    }
+    ax = fig.add_subplot(grid[0, 2])
+    switches = first.get("tooth", {}).get("1", {}).get("switches", [])
+    by_z = {p["z01"]: p for p in ones}
+    pair = [by_z.get(z) for z in switches[0]["z01"]] if switches else []
+    if len(pair) == 2 and all(p is not None and (REPO / p["arrays"]).exists() for p in pair):
+        a, b = (np.load(REPO / p["arrays"])["phase"].astype(np.float64) for p in pair)
+        diff = b - a
+        limit = float(np.abs(diff).max())
+        image = ax.imshow(diff * 1e3, cmap="RdBu_r", vmin=-limit * 1e3, vmax=limit * 1e3)
+        fig.colorbar(image, ax=ax, shrink=0.8, label="difference of phase (mrad)")
+        ax.set_title(
+            f"phase after stage 1, field of view:\n{pair[1]['z01'] * 1e3:.3f} minus "
+            f"{pair[0]['z01'] * 1e3:.3f} mm (RMS {1e3 * np.sqrt(np.mean(diff**2)):.1f} mrad, "
+            f"range of the phase {a.max() - a.min():.1f} rad)",
+            fontsize=8,
+        )
+        metrics["tooth_first_switch_phase"] = {
+            "rms_rad": float(np.sqrt(np.mean(diff**2))),
+            "max_abs_rad": limit,
+            "phase_range_rad": float(a.max() - a.min()),
+        }
+    ax.set_axis_off()
+    ax = fig.add_subplot(grid[1, :])
+    for name, color in zip(
+        MEASURED_SAMPLES, ("tab:green", "tab:purple", "tab:orange", "tab:brown"), strict=False
+    ):
+        sel, _ = _first_stage(stage9, name)
+        sel = [p for p in sel if p["numerics"] == 1]
+        if len(sel) < 10:
+            continue
+        guess = MEASURED_SAMPLES[name].z01_guess
+        low = min(p["mfe"] for p in sel)
+        ax.plot(
+            [p["z01"] * 1e3 - guess * 1e3 for p in sel],
+            [100 * (p["mfe"] / low - 1) for p in sel],
+            "-o",
+            ms=2,
+            lw=0.7,
+            color=color,
+            label=MEASURED_SAMPLES[name].label,
+        )
+        metrics[f"omega_{name}"] = len(first.get(name, {}).get("1", {}).get("switches", []))
+    ax.set_xlabel("z01 minus the guess (mm)", fontsize=8)
+    ax.set_ylabel("loss after stage 1, above the smallest (%)", fontsize=8)
+    ax.set_yscale("symlog", linthresh=1.0)
+    ax.tick_params(labelsize=7)
+    ax.grid(alpha=0.3)
+    ax.set_title("first stage over all of Omega_z, one thread", fontsize=9)
+    ax.legend(fontsize=7)
+    fig.legend(handles, labels, loc="outside upper center", ncols=4, fontsize=7)
+    _save(fig, out / "stage9-first-stage.png", dpi)
     return metrics
 
 
@@ -535,6 +654,7 @@ def main() -> None:
         ("tooth_step", lambda: tooth_step_figure(args.stage9, args.out, dpi)),
         ("tooth_objects", lambda: tooth_objects_figure(args.stage9, args.out, dpi)),
         ("tooth_loss", lambda: tooth_loss_figure(args.stage9, args.out, dpi)),
+        ("first_stage", lambda: first_stage_figure(args.stage9, args.out, dpi)),
         ("probes", lambda: probes_figure(args.stage9, args.out, dpi)),
         ("numerics", lambda: numerics_figure(args.stage9, args.out, dpi)),
         ("measured", lambda: measured_figure(args.stage9, args.out, dpi)),

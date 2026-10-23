@@ -180,6 +180,24 @@ in Metern trifft ein Scan bitgenau den Punkt einer früheren Suche. Für die Num
 läuft dasselbe Skript in einem Checkout von `4349d6a` mit drei Threads
 (`results/stage9/threads-3-4349d6a/`).
 
+Zu jedem Punkt hält `scan` außerdem den **Verlust am zurückgegebenen Objekt** fest
+(`object_loss`): den ersten Verlust einer weiteren Iteration der letzten Stufe, gestartet vom
+Objekt ohne Impuls. Die MFE ist dagegen der Verlust am Vorgriff der letzten Iteration,
+$y = \tilde O - \gamma v$, mit dem Impuls $v$ und $\gamma = 1$ in allen drei Stufen von [2]
+Table 3; das zurückgegebene Objekt ist der Schritt danach. Den Rand außerhalb des Sichtfelds
+baut jede Iteration aus dem Sichtfeld neu auf (gespiegelt und ausgeblendet), den Impuls nicht.
+Dass `object_loss` den Verlust der Schleife trifft, prüft eine Rekonstruktion mit einer
+Iteration vom gespeicherten Objekt aus: bitgleich (nicht versioniert).
+
+`scan --stages 1` rekonstruiert nur die **erste Stufe** des Plans (Sichtfeld 16-fach
+verkleinert, beim Zahn 118² px in 512² px, 700 Iterationen), mit einem Thread in etwa 15 s
+statt 9 min. Ihr Verlust am Ende ist bitgleich mit `stage_losses[0]` der vollen Rekonstruktion
+am selben $z_{01}$; das Objekt geht mit dem ganzen Feld samt Rand nach
+`results/stage9/first-stage/scan-<probe>/` (nicht versioniert). Gescannt ist die erste Stufe
+beim Zahn alle 10 µm in 80,50–80,90 mm und alle 1 µm in 80,700–80,730 mm, mit der Numerik von
+vorher alle 2 µm in 80,660–80,700 mm und alle 50 µm in 80,50–80,90 mm, und bei allen vier
+Proben in ganz $\Omega_z$ alle 200 µm.
+
 `steps` sammelt alle Rekonstruktionen der Messhologramme mit Padding 4 (die Suchen der Etappen
 3, 5, 8 und 9 und die Scans) als MFE über $z_{01}$, getrennt nach Numerik (E2), und
 sucht darin Stufen (E10): einen Sprung zwischen Nachbarn höchstens 50 µm auseinander, um mehr als

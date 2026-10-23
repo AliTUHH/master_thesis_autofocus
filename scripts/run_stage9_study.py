@@ -502,38 +502,56 @@ def across_numerics(rows: list[dict]) -> list[dict]:
 
 def loss_split(a: list[float], b: list[float], every: int, ends: list[int]) -> dict:
     """Where two loss histories (every ``every``-th iteration) part: their relative difference
-    at the ends of the stages and the first iteration from which it stays above
-    :data:`LOSS_SPLIT`."""
+    at the ends of the stages and its largest per stage, the first iteration at which it
+    exceeds :data:`LOSS_SPLIT` and the first from which it stays above."""
     rel = np.abs(np.asarray(b) / np.asarray(a) - 1.0)
     above = rel > LOSS_SPLIT
-    split = None
+    split = first = None
+    if above.any():
+        first = int(np.flatnonzero(above)[0] + 1) * every
     if above[-1]:
         below = np.flatnonzero(~above)
         split = int(((below[-1] + 1) if below.size else 0) + 1) * every
+    starts = [0] + [e // every for e in ends[:-1]]
     return {
         "at_stage_ends": [float(rel[e // every - 1]) for e in ends],
+        "largest_per_stage": [
+            float(rel[s : e // every].max()) for s, e in zip(starts, ends, strict=True)
+        ],
+        "first_above_iteration": first,
         "split_iteration": split,
     }
+
+
+def scan_points(stage9: Path):
+    """``(record, point, numerics)`` of every scan point; one with 3 threads and the library of
+    this stage (:data:`AFTER`) has the bits of one thread and counts only where no scan with one
+    thread has its ``z01``."""
+    seen = set()
+    for record, source, before in scan_records(stage9):
+        for p in record["points"]:
+            key = record["sample"], p["z01"]
+            if source == f"scan-{AFTER}" and key in seen:
+                continue
+            if not before:
+                seen.add(key)
+            yield record, p, numerics(p["threads"], before)
 
 
 def scan_pairs(stage9: Path, minima: dict) -> list[dict]:
     """Loss histories of neighbouring scan points and of the same ``z01`` in both numerics."""
     scans = []
-    for record, source, before in scan_records(stage9):
-        if source == f"scan-{AFTER}":
-            continue
-        for p in record["points"]:
-            n = numerics(p["threads"], before)
-            ppm = (p["mfe"] / minima[record["sample"], n] - 1.0) * 1e6
-            scans.append(
-                {
-                    **p,
-                    "sample": record["sample"],
-                    "numerics": n,
-                    "ppm": ppm,
-                    "every": record["loss_every"],
-                }
-            )
+    for record, p, n in scan_points(stage9):
+        ppm = (p["mfe"] / minima[record["sample"], n] - 1.0) * 1e6
+        scans.append(
+            {
+                **p,
+                "sample": record["sample"],
+                "numerics": n,
+                "ppm": ppm,
+                "every": record["loss_every"],
+            }
+        )
     pairs = []
 
     def pair(kind, a, b):
@@ -600,14 +618,10 @@ def scan_objects(stage9: Path) -> dict:
     """RMS differences between the objects of all scan points of a probe (both numerics),
     from the npz of the scans."""
     by_sample = defaultdict(list)
-    for record, source, before in scan_records(stage9):
-        if source == f"scan-{AFTER}":
-            continue
-        for p in record["points"]:
-            arrays = REPO / p["arrays"]
-            if arrays.exists():
-                n = numerics(p["threads"], before)
-                by_sample[record["sample"]].append((p, n, arrays))
+    for record, p, n in scan_points(stage9):
+        arrays = REPO / p["arrays"]
+        if arrays.exists():
+            by_sample[record["sample"]].append((p, n, arrays))
     out = {}
     for sample, items in sorted(by_sample.items()):
         items.sort(key=lambda item: (item[0]["z01"], item[1]))
