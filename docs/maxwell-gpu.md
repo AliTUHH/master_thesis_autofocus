@@ -772,7 +772,9 @@ Etappe 9 braucht keine GPU. Für die Läufe hier gilt aber:
   Auf der GPU und auf einer anderen CPU (anderer Befehlssatz, andere Pfade in MKL) gilt das
   nicht, und die Läufe der VM, gegen die 6.4 prüft, liefen mit 3 Threads und der Numerik von
   vor Etappe 9. MFE-Werte verschiedener Geräte oder Maschinen unterscheiden sich deshalb um
-  einige ppm; zu vergleichen sind die Lagen, nicht die MFE-Werte (Laborbuch 09, E2).
+  einige bis einige zehn ppm, und wo die Rekonstruktion zwei Lösungen hat, um mehr (Zahn etwa
+  680 ppm, synthetisches Sample 5 2–3 %); zu vergleichen sind die Lagen, nicht die MFE-Werte
+  (Laborbuch 09, E2 und 5.1).
 - Beim Zahn trifft die erste Stufe des Plans je nach $z_{01}$ eine von zwei Lösungen, in ganz
   $\Omega_z$, und wo sie wechselt, hängt an der Numerik (Laborbuch 09, 5.2 und 5.4): um das
   Minimum mit einem Thread bei 80,716/80,717 und 80,901/80,902 mm, mit 3 Threads vor Etappe 9

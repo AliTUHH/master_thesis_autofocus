@@ -285,7 +285,7 @@ spart, gepaart über die Samples (E9; `results/stage9/compare.json`, `measured.c
 
 ### 3.7 Tests
 
-Neu sind neun Tests, zwei davon mit drei bzw. zwei Fällen (13 Fälle; zusammen 377, in `main`
+Neu sind zehn Tests, zwei davon mit drei bzw. zwei Fällen (13 Fälle; zusammen 377, in `main`
 364):
 
 - `tests/test_asrm.py`: `one_thread()` setzt die Threadzahl danach zurück; eine kleine volle
@@ -620,8 +620,8 @@ letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kle
    Punkten, mit 25 Wechseln zwischen Nachbarn des Rasters. Mit den dichten Scans und den
    $z_{01}$ der Suchen sind es 221 Punkte, 71 davon oben, und 27 Wechsel, darunter die beiden
    um das Minimum (5.2, Punkt 1); der längste Lauf oben beginnt zwischen 77,9 und 78,1 mm und
-   endet zwischen 78,834 und 78,9 mm. Über einen Wechsel ändert sich ihr Verlust um 8,1–10,7 %, und der Abstand
-   der Äste nimmt mit $z_{01}$ ab (10,6 % bei 78 mm, 8,8 % bei 88 mm); auf einem Ast liegen
+   endet zwischen 78,834 und 78,9 mm. Über einen Wechsel ändert sich ihr Verlust um
+   8,1–10,6 %, und der Abstand der Äste nimmt mit $z_{01}$ ab (10,6 % bei 78 mm, 8,8 % bei 88 mm); auf einem Ast liegen
    Nachbarn höchstens 0,20 % auseinander. Das Fenster von 80,717–80,901 mm ist also eines von
    vielen. Bei keiner Probe liegt der kleinste Verlust der ersten Stufe am Fokus: beim
    Spinnenhaar bei 80,2 mm, bei den drei anderen am unteren Ende von $\Omega_z$.
@@ -636,9 +636,10 @@ letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kle
    80,90, 81,85 und 83,93 mm 609, 324, 338, −84 und −367 ppm über dem unteren, am kleinsten
    Verlust der letzten Stufe 106, −34, 1, −73 und −137 ppm (`losses_upper_over_lower_ppm`, wie
    gerechnet, ohne die Steigung): Beide fallen über $\Omega_z$ mit $z_{01}$ und bleiben
-   zwischen den beiden Wechseln um das Minimum gleich. Die MFE folgt ihnen fern vom Minimum
-   (−5, −73 und −137 ppm wie gerechnet) und weicht nur um das Minimum ab (+655 und +319 ppm),
-   in den letzten knapp 300 Iterationen (5.3, Punkt 2). Das Objekt springt auch fern vom
+   zwischen den beiden Wechseln um das Minimum etwa gleich. Die MFE folgt ihnen fern vom
+   Minimum (−5, −73 und −137 ppm wie gerechnet; bei 81,85 und 83,93 mm ist sie der kleinste
+   Verlust der letzten Stufe, 5.3, Punkt 1) und weicht nur um das Minimum ab (+655 und
+   +319 ppm), in den letzten knapp 300 Iterationen (5.3, Punkt 2). Das Objekt springt auch fern vom
    Minimum: Seine Phase ändert sich über die drei Paare dort um 1,7, 5,0 und 6,0 mrad RMS, auf
    demselben Ast über 20 µm um 4,7–4,9 mrad (79,123–79,164 mm; `steps-objects.json`).
 3. **Die Schulter des Spinnenhaars.** Über dem Minimum (79,49 mm) steigt die MFE bis 79,95 mm
@@ -814,7 +815,6 @@ NPE-Ensemble, rechts für das CNN.*
    Lösungen am selben $z_{01}$, 2–3 % auseinander (5.4, Punkt 5). Wie viele der 48 es sind,
    zeigte die erste Stufe über $\Omega_z$, ein Bruchteil einer vollen Rekonstruktion pro Punkt,
    und für Sample 5 ein dichter Scan um 103,4–104,4 mm; nicht gerechnet.
-
 7. **Brent gegen ein zweites Minimum.** Kalt fiel Brent beim Spinnenhaar in die Mulde der
    Schulter, weil es zwischen seinen Klammerpunkten nur ein Minimum voraussetzt (5.5, Punkte 1
    und 2). Ein Schutz wäre ein grobes Raster vor Brent, etwa fünf Punkte über $\Omega_z$ und
@@ -839,10 +839,48 @@ NPE-Ensemble, rechts für das CNN.*
 
 ## 7 Nächste Schritte
 
-‹TODO›
+1. **Die klassische Suche, gegen die das Gelernte zählt** (Plan-Schritt 15). Brent findet
+   kalt dasselbe Minimum wie Nelder–Mead mit 39 % (Messhologramme) und ‹S7-COLD› %
+   (synthetische Samples) weniger Rekonstruktionen (5.5, 5.6). Was ein gelerntes Intervall
+   beiträgt, ist deshalb gegen Brent kalt anzugeben, nicht gegen Nelder–Mead: auf den
+   synthetischen Samples ‹S7-BRENT› statt ‹S7-NM› % (5.7). Nelder–Mead nach [2] bleibt die
+   Referenz der Genauigkeit und der Vergleich mit [2].
+2. **Ein Schutz für Brent** (6, Punkt 7). Brent setzt ein Minimum zwischen seinen
+   Klammerpunkten voraus; kalt fiel es beim Spinnenhaar in die Mulde der Schulter, ‹S7-TRAP›.
+   Ein grobes Raster vor Brent oder Brent im gelernten Intervall sind die beiden Wege; was das
+   Raster kostet, zeigen die synthetischen Samples, deren Wahrheit bekannt ist.
+3. **Maxwell** (Laborbuch 07, 9.10, Punkt 1; `docs/maxwell-gpu.md`, 8.4): die großen Läufe;
+   auf der GPU zuerst die erste Stufe des Zahns in 80,5–81,1 mm alle 1 µm (600 Punkte, auf der
+   CPU je etwa 15 s), um zu sehen, wo dort die Äste wechseln, bevor dort MFE-Werte verglichen
+   werden.
+4. **Ein Fokusmaß ohne Stufe** (6, Punkt 1). Der kleinste Verlust der letzten Stufe hat beim
+   Zahn keine Stufe, die MFE von [2] eine von 650 ppm. Ob er die Wahrheit besser trifft, zeigen
+   die synthetischen Samples: `synthetic` speichert den Verlust jeder 10. Iteration, an den
+   Punkten einer Suche nachgerechnet sind das dieselben Rekonstruktionen wie in der Suche.
 
 ## 8 Bezug zur Masterarbeit
 
-‹TODO›
+- **Geschwindigkeit bei gleicher Genauigkeit (Plan-Schritt 15):** Laborbuch 08 hatte gezeigt,
+  dass Nelder–Mead in einer Dimension nur mit dem Logarithmus der Startbreite spart, und eine
+  Suche erwartet, die die Werte der MFE nutzt. Brents Verfahren tut das und braucht kalt 39 %
+  (Messhologramme) und ‹S8-COLD› % (synthetisch) weniger Rekonstruktionen als Nelder–Mead, bei
+  ‹S8-ACC›. Ein gelerntes Intervall spart mit Brent weniger als mit Nelder–Mead (5.7), am
+  schnellsten ist trotzdem Brent im Intervall: ‹S8-BEST›. Für die Arbeit heißt das: den Gewinn
+  der Modelle gegen die schnellste klassische Suche angeben, sonst schreibt man ihnen zu, was
+  das Verfahren leistet.
+- **Fehleranalyse (Plan-Schritt 16):** Wo die klassische Suche versagt, liegt es an der Form
+  der MFE: ein zweites Minimum in der Schulter des Spinnenhaars, in das Brent kalt fällt
+  (626 µm daneben), und beim Zahn eine Stufe, wo die Rekonstruktion zwischen zwei Lösungen
+  wechselt, 52 µm über dem Minimum; welche Lösung sie dort trifft, entscheidet die Rundung. Ein
+  Fokusmaß aus einer iterativen Rekonstruktion ist danach eine Funktion mit Ästen, nicht nur
+  eine verrauschte Kurve. Das gelernte Intervall hat die Mulde beim Spinnenhaar umgangen,
+  ‹S8-TRAP›.
+- **Methodik:** Die MFE einer Rekonstruktion hängt an der Numerik; mit `one_thread` an keiner
+  Einstellung der Maschine mehr, wohl aber an CPU, Version von torch und GPU (E1). MFE-Werte
+  vergleiche ich deshalb nur innerhalb einer Numerik, Lagen über alle, und wo zwei Suchen mit
+  verschiedener Numerik verschieden verlaufen, zeigt die Rekonstruktion am selben $z_{01}$ mit
+  beiden, ob es an ihr liegt (E8). Bitgleichheit ist dabei prüfbar und in der CI geprüft (3.7).
+- **Quellen:** [2] Eq. (14)–(15) (MFE), (17) ($\Omega_z$) und (22) (die Suche); Brent (1973),
+  Kap. 5.
 
 Reproduktion: `docs/usage.md`, Abschnitt „Stage 9: steps of the MFE, Brent next to Nelder–Mead“.
