@@ -33,7 +33,9 @@ measured holograms.
   ``spectra``: the measured hologram among the leave-one-out test splits of Stages 6 and 10
   (``results/stage10/spectra-<sample>.json``).
 * ``compare``: the learned estimates of the four families and the searches side by side
-  (``results/stage10/compare.json`` and the CSVs next to it).
+  (``results/stage10/compare.json`` and the CSVs next to it); ``evaluate``: the same metrics
+  for predictions, searches and estimates on the measured holograms given by path, e.g. the
+  runs of Maxwell (``docs/maxwell-gpu.md`` 8.5).
 
 Usage (Laborbuch 10)::
 
@@ -51,6 +53,7 @@ from __future__ import annotations
 import argparse
 import csv
 import dataclasses
+import itertools
 import json
 import math
 import textwrap
@@ -1163,6 +1166,17 @@ def learned_tables(which: str) -> tuple[dict[str, dict], dict[str, str]]:
     return tables, sources
 
 
+def paired_entry(a: dict[str, np.ndarray], b: dict[str, np.ndarray]) -> dict:
+    """``a`` minus ``b`` on the same samples (Stage 7) with the exact McNemar tests of the hits
+    within 100 um and of the 95 % intervals."""
+    entry = paired(a, b)
+    entry["within_100um_mcnemar"] = mcnemar(
+        np.abs(a["error_um"]) <= WITHIN_UM, np.abs(b["error_um"]) <= WITHIN_UM
+    )
+    entry["coverage_95_mcnemar"] = mcnemar(a["covered_95"], b["covered_95"])
+    return entry
+
+
 def learned_set(tables: dict[str, dict]) -> dict:
     record = {
         "methods": {m: learned_metrics(t) for m, t in tables.items()},
@@ -1184,15 +1198,8 @@ def learned_set(tables: dict[str, dict]) -> dict:
     comparisons = [(method_key(a, None), method_key(b, None)) for a, b in LEARNED_PAIRS]
     comparisons += [(method_key(f, None), method_key(f, 0)) for f in FAMILIES]
     for first, second in comparisons:
-        if first not in tables or second not in tables:
-            continue
-        a, b = tables[first], tables[second]
-        entry = paired(a, b)
-        entry["within_100um_mcnemar"] = mcnemar(
-            np.abs(a["error_um"]) <= WITHIN_UM, np.abs(b["error_um"]) <= WITHIN_UM
-        )
-        entry["coverage_95_mcnemar"] = mcnemar(a["covered_95"], b["covered_95"])
-        record["paired"][f"{first} vs {second}"] = entry
+        if first in tables and second in tables:
+            record["paired"][f"{first} vs {second}"] = paired_entry(tables[first], tables[second])
     return record
 
 
@@ -1597,6 +1604,134 @@ def cmd_compare(args) -> None:
         )
 
 
+# --- evaluate ------------------------------------------------------------------------------
+
+
+def named_paths(values: list[str] | None) -> dict[str, list[Path]]:
+    """``NAME=PATH[,PATH...]`` arguments; several paths are the seeds of a CNN ensemble."""
+    out = {}
+    for value in values or []:
+        name, sep, paths = value.partition("=")
+        if not sep or not name or not paths or name in out:
+            raise SystemExit(f"{value}: expected NAME=PATH[,PATH...] with a new NAME")
+        out[name] = [Path(p) for p in paths.split(",")]
+    return out
+
+
+def evaluated_table(paths: list[Path]) -> dict[str, np.ndarray]:
+    """The table of one predictions file (single CNN or NPE columns), or of the equal-weight
+    mixture of the CNN seeds in several."""
+    if len(paths) > 1:
+        return npe_table(mixture_rows([read_predictions(p) for p in paths]))
+    rows = read_predictions(paths[0])
+    return npe_table(rows) if "pit" in rows[0] else cnn_table(rows)
+
+
+def evaluated_estimates(sources: dict[str, list[Path]]) -> dict:
+    tables = {m: evaluated_table(paths) for m, paths in sources.items()}
+    common = sorted(set.intersection(*({int(i) for i in t["index"]} for t in tables.values())))
+    tables = {m: restrict(t, common) for m, t in tables.items()}
+    return {
+        "sources": {m: [repo_relative(p) for p in paths] for m, paths in sources.items()},
+        "n_samples": len(common),
+        "methods": {m: learned_metrics(t) for m, t in tables.items()},
+        "paired": {
+            f"{a} vs {b}": paired_entry(tables[a], tables[b])
+            for a, b in itertools.combinations(tables, 2)
+        },
+    }
+
+
+def evaluated_searches(sources: dict[str, list[Path]]) -> dict:
+    runs = {}
+    for name, paths in sources.items():
+        if len(paths) != 1:
+            raise SystemExit(f"{name}: one run directory per search")
+        runs[name] = {r["index"]: r for r in read_rows(paths[0] / "results.csv")}
+    common = sorted(set.intersection(*(set(by_index) for by_index in runs.values())))
+    for i in common:
+        truths = [by_index[i]["z01_true"] for by_index in runs.values()]
+        if max(truths) - min(truths) > 1e-12:
+            raise ValueError(f"sample {i} differs between the searches")
+    runs = {name: {i: by_index[i] for i in common} for name, by_index in runs.items()}
+    return {
+        "sources": {name: repo_relative(paths[0]) for name, paths in sources.items()},
+        "n_samples": len(common),
+        "summaries": {name: search_summary(list(r.values()), None) for name, r in runs.items()},
+        "pairs": {
+            f"{a} vs {b}": search_pair(runs, a, b) for a, b in itertools.combinations(runs, 2)
+        },
+    }
+
+
+def evaluated_measured(sources: dict[str, list[Path]]) -> dict:
+    """One folder: the records ``<sample>.json`` of an ensemble or a seed (the NPE ensemble of
+    ``run_stage7_loo_study.py measured`` too); several: the records of the CNN seeds of
+    ``run_stage6_study.py measured``, as their mixture."""
+    samples, by_method = {}, {}
+    for name in PROBES:
+        refs = {"paper2_nm": MEASURED_SAMPLES[name].z01_nm}
+        cold = nm_cold_z01(name)
+        if cold is not None:
+            refs["nm_cold"] = cold
+        entries = {}
+        for method, folders in sources.items():
+            paths = [folder / f"{name}.json" for folder in folders]
+            if not all(p.exists() for p in paths):
+                continue
+            if len(paths) > 1:
+                record = mixture_record(name, paths, measured_references(name))
+            else:
+                record = json.loads(paths[0].read_text())
+                if "runs" in record:
+                    record = npe_record(name, paths[0])
+            entries[method] = estimate_entry(paths[0], record, refs)
+            by_method.setdefault(method, []).append(entries[method])
+        if entries:
+            samples[name] = {"references": refs, "methods": entries}
+    return {
+        "sources": {m: [repo_relative(f) for f in folders] for m, folders in sources.items()},
+        "samples": samples,
+        "summaries": {m: measured_summary(es) for m, es in by_method.items()},
+    }
+
+
+def cmd_evaluate(args) -> None:
+    """The metrics of ``compare`` for estimates and searches given by path, e.g. the runs of
+    Maxwell (docs/maxwell-gpu.md 8.5): on a test split every predictions file and every two
+    paired, on the samples all of them have; every search and every two paired, likewise;
+    the estimates on the measured holograms against [2] and Nelder-Mead cold."""
+    record = {"what": "metrics of compare for estimates and searches given by path"}
+    parts = (
+        ("learned", evaluated_estimates, args.predictions),
+        ("searches", evaluated_searches, args.searches),
+        ("measured", evaluated_measured, args.measured),
+    )
+    for key, evaluate, values in parts:
+        if values:
+            record[key] = evaluate(named_paths(values))
+    write_json(args.out, {**record, **environment()})
+    for method, m in record.get("learned", {}).get("methods", {}).items():
+        cov = m.get("coverage_95")
+        print(
+            f"{method}: {m['n']} samples, within 100 um {m['within_100um']['share']:.2f}, MAE "
+            f"{m['mae_um']:.0f} um"
+            + ("" if cov is None else f", 95 % coverage {cov['k']}/{cov['n']}")
+        )
+    for method, s in record.get("searches", {}).get("summaries", {}).items():
+        print(
+            f"search {method}: {s['n_samples']} samples, MAE {s['mae_um']:.0f} um, within "
+            f"100 um {s['within_um']['100']:.2f}, {s['reconstructions']:.2f} reconstructions"
+        )
+    for method, m in record.get("measured", {}).get("summaries", {}).items():
+        p = m["paper2_nm"]
+        print(
+            f"measured {method}: within 100 um of [2] {p['within_100um']['k']}/{m['n']}, MAE "
+            f"{p['mae_um']:.0f} um, [2] in the 95 % interval {p['inside_95']['k']}/{m['n']}"
+        )
+    print(f"written to {repo_relative(args.out)}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--threads", type=int, help="torch CPU threads")
@@ -1664,6 +1799,23 @@ def main() -> None:
     co = sub.add_parser("compare", help="the learned estimates and the searches side by side")
     co.add_argument("--out", type=Path, default=STAGE10)
     co.set_defaults(func=cmd_compare)
+
+    ev = sub.add_parser("evaluate", help="the metrics of compare for runs given by path")
+    ev.add_argument(
+        "--predictions",
+        nargs="+",
+        metavar="NAME=CSV[,CSV...]",
+        help="predictions.csv on one test split; several CSVs: the seeds of a CNN ensemble",
+    )
+    ev.add_argument("--searches", nargs="+", metavar="NAME=DIR", help="runs with results.csv")
+    ev.add_argument(
+        "--measured",
+        nargs="+",
+        metavar="NAME=DIR[,DIR...]",
+        help="folders with <sample>.json; several folders: the seeds of a CNN ensemble",
+    )
+    ev.add_argument("--out", type=Path, required=True, help="JSON file")
+    ev.set_defaults(func=cmd_evaluate)
 
     args = parser.parse_args()
     if args.threads:

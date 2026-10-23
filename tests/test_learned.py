@@ -110,7 +110,8 @@ def splits(tmp_path_factory):
 
 
 def test_repository_configs_and_validation():
-    for name in ("spectrum-cnn", "spectrum-cnn-wide", "image-cnn", "polar-cnn", "ci"):
+    names = ("spectrum-cnn", "spectrum-cnn-wide", "spectrum-cnn-wide-hf", "image-cnn")
+    for name in (*names, "image-cnn-b1", "polar-cnn", "polar-cnn-hf", "ci"):
         config = LearnedConfig.from_yaml(ROOT / "configs" / "learned" / f"{name}.yaml")
         assert LearnedConfig.from_dict(yaml.safe_load(config.to_yaml())) == config
         assert config.target_scale == 5e-3
@@ -123,6 +124,14 @@ def test_repository_configs_and_validation():
     polar = LearnedConfig.from_yaml(ROOT / "configs" / "learned" / "polar-cnn.yaml")
     assert polar.representation == dataclasses.replace(wide.representation, kind="polar")
     assert (polar.model, polar.training) == (wide.model, wide.training)
+    hf = LearnedConfig.from_yaml(ROOT / "configs" / "learned" / "spectrum-cnn-wide-hf.yaml")
+    polar_hf = LearnedConfig.from_yaml(ROOT / "configs" / "learned" / "polar-cnn-hf.yaml")
+    assert polar_hf.representation == dataclasses.replace(hf.representation, kind="polar")
+    assert (polar_hf.model, polar_hf.training) == (polar.model, polar.training)
+    image = LearnedConfig.from_yaml(ROOT / "configs" / "learned" / "image-cnn.yaml")
+    image_b1 = LearnedConfig.from_yaml(ROOT / "configs" / "learned" / "image-cnn-b1.yaml")
+    assert image_b1.representation == dataclasses.replace(image.representation, binning=1)
+    assert (image_b1.model, image_b1.training) == (image.model, image.training)
     bad = [
         {"nme": "typo"},
         {"representation": {"kind": "wavelet"}},
@@ -207,6 +216,7 @@ def test_polar_spectrum_sectors_and_symmetry():
         assert abs(index - (f2 * (m / n) ** 2 / 0.25 * bins - 0.5)) <= 1
     for shape in ((472, 472), (512, 512)):
         Representation(dataclasses.replace(config, bins=1024, f2_max=0.125), shape)
+        Representation(dataclasses.replace(config, bins=2048, f2_max=0.25), shape)
     with pytest.raises(ValueError):
         Representation(dataclasses.replace(config, bins=1024), (32, 32))
 
