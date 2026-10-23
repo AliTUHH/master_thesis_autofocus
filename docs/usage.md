@@ -884,33 +884,41 @@ $m --out results/measured/b1-p4-repeat
 python scripts/run_stage9_study.py sources
 python scripts/run_stage9_study.py --threads 3 queue --lane a    # next to: --threads 1 --lane b
 python scripts/run_stage9_study.py merge
-python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth \
-    --z01-mm 80.694 80.696 80.698 80.702 80.710 80.725      # the points of Laborbuch 09, 5.1
-python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth --stages 1 \
-    --z01-mm $(seq -f %.3f 80.700 0.001 80.730) --out results/stage9/first-stage
-python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth --stages 1 \
-    --z01-mm $(seq -f %.1f 77.9 0.2 87.9) --out results/stage9/first-stage   # all of Omega_z
-python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth \
-    --z01-mm 81.5 81.7 81.9 82.1 82.3 82.5 83.7 83.9 84.1 84.3 84.5 \
-    --out results/stage9/omega                                              # across its branches
-python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth --stages 1 \
-    --z01-mm 79.200 79.150 79.125 79.138 79.144 79.141 79.143 81.800 81.850 81.825 81.838 \
-    81.844 81.847 81.849 81.848 84.000 83.950 83.925 83.938 83.931 83.928 83.929 83.930 \
-    --out results/stage9/first-stage          # three switches of that grid, halved to 1 um
-python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth \
-    --z01-mm 79.123 79.143 79.144 79.164 81.848 81.849 83.929 83.930 --out results/stage9/omega
-python scripts/run_stage9_study.py --threads 1 scan --holograms $H --sample tooth \
-    --z01-mm 80.901 80.902                    # both sides of the second switch at the minimum
+s="python scripts/run_stage9_study.py --threads 1 scan --holograms $H"
+f="--stages 1 --out results/stage9/first-stage"
+$s --sample tooth --z01-mm 80.451 80.56 80.6 80.62 80.65 80.665 80.68 80.694 80.696 80.698 \
+    80.702 80.71 80.713 80.716 80.717 80.719 80.722 80.725 80.825 80.87 80.88 80.89 80.9 \
+    80.901 80.902 80.91                       # about the step, and both sides of each switch
+$s --sample spider_hair --z01-mm 79.272 79.48 79.6 79.62 79.64 79.66 79.68 79.7 79.8 79.95 80.11
+$s --sample cactus_needle --z01-mm 284.755 285.116  # where the searches leave gaps (E11)
+$s --sample tooth $f --z01-mm $(seq -f %.3f 80.500 0.010 81.100) \
+    $(seq -f %.3f 80.700 0.001 80.730) $(seq -f %.3f 80.900 0.001 80.920)
+$s --sample spider_hair $f --z01-mm $(seq -f %.1f 74.8 0.2 84.8)     # all of Omega_z
+$s --sample tooth $f --z01-mm $(seq -f %.1f 77.9 0.2 87.9)
+$s --sample cactus_needle $f --z01-mm $(seq -f %.1f 281.1 0.2 291.1)
+$s --sample magnesium_wire $f --z01-mm $(seq -f %.1f 467.4 0.2 477.4)
+points() {  # the z01 at which the searches with numerics $1 reconstructed the tooth
+    python -c "import csv; print(*sorted({r['z01'] for r in csv.DictReader(open(
+        'results/stage9/mfe-points.csv')) if r['sample'] == 'tooth' and r['numerics'] == '$1'
+        and not r['source'].startswith('scan')}))"
+}
+$s --sample tooth $f --z01 $(points 1)        # the first stage at every point of the searches
+$s --sample tooth --z01-mm 81.5 81.7 81.9 82.1 82.3 82.5 83.7 83.9 84.1 84.3 84.5 \
+    --out results/stage9/omega                # the full MFE across the branches of that grid
+$s --sample tooth $f --z01-mm 79.200 79.150 79.125 79.138 79.144 79.141 79.143 81.800 81.850 \
+    81.825 81.838 81.844 81.847 81.849 81.848 84.000 83.950 83.925 83.938 83.931 83.928 83.929 \
+    83.930                                    # three switches of that grid, halved to 1 um
+$s --sample tooth --z01-mm 79.123 79.143 79.144 79.164 81.848 81.849 83.929 83.930 \
+    --out results/stage9/omega
 python scripts/run_stage9_study.py --threads 3 scan --holograms $H --sample tooth \
     --z01-mm 79.15 --out results/stage9/threads-3     # a point of the searches, with its history
 Z5="0.104375 0.10359375 0.103125 0.10375"   # synthetic sample 5, where the numerics differ by 2-3 %
+F5="$(python -c "print(*[round(0.095 + k * 2e-4, 7) for k in range(51)])")
+    $(python -c "print(*[round(0.1033 + k * 2.5e-5, 8) for k in range(49)])") 0.1 0.1025 0.10375
+    0.104375 0.103125 0.1040625 0.1034375 0.10390625 0.10359375 0.103828125"
 python scripts/run_stage9_study.py --threads 3 synthetic --index 5 --z01 $Z5
-python scripts/run_stage9_study.py --threads 3 synthetic --index 5 --stages 1 \
-    --out results/stage9/first-stage --z01 \
-    $(python -c "print(*[round(0.095 + k * 2e-4, 7) for k in range(51)])") \
-    $(python -c "print(*[round(0.1033 + k * 2.5e-5, 8) for k in range(49)])") \
-    0.1 0.1025 0.10375 0.104375 0.103125 0.1040625 0.1034375 0.10390625 0.10359375 \
-    0.103828125                               # Omega_z, 103.3-104.5 mm, the points of its searches
+python scripts/run_stage9_study.py --threads 3 synthetic --index 5 --z01 $F5 --stages 1 \
+    --out results/stage9/first-stage          # Omega_z, 103.3-104.5 mm, the points of its searches
 python scripts/run_stage9_study.py steps
 python scripts/run_stage9_study.py compare
 python scripts/make_stage9_figures.py
@@ -930,13 +938,17 @@ The scans with the library of before Stage 9 run in a checkout of `4349d6a`:
 
 ```bash
 git worktree add /tmp/before 4349d6a && cp scripts/run_stage9_study.py /tmp/before/scripts/
-(cd /tmp/before && PYTHONPATH=src python scripts/run_stage9_study.py --threads 3 scan \
-    --holograms $H --sample tooth --z01 0.08069255535982456 0.080694 0.07915000000000001 \
-    --out results/stage9/threads-3-4349d6a)
+b() { (cd /tmp/before && PYTHONPATH=src python scripts/run_stage9_study.py --threads 3 "$@"); }
+o3=results/stage9/threads-3-4349d6a
+f3=results/stage9/first-stage/threads-3-4349d6a
+b scan --holograms $H --sample tooth --z01 0.08069255535982456 0.080694 0.07915000000000001 --out $o3
+b scan --holograms $H --sample tooth --stages 1 --out $f3 \
+    --z01-mm $(seq -f %.3f 80.660 0.002 80.700) $(seq -f %.3f 80.500 0.050 80.900)
+b scan --holograms $H --sample tooth --stages 1 --out $f3 --z01 $(points 3)
 D=$PWD/data/cpu-4x/test.h5                  # the synthetic records likewise, with --data
-(cd /tmp/before && PYTHONPATH=src python scripts/run_stage9_study.py --threads 3 synthetic \
-    --index 5 --data $D --z01 $Z5 --out results/stage9/threads-3-4349d6a)
-cp -r /tmp/before/results/stage9/threads-3-4349d6a results/stage9/
+b synthetic --index 5 --data $D --z01 $Z5 --out $o3
+b synthetic --index 5 --data $D --z01 $F5 --stages 1 --out $f3
+cp -r /tmp/before/$o3 results/stage9/ && cp -r /tmp/before/$f3 results/stage9/first-stage/
 ```
 
 The results:

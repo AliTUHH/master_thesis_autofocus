@@ -240,10 +240,11 @@ Paar benachbarter voller Rekonstruktionen auf verschiedenen Ästen höchstens 2 
 um wie viel die MFE auf dem oberen Ast über der auf dem unteren liegt (`branches`), so
 gerechnet und am selben $z_{01}$ (`offset_ppm`): Auf einem Ast ändert sich die MFE um bis zu
 55 ppm pro µm (von 79,144 nach 79,15 mm; bei 84,1 mm um 42 ppm, nahe am Minimum um 1–13 ppm),
-über 1 µm also um so viel wie der Versatz fern vom Fokus. Abgezogen wird deshalb die Steigung auf beiden Ästen mal dem Abstand
-(`slope_ppm_per_um`), gemittelt über die beiden Seiten des Paares: auf jeder die Gerade durch
-seine Rekonstruktion dort und die nächsten zwei auf demselben Ast höchstens 250 µm entfernt.
-Zwei statt einer, weil nahe an einem Wechsel einzelne Rekonstruktionen neben der Geraden
+über 1 µm also um so viel wie der Versatz fern vom Fokus. Abgezogen wird deshalb die Steigung
+auf beiden Ästen mal dem Abstand (`slope_ppm_per_um`), gemittelt über die beiden Seiten des
+Paares: auf jeder die Gerade durch seine Rekonstruktion dort und die nächsten bis zu zwei auf
+demselben Ast höchstens 250 µm entfernt (bei 79,143, 81,849 und 83,929 mm gibt es nur eine). Bis zu
+zwei statt einer, weil nahe an einem Wechsel einzelne Rekonstruktionen neben der Geraden
 durch ihre Nachbarn liegen: 79,15 mm, 6 µm über dem Wechsel bei 79,143/79,144 mm, 53 ppm unter
 der durch 79,144 und 79,164 mm (mit Numerik 3 noch 175 ppm tiefer, 5.1, Punkt 2). Die Sekante
 von 79,144 nach 79,15 mm allein fiele um 54,8 ppm pro µm, die Gerade durch alle drei um
@@ -307,7 +308,7 @@ Suche mit wie vielen Threads rechnete.
 von [2] und zur kalten Suche, MFE, Rekonstruktionen, Zeit) und fasst die synthetischen Suchen
 zusammen: MAE mit Bootstrap-Intervall, Median, 90. Perzentil, Maximum, Anteil innerhalb 50, 100,
 250 und 1000 µm, Rekonstruktionen, Zeit mit 3 Threads; dazu, was das Intervall pro Verfahren
-spart, gepaart über die Samples (E9; `results/stage9/compare.json`, `measured.csv`,
+spart, gepaart über die Samples (E7, E9; `results/stage9/compare.json`, `measured.csv`,
 `synthetic.csv`).
 
 ### 3.7 Tests
