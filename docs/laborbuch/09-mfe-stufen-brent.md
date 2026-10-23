@@ -335,8 +335,10 @@ angelegt ist (5.2), habe ich diese allein gescannt, mit 15 s pro Punkt 36-mal bi
 Zahn dicht um die Wechsel, mit beiden Numeriken, und bei allen Proben in ganz $\Omega_z$ alle
 200 µm als Suche nach Stufen, die die Punkte der Suchen nicht zeigen.
 
-**E12 – Keine GPU.** ‹TODO: Kernstunden›; nichts davon braucht Maxwell, `docs/maxwell-gpu.md`
-bleibt unverändert.
+**E12 – Keine GPU.** ‹TODO: Kernstunden›; nichts davon braucht Maxwell. Neu in
+`docs/maxwell-gpu.md` ist nur Abschnitt 8.4: Auf der GPU ist die Numerik eine andere, MFE-Werte
+von dort sind mit denen der CPU nicht zu vergleichen, und wo beim Zahn der Wechsel der ersten
+Stufe liegt, ist dort nicht geprüft (6, Punkt 5).
 
 ## 5 Ergebnisse
 
@@ -399,14 +401,18 @@ denselben Farben.*
    unteren Ast hat das Objekt nach der ersten Stufe an einem Bogen des Zahns einen Fleck mit
    Absorption bis 0,060, auf dem oberen fehlt er (größte Absorption im Sichtfeld 0,018). Über
    den Wechsel mit einem Thread (80,717 gegen 80,716 mm) unterscheidet sich die Absorption im
-   Sichtfeld um 2,2·10⁻³ RMS, höchstens um 0,055 (`first_stage` in `steps.json`); zwei Nachbarn
-   1 µm auseinander auf demselben Ast um 7·10⁻⁷ RMS. Die Phase unterscheidet sich am selben Bogen und an einer
-   Kante um 1,1 mrad RMS, bis ±12 mrad, mit Streifen daneben, und um 0,8 mrad außerhalb des
-   Sichtfelds (Abb. 3 oben rechts); die Phase umfasst dort 5,8 rad, die Nachbarn unterscheiden
-   sich um 0,39 mrad. Über beide Wechsel mit der Numerik von vorher ist es derselbe Fleck
-   (Absorption 2,2·10⁻³ RMS, höchstens 0,055–0,056). Die folgenden Stufen löschen ihn: Am Ende
-   ist die Absorption auf beiden Ästen höchstens 0,015, und über den Wechsel unterscheidet sie
-   sich um 2,5·10⁻⁶ RMS, so wenig wie zwischen Nachbarn auf demselben Ast (1,9·10⁻⁶).
+   Sichtfeld um 2,2·10⁻³ RMS, höchstens um 0,055 (`first_stage` in `steps.json`), zwei Nachbarn
+   1 µm auseinander auf demselben Ast um höchstens 7·10⁻⁷ RMS. Die Phase unterscheidet sich am
+   selben Bogen und an einer Kante um 1,1 mrad RMS, bis ±12 mrad, mit Streifen daneben
+   (Abb. 3 oben rechts), und um 0,8 mrad außerhalb des Sichtfelds; das ist nicht viel mehr als
+   die 0,39 mrad vor dem Wechsel (Punkt 1), bei 5,8 rad Umfang der Phase. Über beide Wechsel
+   mit der Numerik von vorher ist es derselbe Fleck (Absorption 2,2·10⁻³ RMS, höchstens
+   0,055–0,056). Nach der ersten Stufe ist die Absorption im Mittel 7,0·10⁻⁴ (Streuung
+   3,2·10⁻³) auf dem unteren Ast und 4,7·10⁻⁴ (1,7·10⁻³) auf dem oberen. Die folgenden Stufen
+   löschen den Fleck: Am Ende ist die Absorption auf beiden Ästen fast null (Mittel 3·10⁻⁶,
+   Streuung 1,5·10⁻⁴, ohne Sprung über den Wechsel; `object` in `scan-tooth.json`), und über den
+   Wechsel unterscheidet sie sich um 2,5·10⁻⁶ RMS, so wenig wie zwischen Nachbarn auf demselben
+   Ast (1,9·10⁻⁶).
 3. **Die MFE folgt der ersten Stufe.** Jeder volle Scan liegt auf dem Ast, den seine erste
    Stufe trifft: mit einem Thread bis 80,716 mm auf dem unteren, ab ‹TODO 80,717› mm auf dem
    oberen, und die MFE springt dort von 222 auf 911 ppm über ihrer kleinsten (80,716 und
@@ -459,12 +465,52 @@ die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.
    zurückgegebenen Objekt fällt über 80,56–80,725 mm um 4953 ppm, um 27–30 ppm pro µm, nur über
    den Wechsel nicht: Von 80,716 nach 80,719 mm steigt er um 8 ppm, eine Stufe von etwa 90 ppm,
    ein Achtel der Stufe der MFE. Sein Minimum liegt jenseits von 80,725 mm ‹TODO› (Abb. 2 unten
-   rechts). Die MFE von
-   [2] ist der Verlust am Vorgriff $y = \tilde O - \gamma v$ der letzten Iteration, mit dem
-   ganzen Impuls ($\gamma = 1$); was sie misst, ist neben dem Objekt auch der Zustand des
-   Impulses, und den bestimmt der Ast.
+   rechts). Er ist 3,6-mal so groß wie die MFE, wohl weil am Vorgriff auch der Rand außerhalb
+   des Sichtfelds den Impuls trägt, am zurückgegebenen Objekt dagegen nur das gespiegelte
+   Sichtfeld ist (3.4). Die MFE von [2] ist der Verlust am Vorgriff $y = \tilde O - \gamma v$
+   der letzten Iteration, mit dem ganzen Impuls ($\gamma = 1$); was sie misst, ist neben dem
+   Objekt auch der Zustand des Impulses, und den bestimmt der Ast.
 
 ### 5.4 Stufen bei den anderen Proben
+
+‹TODO›
+
+### 5.5 Brent auf den Messhologrammen
+
+![Die Suchen auf den Messhologrammen](figures/stage9-measured.png)
+
+*Abb. 7 – Die Punkte jeder Suche auf den Messhologrammen in der Reihenfolge ihrer Auswertung:
+oben Nelder–Mead (kalt in $\Omega_z$ und in den 95-%-Intervallen der Ensembles), unten Brent;
+waagrecht die Referenzen von [2] und das Ergebnis der kalten Suche mit Nelder–Mead.*
+
+‹TODO›
+
+### 5.6 Brent auf den synthetischen Samples
+
+![Die Fehler auf den synthetischen Samples](figures/stage9-errors.png)
+
+*Abb. 8 – Verteilung des Fehlers $|z_{01} - z_{01}^\mathrm{wahr}|$ auf den 48 synthetischen
+Samples für jede Suche; senkrecht 100 µm.*
+
+‹TODO›
+
+### 5.7 Spart ein gelerntes Intervall mit Brent mehr als mit Nelder–Mead?
+
+![Rekonstruktionen und Ersparnis](figures/stage9-reconstructions.png)
+
+*Abb. 9 – Links die Rekonstruktionen pro Suche auf den synthetischen Samples (Mittel mit
+95-%-Intervall), rechts was die Suche im 95-%-Intervall gegen die kalte Suche desselben
+Verfahrens spart, relativ.*
+
+![Die Ersparnis nach der Breite des Intervalls](figures/stage9-savings-width.png)
+
+*Abb. 10 – Gesparte Rekonstruktionen pro Sample über der Breite des 95-%-Intervalls (Punkte;
+Linie: Mittel in Klassen der Breite), mit Nelder–Mead und mit Brent, links für das
+NPE-Ensemble, rechts für das CNN.*
+
+‹TODO›
+
+### 5.8 Rechenaufwand
 
 ‹TODO›
 

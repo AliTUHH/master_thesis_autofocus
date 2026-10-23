@@ -183,37 +183,43 @@ def tooth_step_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
         ax.set_title("phase of the scans against the scan nearest the minimum", fontsize=9)
     else:
         ax.set_axis_off()
-    ax = axes[1, 1]
-    sel = [p for p in ones if "object_loss" in p]
-    if len(sel) > 1:
-        series = {
-            "mfe": ("MFE (last iteration, at the lookahead)", "-o", [p["mfe"] for p in sel]),
-            "last_stage": (
-                "smallest loss of the last stage",
-                "--^",
-                [min(p["loss"][p["stage_ends"][-2] // p["every"] :]) for p in sel],
-            ),
-            "object_loss": ("at the returned object", ":s", [p["object_loss"] for p in sel]),
-        }
-        for key, (label, style, values) in series.items():
-            ppm = [(v / min(values) - 1) * 1e6 for v in values]
-            ax.plot(
-                [p["z01"] * 1e3 for p in sel], ppm, style, ms=3.5, lw=0.8, color=ONE, label=label
-            )
-            metrics[f"scan_smallest_{key}_z01"] = sel[int(np.argmin(values))]["z01"]
-        ax.set_yscale("symlog", linthresh=10.0)
-        ax.ticklabel_format(axis="x", useOffset=False)
-        ax.set_xlabel("z01 (mm)", fontsize=8)
-        ax.set_ylabel("loss above its smallest (ppm)", fontsize=8)
-        ax.tick_params(labelsize=7)
-        ax.grid(alpha=0.3)
-        ax.legend(fontsize=7)
-        ax.set_title("scans, one thread: the MFE and the loss at the object", fontsize=9)
-    else:
-        ax.set_axis_off()
+    smallest = _losses_panel(axes[1, 1], scans)
+    metrics.update({f"scan_smallest_{key}_z01": z for key, z in smallest.items()})
     _legend(fig, axes[0], columns=2)
     _save(fig, out / "stage9-tooth-step.png", dpi)
     return metrics
+
+
+def _losses_panel(ax, scans: list[dict]) -> dict:
+    """The MFE, the smallest loss of the last stage and the loss at the returned object of the
+    full scans with one thread, each above its smallest; returns where each is smallest."""
+    sel = [p for p in scans if p["numerics"] == 1 and "object_loss" in p]
+    if len(sel) < 2:
+        ax.set_axis_off()
+        return {}
+    series = {
+        "mfe": ("MFE (last iteration, at the lookahead)", "-o", [p["mfe"] for p in sel]),
+        "last_stage": (
+            "smallest loss of the last stage",
+            "--^",
+            [min(p["loss"][p["stage_ends"][-2] // p["every"] :]) for p in sel],
+        ),
+        "object_loss": ("at the returned object", ":s", [p["object_loss"] for p in sel]),
+    }
+    smallest = {}
+    for key, (label, style, values) in series.items():
+        ppm = [(v / min(values) - 1) * 1e6 for v in values]
+        ax.plot([p["z01"] * 1e3 for p in sel], ppm, style, ms=3.5, lw=0.8, color=ONE, label=label)
+        smallest[key] = sel[int(np.argmin(values))]["z01"]
+    ax.set_yscale("symlog", linthresh=10.0)
+    ax.ticklabel_format(axis="x", useOffset=False)
+    ax.set_xlabel("z01 (mm)", fontsize=8)
+    ax.set_ylabel("loss above its smallest (ppm)", fontsize=8)
+    ax.tick_params(labelsize=7)
+    ax.grid(alpha=0.3)
+    ax.legend(fontsize=7)
+    ax.set_title("scans, one thread: the MFE and the loss at the object", fontsize=9)
+    return smallest
 
 
 def tooth_objects_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
@@ -462,8 +468,8 @@ def probes_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     if not rows or steps is None:
         return None
     names = [s for s in ("spider_hair", "cactus_needle", "magnesium_wire") if s in steps["probes"]]
-    fig, axes = plt.subplots(2, len(names), figsize=(4 * len(names), 6.5), layout="constrained")
-    axes = np.atleast_2d(axes).reshape(2, len(names))
+    fig, axes = plt.subplots(3, len(names), figsize=(4 * len(names), 9.5), layout="constrained")
+    axes = np.atleast_2d(axes).reshape(3, len(names))
     metrics = {}
     for col, name in enumerate(names):
         best = steps["probes"][name]["1"]["minimum"]["z01"]
@@ -477,6 +483,8 @@ def probes_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
             n: {k: len(v[k]) for k in ("jumps", "reversals")}
             for n, v in steps["probes"][name].items()
         }
+        smallest = _losses_panel(axes[2, col], _scans(stage9, name))
+        metrics[name].update({f"scan_smallest_{key}_z01": z for key, z in smallest.items()})
     _legend(fig, axes[0], columns=2)
     _save(fig, out / "stage9-probes.png", dpi)
     return metrics
