@@ -727,13 +727,47 @@ def object_losses(rows: list[dict]) -> dict:
     return dict(out)
 
 
+def last_stage(stage9: Path) -> dict:
+    """The loss history of the last stage of the plan in the full scans, per probe and
+    numerics: its smallest recorded value and where it lies, how far the MFE (the last value)
+    lies above it, and the smallest value against ``z01`` screened like the MFE."""
+    groups = defaultdict(list)
+    for record, p, n in scan_points(stage9):
+        loss = np.asarray(p["loss"])
+        every = record["loss_every"]
+        start = p["stage_ends"][-2] // every
+        i = start + int(np.argmin(loss[start:]))
+        groups[record["sample"], n].append(
+            {
+                "z01": p["z01"],
+                "smallest": float(loss[i]),
+                "iteration": (i + 1) * every,
+                "mfe_above_ppm": (p["mfe"] / loss[i] - 1.0) * 1e6,
+                "source": "scan",
+            }
+        )
+    out = defaultdict(dict)
+    for (sample, n), points in sorted(groups.items()):
+        points.sort(key=lambda p: p["z01"])
+        least = min(p["smallest"] for p in points)
+        best = min(points, key=lambda p: p["smallest"])
+        out[sample][str(n)] = {
+            "n_points": len(points),
+            "points": points,
+            "minimum": {"z01": best["z01"], "smallest": best["smallest"]},
+            **screen([{**p, "ppm": (p["smallest"] / least - 1.0) * 1e6} for p in points]),
+        }
+    return dict(out)
+
+
 def cmd_steps(args) -> None:
     """Part 1 of Laborbuch 09: the MFE of the measured holograms as a function of ``z01``.
 
     ``mfe-points.csv``: every reconstruction (searches and scans) with its numerics, for the
     scans also the loss at the returned object and at the end of the first stage.
     ``steps.json``: per probe and numerics the smallest MFE, repeated points and the screening
-    for steps; the same screening of the loss at the object (``object_loss``); the scans of the
+    for steps; the same screening of the loss at the object (``object_loss``) and of the
+    smallest loss of the last stage of the plan in the scans (``last_stage``); the scans of the
     first stage and their switches (``first_stage``); the reconstructions at the same ``z01``
     with the same numerics (``repeats``) and with both numerics (``same_z01``); the loss
     histories of the scans; the Stage 3 search on synthetic samples again (``repeat``).
@@ -780,6 +814,7 @@ def cmd_steps(args) -> None:
         "loss_split": LOSS_SPLIT,
         "probes": probes,
         "object_loss": object_losses(rows),
+        "last_stage": last_stage(args.stage9),
         "first_stage_switch": SWITCH,
         "first_stage": first_stage(args.stage9),
         "repeats": repeats(rows),
@@ -806,6 +841,15 @@ def cmd_steps(args) -> None:
             print(
                 f"{sample} [{n}] at the object: {summary['n_points']} points, minimum at "
                 f"{summary['minimum']['z01'] * 1e3:.4f} mm, {len(summary['jumps'])} jumps, "
+                f"{len(summary['reversals'])} reversals"
+            )
+    for sample, by_numerics in record["last_stage"].items():
+        for n, summary in by_numerics.items():
+            above = [p["mfe_above_ppm"] for p in summary["points"]]
+            print(
+                f"{sample} [{n}] last stage: {summary['n_points']} points, smallest loss at "
+                f"{summary['minimum']['z01'] * 1e3:.4f} mm, the MFE {min(above):.0f}-"
+                f"{max(above):.0f} ppm above it, {len(summary['jumps'])} jumps, "
                 f"{len(summary['reversals'])} reversals"
             )
     for sample, by_numerics in record["first_stage"].items():

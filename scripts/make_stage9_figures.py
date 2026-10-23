@@ -2,13 +2,14 @@
 
 * ``stage9-tooth-step.png``: the MFE of the tooth against ``z01`` with both numerics (searches
   and scans), the step enlarged, and below the RMS distance of the phase of every scan to that
-  of the scan nearest to the minimum.
+  of the scan nearest to the minimum and, for the scans with one thread, the MFE next to the
+  loss at the returned object.
 * ``stage9-tooth-objects.png``: the phase of the tooth on both sides of the step at the same
   ``z01`` (one thread, and 3 threads with the library of before this stage), their difference
   and that of two neighbours on the same side, in the same colours.
 * ``stage9-tooth-loss.png``: the relative difference of the loss histories of two scans against
-  the iteration: the same ``z01`` with both numerics, neighbours across the step and on the
-  same side.
+  the iteration: the same ``z01`` with both numerics, the closest neighbours across the switch
+  of the first stage and on the same branch.
 * ``stage9-first-stage.png``: the loss after the first stage of the plan, at the lookahead and
   at the returned object, against ``z01``: the tooth around its switches with both numerics,
   where the padded arrays on both sides of a switch differ, and all four probes over
@@ -85,7 +86,11 @@ def _scans(stage9: Path, sample: str) -> list[dict]:
         record = _json(directory / f"scan-{sample}.json")
         if record is not None:
             seen = {p["z01"] for p in out if p["numerics"] == n}
-            out += [{**p, "numerics": n} for p in record["points"] if p["z01"] not in seen]
+            out += [
+                {**p, "numerics": n, "every": record["loss_every"]}
+                for p in record["points"]
+                if p["z01"] not in seen
+            ]
     return sorted(out, key=lambda p: (p["z01"], p["numerics"]))
 
 
@@ -179,16 +184,33 @@ def tooth_step_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     else:
         ax.set_axis_off()
     ax = axes[1, 1]
-    ax.set_axis_off()
-    jumps = steps.get("probes", {}).get("tooth", {})
-    text = []
-    for n, (label, _) in NUMERICS.items():
-        for j in jumps.get(str(n), {}).get("jumps", []):
-            text.append(
-                f"{label}: jump {j['ppm'][0]:.0f} -> {j['ppm'][1]:.0f} ppm between "
-                f"{j['z01'][0] * 1e3:.4f} and {j['z01'][1] * 1e3:.4f} mm"
+    sel = [p for p in ones if "object_loss" in p]
+    if len(sel) > 1:
+        series = {
+            "mfe": ("MFE (last iteration, at the lookahead)", "-o", [p["mfe"] for p in sel]),
+            "last_stage": (
+                "smallest loss of the last stage",
+                "--^",
+                [min(p["loss"][p["stage_ends"][-2] // p["every"] :]) for p in sel],
+            ),
+            "object_loss": ("at the returned object", ":s", [p["object_loss"] for p in sel]),
+        }
+        for key, (label, style, values) in series.items():
+            ppm = [(v / min(values) - 1) * 1e6 for v in values]
+            ax.plot(
+                [p["z01"] * 1e3 for p in sel], ppm, style, ms=3.5, lw=0.8, color=ONE, label=label
             )
-    ax.text(0.0, 1.0, "\n".join(text) or "no jump found", va="top", fontsize=8, wrap=True)
+            metrics[f"scan_smallest_{key}_z01"] = sel[int(np.argmin(values))]["z01"]
+        ax.set_yscale("symlog", linthresh=10.0)
+        ax.ticklabel_format(axis="x", useOffset=False)
+        ax.set_xlabel("z01 (mm)", fontsize=8)
+        ax.set_ylabel("loss above its smallest (ppm)", fontsize=8)
+        ax.tick_params(labelsize=7)
+        ax.grid(alpha=0.3)
+        ax.legend(fontsize=7)
+        ax.set_title("scans, one thread: the MFE and the loss at the object", fontsize=9)
+    else:
+        ax.set_axis_off()
     _legend(fig, axes[0], columns=2)
     _save(fig, out / "stage9-tooth-step.png", dpi)
     return metrics
@@ -254,26 +276,40 @@ def tooth_loss_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
     if steps is None or not scans:
         return None
     by_key = {(p["z01"], p["numerics"]): p for p in scans}
-    every = 10
+    switch = steps.get("first_stage_switch", 0.01)
     chosen = []
     pairs = [p for p in steps["scans"] if p["sample"] == "tooth"]
     for p in pairs:
         if p["kind"] == "same z01":
             chosen.append((p, f"same z01 {p['z01'][0] * 1e3:.4f} mm: 3 threads before / one"))
+
+    def switched(p):
+        a, b = (by_key[z, n] for z, n in zip(p["z01"], p["numerics"], strict=True))
+        return abs(b["stage_losses"][0] / a["stage_losses"][0] - 1.0) > switch
+
+    def spacing_nm(p):
+        return round(abs(p["z01"][1] - p["z01"][0]) * 1e9)
+
     neighbours = [p for p in pairs if p["kind"] == "neighbours" and p["numerics"] == [1, 1]]
-    if neighbours:
-        across = max(neighbours, key=lambda p: abs(p["ppm"][1] - p["ppm"][0]))
+    across = [p for p in neighbours if switched(p)]
+    if across:
+        nearest = min(across, key=spacing_nm)
         chosen.append(
             (
-                across,
-                f"across the step: {across['z01'][1] * 1e3:.3f} / {across['z01'][0] * 1e3:.3f} mm",
+                nearest,
+                f"across the switch: {nearest['z01'][1] * 1e3:.3f} / "
+                f"{nearest['z01'][0] * 1e3:.3f} mm",
             )
         )
-        same = [p for p in neighbours if p is not across and max(p["ppm"]) < 200]
+        centre = sum(nearest["z01"]) / 2
+        same = [p for p in neighbours if not switched(p)]
         if same:
-            near = min(same, key=lambda p: abs(p["z01"][1] - p["z01"][0]))
+            near = min(same, key=lambda p: (spacing_nm(p), abs(sum(p["z01"]) / 2 - centre)))
             chosen.append(
-                (near, f"same side: {near['z01'][1] * 1e3:.3f} / {near['z01'][0] * 1e3:.3f} mm")
+                (
+                    near,
+                    f"same branch: {near['z01'][1] * 1e3:.3f} / {near['z01'][0] * 1e3:.3f} mm",
+                )
             )
     if not chosen:
         return None
@@ -283,7 +319,7 @@ def tooth_loss_figure(stage9: Path, out: Path, dpi: int) -> dict | None:
         a = by_key[p["z01"][0], p["numerics"][0]]
         b = by_key[p["z01"][1], p["numerics"][1]]
         rel = np.abs(np.asarray(b["loss"]) / np.asarray(a["loss"]) - 1.0)
-        iterations = np.arange(1, len(rel) + 1) * every
+        iterations = np.arange(1, len(rel) + 1) * a["every"]
         ax.semilogy(iterations, np.maximum(rel, 1e-12), lw=1, label=label)
         metrics[label] = p["loss"]
     for end in scans[0]["stage_ends"][:-1]:

@@ -334,6 +334,112 @@ bleibt unverändert.
 
 ## 5 Ergebnisse
 
+### 5.1 Die MFE und die Threadzahl
+
+![Dieselben Punkte mit beiden Numeriken](figures/stage9-numerics.png)
+
+*Abb. 1 – Die MFE an genau demselben $z_{01}$ mit drei Threads und der Bibliothek von vorher
+gegen einen Thread, relativ in ppm: auf den Messhologrammen und auf den synthetischen Samples
+der Wiederholung (E8).*
+
+1. **Bitgleich mit jeder Threadzahl.** Der Zahn bei 80,69255535982456 mm, mit der Bibliothek
+   dieser Etappe und drei Threads gescannt (`results/stage9/threads-3/`), gibt bitgenau die MFE
+   der Suche mit einem Thread aus Etappe 8, 3,160280757583678·10⁻⁴ (`repeats` in
+   `steps.json`); ebenso das synthetische Sample 0 mit 1–4 Threads (3.1) und die Tests (3.7).
+2. **Die Numerik von vorher** liegt am selben $z_{01}$ beim Mg-Draht (467,4 mm) 4,2 ppm unter
+   der eines Threads, beim Zahn bei 80,6926 und 80,694 mm 675 und 679 ppm darüber (`same_z01`);
+   auf den synthetischen Samples ‹TODO› (Abb. 1).
+
+### 5.2 Die Stufe des Zahns: zwei Lösungen der ersten Stufe
+
+![Die MFE des Zahns um die Stufe](figures/stage9-tooth-step.png)
+
+*Abb. 2 – Die MFE des Zahns über $z_{01}$, über der kleinsten MFE derselben Numerik: oben links
+alle Rekonstruktionen in 80,4–81,1 mm (Suchen und Scans, beide Numeriken; gepunktet: dasselbe
+$z_{01}$ mit beiden), oben rechts um die Stufe; unten links der RMS-Abstand der Phase jedes Scans
+zu der des Scans am Minimum; unten rechts für die Scans mit einem Thread die MFE, der kleinste
+Verlust der letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kleinsten.*
+
+![Die erste Stufe des Plans](figures/stage9-first-stage.png)
+
+*Abb. 3 – Der Verlust nach der ersten Stufe des Plans (512² px, 700 Iterationen) über $z_{01}$,
+über dem kleinsten derselben Numerik, am Vorgriff (Linie) und am zurückgegebenen Objekt
+(gepunktet): oben links der Zahn in 80,50–80,90 mm, oben in der Mitte um die Wechsel, oben
+rechts die Differenz der Phase im Sichtfeld über den Wechsel mit einem Thread; unten alle vier
+Proben in ganz $\Omega_z$ mit einem Thread, über dem Schätzwert.*
+
+![Die Objekte auf beiden Seiten der Stufe](figures/stage9-tooth-objects.png)
+
+*Abb. 4 – Die Phase des Zahns am selben $z_{01}$ auf beiden Ästen (einem Thread und drei Threads
+mit der Bibliothek von vorher), ihre Differenz und die zweier Nachbarn auf demselben Ast, in
+denselben Farben.*
+
+1. **Zwei Lösungen schon nach der ersten Stufe.** Nach der ersten Stufe liegt der Verlust des
+   Zahns (am Vorgriff) auf einem von zwei Ästen, 1,6487–1,6511·10⁻³ oder 1,8248–1,8260·10⁻³,
+   10,6 % höher (`first_stage` in `steps.json`, Abb. 3). Auf jedem Ast steigt er glatt mit
+   $z_{01}$, um 3–4 ppm pro µm. Mit einem Thread liegen alle 37 Punkte von 80,500 bis
+   80,716 mm auf dem unteren Ast und alle 31 von 80,717 bis 80,900 mm auf dem oberen; der
+   Wechsel liegt zwischen zwei Punkten 1 µm auseinander, und kein Punkt dazwischen springt
+   zurück. Mit der Numerik von vorher wechselt die erste Stufe schon zwischen 80,684 und
+   80,686 mm nach oben und zwischen 80,850 und 80,900 mm wieder nach unten. Am zurückgegebenen
+   Objekt unterscheiden sich die Äste um 2,0 %.
+2. **Wie sich die Objekte der ersten Stufe unterscheiden.** Über den Wechsel mit einem Thread
+   (80,717 gegen 80,716 mm) um 1,1 mrad RMS in der Phase im Sichtfeld, bis ±12 mrad an einem
+   Bogen und einer Kante des Zahns, mit Streifen daneben, und um 0,8 mrad außerhalb des
+   Sichtfelds (Abb. 3 oben rechts); die Phase umfasst dort 5,8 rad.
+3. **Die MFE folgt der ersten Stufe.** Jeder volle Scan liegt auf dem Ast, den seine erste
+   Stufe trifft: mit einem Thread bis 80,716 mm auf dem unteren, ab ‹TODO› mm auf dem oberen,
+   und die MFE springt dort um ‹TODO› ppm (Abb. 2). Mit der Numerik von vorher ebenso:
+   80,678 mm liegt 29 ppm über ihrer kleinsten MFE, 80,6926 mm 677 ppm (Laborbuch 08, 5.6,
+   Punkt 9). Bei 80,6926 und 80,694 mm treffen die beiden Numeriken verschiedene Äste, und ihre
+   MFE unterscheidet sich um 675 und 679 ppm (5.1). Die Stufe ist also der Wechsel der ersten
+   Stufe zwischen zwei Lösungen, und wo er liegt, entscheidet die Rundung (Punkt 5).
+4. **Zwei Objekte am selben $z_{01}$.** Am Ende unterscheiden sich die Phasen der beiden Äste bei
+   80,694 mm um 3,2 mrad RMS (höchstens 9,0 mrad; die Phase streut um 2,65 rad), zwei Nachbarn
+   1,4 µm auseinander auf demselben Ast um 0,39 mrad (Abb. 4). Auf demselben Ast wächst der
+   Abstand um etwa 0,31 mrad pro µm; der Unterschied der Äste ist so groß wie der von etwa
+   10 µm.
+5. **Die Rundung wählt den Ast.** Am selben $z_{01}$ trennen sich die Verlustkurven der beiden
+   Numeriken vom ersten gespeicherten Wert an (bei 80,694 mm in der 10. Iteration um
+   4,6·10⁻⁴ relativ) und liegen am
+   Ende der ersten Stufe 10,6 % auseinander, am Ende der zweiten 134 ppm und am Ende 679 ppm
+   (Abb. 5). Zwei Nachbarn 1,4 µm auseinander auf demselben Ast bleiben in allen drei Stufen
+   unter 7·10⁻⁵ und enden 6 ppm auseinander. Zwischen etwa 80,686 und 80,716 mm und wieder
+   jenseits von 80,85 mm erreichen die beiden Numeriken verschiedene Äste; dort gibt es beide
+   Lösungen, und welche eine Rekonstruktion trifft, hängt an Unterschieden im letzten Bit. Bei
+   fester Numerik ist die Wahl dagegen eine glatte Funktion von $z_{01}$: ein Wechsel, kein
+   Hin und Her auf 1 µm.
+
+### 5.3 Wo die Stufe der MFE entsteht
+
+![Die Verlustkurven zweier Rekonstruktionen](figures/stage9-tooth-loss.png)
+
+*Abb. 5 – Der relative Unterschied der Verlustkurven zweier Scans des Zahns über der Iteration
+(jede 10. gespeichert; gestrichelt: Ende der Stufen): dasselbe $z_{01}$ mit beiden Numeriken,
+die nächsten Nachbarn über den Wechsel der ersten Stufe und auf demselben Ast.*
+
+1. **Die MFE ist nicht der kleinste Verlust.** In der letzten Stufe fällt der Verlust des Zahns
+   bis Iteration 1220–1230 und steigt danach bis zur letzten (1500) um 1,55–1,56 % auf dem
+   unteren Ast und um 1,62–1,63 % auf dem oberen (`last_stage` in `steps.json`). Der
+   Referenzcode tut dasselbe: Auf dem synthetischen Sample 0 ist der Verlust der letzten Stufe
+   bei Iteration 1007 am kleinsten und endet 2325 ppm darüber, in holowizard wie hier
+   (`results/crosscheck/reconstruct_0.json`, Laborbuch 03).
+2. **Die Äste trennen sich am Ende.** Am kleinsten Verlust der letzten Stufe liegen die Äste
+   beieinander: Über $z_{01}$ hat er keinen Sprung (80,713 → 80,725 mm: +31 ppm), und am selben
+   $z_{01}$ (80,694 mm) unterscheiden sich die beiden Numeriken bei Iteration 1230 nur um
+   4·10⁻⁶ (Abb. 5). Die 675–800 ppm der MFE entstehen in den letzten knapp 300 Iterationen, in
+   denen der Verlust auf dem oberen Ast stärker steigt. Der Unterschied schwingt dabei: bei
+   80,694 mm 6,4·10⁻⁴ bei Iteration 1310, 4·10⁻⁶ bei 1430 und 6,8·10⁻⁴ bei der letzten.
+3. **Drei Verluste, drei Minima.** Bei den Scans mit einem Thread ist die MFE bei 80,665 mm am
+   kleinsten, der kleinste Verlust der letzten Stufe bei 80,650 mm, und der Verlust am
+   zurückgegebenen Objekt fällt über 80,56–80,725 mm monoton um 4953 ppm, ohne Stufe am Wechsel
+   ‹TODO›; sein Minimum liegt jenseits von 80,725 mm ‹TODO› (Abb. 2 unten rechts). Die MFE von
+   [2] ist der Verlust am Vorgriff $y = \tilde O - \gamma v$ der letzten Iteration, mit dem
+   ganzen Impuls ($\gamma = 1$); was sie misst, ist neben dem Objekt auch der Zustand des
+   Impulses, und den bestimmt der Ast.
+
+### 5.4 Stufen bei den anderen Proben
+
 ‹TODO›
 
 ## 6 Offene Punkte
