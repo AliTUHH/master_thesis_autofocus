@@ -196,8 +196,9 @@ am selben $z_{01}$; das Objekt geht mit dem ganzen Feld samt Rand nach
 `results/stage9/first-stage/scan-<probe>/` (nicht versioniert). Gescannt ist die erste Stufe
 beim Zahn alle 10 µm in 80,50–81,10 mm und alle 1 µm in 80,700–80,730 und 80,900–80,920 mm,
 mit der Numerik von vorher alle 2 µm in 80,660–80,700 mm und alle 50 µm in 80,50–80,90 mm,
-bei allen vier Proben in ganz $\Omega_z$ alle 200 µm und beim Zahn an jedem $z_{01}$, an dem
-ihn eine Suche rekonstruierte, mit deren Numerik. Auf dem oberen Ast liegt die erste Stufe für
+bei allen vier Proben in ganz $\Omega_z$ alle 200 µm, beim Zahn an drei Wechseln dieses
+Rasters durch Halbieren auf 1 µm (E11) und an jedem $z_{01}$, an dem ihn eine Suche
+rekonstruierte, mit deren Numerik. Auf dem oberen Ast liegt die erste Stufe für
 `steps`, wo ihr Verlust mehr als 5 % über dem kleinsten der ersten Stufe derselben Probe (mit
 beiden Numeriken) im Umkreis von 1 mm liegt; ein Wechsel ist ein Paar von Nachbarn auf
 verschiedenen Ästen. Die Numerik verschiebt den Verlust der ersten Stufe um weniger als
@@ -215,8 +216,11 @@ gerechnet und am selben $z_{01}$ (`offset_ppm`): Auf einem Ast steigt die MFE um
 Versatz fern vom Fokus. Abgezogen wird deshalb die Steigung auf beiden Ästen mal dem Abstand
 (`slope_ppm_per_um`), gemittelt über die beiden Seiten des Paares: auf jeder die Gerade durch
 seine Rekonstruktion dort und die nächsten zwei auf demselben Ast höchstens 250 µm entfernt.
-Zwei statt einer, weil nahe an einem Wechsel einzelne Rekonstruktionen um 150 ppm neben der
-Geraden durch ihre Nachbarn liegen (79,15 mm, 5.4, Punkt 2) ‹TODO prüfen mit 79,164›. Weiter auseinander taugt das
+Zwei statt einer, weil nahe an einem Wechsel einzelne Rekonstruktionen neben der Geraden
+durch ihre Nachbarn liegen: 79,15 mm, 6 µm über dem Wechsel bei 79,143/79,144 mm, 53 ppm unter
+der durch 79,144 und 79,164 mm (mit Numerik 3 noch 175 ppm tiefer, 5.1, Punkt 2). Die Sekante
+von 79,144 nach 79,15 mm allein fiele um 54,8 ppm pro µm, die Gerade durch alle drei um
+45,3 ppm; am Versatz des Paares ändert das 5 ppm (5.4, Punkt 2). Weiter auseinander taugt das
 Paar nicht: Über 0,2 mm biegt sich die MFE so stark wie der Versatz. Bei 81,9 mm (oberer Ast) liegt sie
 389 ppm unter der Geraden durch ihre Nachbarn auf dem unteren Ast bei 81,7 und 82,1 mm, aber
 205 ppm über der Parabel durch 81,5, 81,7 und 82,1 mm.
@@ -448,9 +452,9 @@ denselben Farben.*
 1. **Zwei Lösungen schon nach der ersten Stufe.** Nach der ersten Stufe liegt der Verlust des
    Zahns (am Vorgriff) auf einem von zwei Ästen, 1,6487–1,6526·10⁻³ oder 1,8248–1,8261·10⁻³,
    10,4–10,8 % höher (`first_stage` in `steps.json`, Abb. 3). Auf jedem Ast steigt er glatt mit
-   $z_{01}$, um 3–4 ppm pro µm. Mit einem Thread liegen alle 37 Punkte von 80,500 bis
-   80,716 mm auf dem unteren Ast, alle 32 von 80,717 bis 80,901 mm auf dem oberen und alle 37
-   von 80,902 bis 81,100 mm wieder auf dem unteren. Beide Wechsel liegen zwischen zwei Punkten
+   $z_{01}$, um 3–4 ppm pro µm. Mit einem Thread liegen alle 51 Punkte von 80,500 bis
+   80,716 mm (Scans und $z_{01}$ der Suchen) auf dem unteren Ast, alle 38 von 80,717 bis
+   80,901 mm auf dem oberen und alle 44 von 80,902 bis 81,100 mm wieder auf dem unteren. Beide Wechsel liegen zwischen zwei Punkten
    1 µm auseinander, und kein Punkt dazwischen springt zurück: Der obere Ast ist hier ein
    Fenster von 185 µm, das 52 µm über dem Minimum der MFE (80,665 mm) beginnt, eines von vielen
    in $\Omega_z$ (5.4, Punkt 2). Mit der Numerik von
@@ -580,7 +584,7 @@ letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kle
    zweiten Ast (`first_stage` in `steps.json`). Beim Zahn liegt sie in ganz $\Omega_z$ auf
    einem der beiden Äste: 22 der 51 Punkte auf dem oberen, in 13 Läufen von einem bis vier
    Punkten, mit 25 Wechseln zwischen Nachbarn des Rasters. Mit den dichten Scans und den
-   $z_{01}$ der Suchen sind es 205 Punkte, 66 davon oben, und 27 Wechsel, darunter die beiden
+   $z_{01}$ der Suchen sind es 221 Punkte, 71 davon oben, und 27 Wechsel, darunter die beiden
    um das Minimum (5.2, Punkt 1); der längste Lauf oben beginnt zwischen 77,9 und 78,1 mm und
    endet zwischen 78,834 und 78,9 mm. Über einen Wechsel ändert sich ihr Verlust um 8,1–10,7 %, und der Abstand
    der Äste nimmt mit $z_{01}$ ab (10,6 % bei 78 mm, 8,8 % bei 88 mm); auf einem Ast liegen
@@ -590,7 +594,7 @@ letzten Stufe und der Verlust am zurückgegebenen Objekt, jeder über seinem kle
    Die volle MFE trägt den Ast aber nur am Minimum. An fünf Wechseln, jeder an zwei Punkten
    1 µm auseinander voll gerechnet, liegt sie auf dem oberen Ast am selben $z_{01}$
    (`offset_ppm`, 3.4) bei 80,716/80,717 mm 649 ppm über der des unteren und bei
-   80,901/80,902 mm ‹TODO› ppm, aber bei 79,143/79,144 mm ‹TODO› ppm, bei 81,848/81,849 mm
+   80,901/80,902 mm ‹TODO› ppm, aber bei 79,143/79,144 mm 47 ppm, bei 81,848/81,849 mm
    98 ppm und bei 83,929/83,930 mm 99 ppm darunter (`pairs` unter `branches` in `steps.json`;
    Abb. 3 unten rechts). Dort, 1,2–3,3 mm vom Minimum, liegt die MFE 1,5–8,7 % über ihrer
    kleinsten, und 100 ppm verschieben keine Suche; am Minimum, wo sie auf 50 µm um 220 ppm

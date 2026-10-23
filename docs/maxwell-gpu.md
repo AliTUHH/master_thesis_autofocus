@@ -773,11 +773,16 @@ Etappe 9 braucht keine GPU. Für die Läufe hier gilt aber:
   nicht, und die Läufe der VM, gegen die 6.4 prüft, liefen mit 3 Threads und der Numerik von
   vor Etappe 9. MFE-Werte verschiedener Geräte oder Maschinen unterscheiden sich deshalb um
   einige ppm; zu vergleichen sind die Lagen, nicht die MFE-Werte (Laborbuch 09, E2).
-- Beim Zahn trifft die erste Stufe des Plans je nach $z_{01}$ eine von zwei Lösungen, und wo
-  sie wechselt, hängt an der Numerik (Laborbuch 09, 5.2): mit einem Thread zwischen 80,716 und
-  80,717 mm, mit 3 Threads vor Etappe 9 zwischen 80,684 und 80,686 mm. Dort springt die MFE
-  um etwa 700 ppm. Auf der GPU kann der Wechsel woanders liegen; geprüft ist das nicht, denn
-  `scripts/run_stage9_study.py scan` rechnet nur auf der CPU (Laborbuch 09, 6, Punkt 5).
+- Beim Zahn trifft die erste Stufe des Plans je nach $z_{01}$ eine von zwei Lösungen, in ganz
+  $\Omega_z$, und wo sie wechselt, hängt an der Numerik (Laborbuch 09, 5.2 und 5.4): um das
+  Minimum mit einem Thread bei 80,716/80,717 und 80,901/80,902 mm, mit 3 Threads vor Etappe 9
+  bei 80,684–80,686 und 80,869–80,893 mm. Am ersten Wechsel springt die volle MFE um etwa
+  650 ppm; mehr als 1 mm vom Minimum unterscheidet sie sich auf den beiden Lösungen nur um
+  50–100 ppm, bei 1,5–9 % über ihrer kleinsten. Auf der GPU können die Wechsel woanders
+  liegen; geprüft ist das nicht, denn `scripts/run_stage9_study.py scan` rechnet nur auf der
+  CPU (Laborbuch 09, 6, Punkt 5). Eine Suche auf der GPU kann deshalb beim Zahn andere Punkte
+  auswerten als auf der CPU; mit den beiden Numeriken der CPU ordnete die kalte Suche dort ein
+  Paar von Punkten verschieden und endete am selben $z_{01}$ (Laborbuch 09, 5.5, Punkt 6).
 
 ## 9 Ergebnisse sichern und zurückgeben
 

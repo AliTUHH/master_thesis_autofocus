@@ -160,8 +160,9 @@ PAIR_LOSSES = ("first_stage_loss", "second_stage_loss", "last_stage_smallest", "
 computed (without the slope): at the end of the first and second stage, the smallest of the
 last stage and at the returned object."""
 BRANCH_SLOPE_POINTS = 2
-"""How many of them at most, the nearest: near a switch single reconstructions lie 150 ppm
-off the line through their neighbours (79.15 mm on the tooth)."""
+"""How many of them at most, the nearest: near a switch single reconstructions lie some 50 ppm
+off the line through their neighbours (79.15 mm on the tooth, 6 um from the switch), which
+over a few um changes the slope by about 10 ppm per um."""
 WINDOWS_UM = (250.0, 500.0)
 """Half-widths of the windows about the minimum in which ``steps`` reports how densely the
 points lie (:func:`coverage`)."""
