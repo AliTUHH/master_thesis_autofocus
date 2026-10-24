@@ -19,7 +19,7 @@ from .config import (
 from .data import d4_transform, load_inputs, random_d4
 from .inference import LearnedAutofocus, predict_split, read_predictions, summarize_predictions
 from .metrics import bootstrap_ci, calibration_scale, interval_metrics, point_metrics
-from .models import ImageCNN, SpectrumCNN, build_model, gaussian_nll
+from .models import ImageCNN, PolarSpectrumCNN, SpectrumCNN, build_model, gaussian_nll
 from .posterior import GridPosterior, calibration_summary, summarize_npe_predictions
 from .representations import Representation
 from .training import read_history, train_model
@@ -34,6 +34,7 @@ __all__ = [
     "ModelConfig",
     "NPEConfig",
     "NPETrainingConfig",
+    "PolarSpectrumCNN",
     "Representation",
     "RepresentationConfig",
     "SpectrumCNN",

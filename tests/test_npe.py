@@ -11,7 +11,13 @@ import yaml
 pytest.importorskip("sbi")
 
 from holofocus.dataset import DatasetConfig, write_split  # noqa: E402
-from holofocus.learned import NPEConfig, Representation, load_inputs, read_predictions  # noqa: E402
+from holofocus.learned import (  # noqa: E402
+    NPEConfig,
+    Representation,
+    RepresentationConfig,
+    load_inputs,
+    read_predictions,
+)
 from holofocus.learned.cli import main  # noqa: E402
 from holofocus.learned.npe import (  # noqa: E402
     HISTORY_FIELDS,
@@ -90,6 +96,21 @@ def test_estimator_grid_and_state_round_trip(estimator):
     second = build_estimator(config, (-1.0, 1.0), (1, 128)).eval()
     second.load_state_dict(first.state_dict())
     np.testing.assert_allclose(grid_log_density(second, x, theta), grid, rtol=1e-6)
+
+
+def test_polar_embedding():
+    config = NPEConfig.from_yaml(NPE_CI)
+    config = dataclasses.replace(
+        config, representation=RepresentationConfig(kind="polar", bins=64, f2_max=0.25)
+    )
+    estimator = build_estimator(config, (-1.0, 1.0), (1, 8, 64)).eval()
+    x = torch.randn(3, 1, 8, 64)
+    theta = torch.linspace(-1.0, 1.0, 5)
+    grid = grid_log_density(estimator, x, theta)
+    assert grid.shape == (3, 5) and np.isfinite(grid).all()
+    reversed_sectors = x[:, :, (3 - torch.arange(8)) % 8]
+    reversed_grid = grid_log_density(estimator, reversed_sectors, theta)
+    np.testing.assert_allclose(reversed_grid, grid, atol=1e-4)
 
 
 def test_prior_box_reads_the_dz01_range(splits, tmp_path):

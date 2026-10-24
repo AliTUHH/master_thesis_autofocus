@@ -10,6 +10,8 @@ from holofocus.dataset import DatasetConfig
 from holofocus.learned.objectmodel import (
     DETECTOR_FITS,
     FIT_SCALES,
+    LEVEL_NAMES,
+    LEVEL_SCALE,
     LOO_FACTOR,
     REFINE_FACTOR,
     TEXTURE_FITS,
@@ -177,11 +179,32 @@ def test_fit_objective_scales_each_feature():
     assert fit_objective(_features(ctf=math.nan), measured) == math.inf
 
 
+def test_fit_objective_with_levels():
+    measured = {**_features(), "level_mid": -2.0, "level_upper": -5.0}
+    assert fit_objective(measured, measured, levels=True) == 0
+    # ten terms: the seven of Stage 6 and the three levels; one level off by its scale
+    louder = {**measured, "level_upper": -5.0 + LEVEL_SCALE}
+    assert fit_objective(louder, measured) == 0
+    assert fit_objective(louder, measured, levels=True) == pytest.approx(math.sqrt(1 / 10))
+    floor = {**measured, "floor": measured["floor"] - 2 * LEVEL_SCALE}
+    assert fit_objective(floor, measured, levels=True) == pytest.approx(2 * math.sqrt(1 / 10))
+    assert set(LEVEL_NAMES) == {"level_mid", "level_upper", "floor"}
+    with pytest.raises(KeyError):
+        fit_objective(_features(), measured, levels=True)
+
+
 def test_median_features_take_the_bands_one_by_one():
     features = [_features(ctf=c, bands=(c, 2 * c, 0.0, -c)) for c in (0.1, 0.5, 0.2)]
     median = median_features(features)
     assert median["ctf"] == pytest.approx(0.2)
     assert median["ctf_bands"] == pytest.approx([0.2, 0.4, 0.0, -0.2])
+    assert "level_mid" not in median
+    levels = [
+        {**f, "level_mid": v, "level_upper": -v} for f, v in zip(features, (1, 3, 2), strict=True)
+    ]
+    median = median_features(levels)
+    assert (median["level_mid"], median["level_upper"]) == (2.0, -2.0)
+    assert "level_mid" not in median_features([*levels, features[0]])
 
 
 FITS = {

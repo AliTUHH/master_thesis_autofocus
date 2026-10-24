@@ -1,0 +1,32 @@
+# polar-cnn.yaml with the spectrum up to f^2 = 0.25 instead of 0.125 at the same bin width
+# (8 sectors x 2048 bins), as spectrum-cnn-wide-hf.yaml for the radial spectrum (Stage 10, for
+# GPU runs, docs/maxwell-gpu.md 8.5). The band from 0.125 to 0.25 holds the floor of the
+# spectrum, which the texture fits of Stage 10 compare as a level, and for the cactus needle
+# and the Mg wire the CTF stays visible up to 0.25 (Laborbuch 05). Same network, schedule and
+# loss; the inputs take 64 KB per sample. Lengths in metres.
+name: polar-cnn-hf
+target_scale: 5.0e-3
+representation:
+  kind: polar
+  bins: 2048
+  f2_max: 0.25
+  angles: 8
+model:
+  channels: [32, 64, 128, 128]
+  kernel_size: 7
+  pool_to: 16
+  hidden: 128
+  dropout: 0.1
+  min_sigma: 1.0e-3       # 5 um
+training:
+  epochs: 100
+  batch_size: 32
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  warmup_epochs: 2
+  beta: 0.5               # beta-NLL
+  augment: false          # the polar CNN is invariant to rotations by 90 degrees and flips
+  limit: null
+  patience: null
+  seed: 0
+device: auto

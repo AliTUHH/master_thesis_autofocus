@@ -1,0 +1,27 @@
+# image-cnn.yaml without binning (Stage 10, for GPU runs, docs/maxwell-gpu.md 8.5): the 512^2
+# hologram itself, so the CTF up to f^2 = 0.25 of the 512^2 grid stays below the Nyquist
+# frequency of the input instead of up to 0.0625. Same network (global average pooling, so
+# any input size), schedule and augmentation. The inputs take 512 KB per sample in float16
+# (60 000 samples: 31 GB). Lengths in metres.
+name: image-cnn-b1
+target_scale: 5.0e-3
+representation:
+  kind: image
+  binning: 1
+model:
+  channels: [16, 32, 64, 128]
+  hidden: 128
+  dropout: 0.1
+  min_sigma: 1.0e-3       # 5 um
+training:
+  epochs: 40
+  batch_size: 32
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  warmup_epochs: 2
+  beta: 0.5               # beta-NLL
+  augment: true
+  limit: null
+  patience: null
+  seed: 0
+device: auto

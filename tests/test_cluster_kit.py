@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import importlib.util
+import json
 import os
 import shutil
 import subprocess
@@ -233,6 +234,45 @@ def test_local_npe_job_as_array_task(tmp_path):
     assert (kept / "model.pt").exists() and (kept / "calibration" / "sbi-checks.json").exists()
     result = kit("--local", "npe", "npe/x", "configs/learned/npe-ci.yaml", config=config)
     assert result.returncode != 0 and "usage: npe" in result.stderr
+
+
+def test_local_stage10_seeds_mixture_and_search_in_the_intervals(tmp_path):
+    """docs/maxwell-gpu.md 8.5 on the CI dataset: CNN seeds with --seed into the layout of the
+    VM, their mixture, Brent in its 95 % intervals in two chunks, and evaluate, which finds the
+    intervals through the run.yaml of the merged search."""
+    pytest.importorskip("sbi")
+    config = kit_config(tmp_path)
+    runs = tmp_path / "scratch" / "runs"
+
+    def ok(*args, env=None):
+        result = kit("--local", *args, config=config, env=env)
+        assert result.returncode == 0, result.stdout + result.stderr
+        return result.stdout
+
+    ok("datagen", "configs/dataset/ci.yaml", "--limit", "8")
+    data = ["--train", "ci/train.h5", "--val", "ci/val.h5", "--test", "ci/test.h5"]
+    seeds = []
+    for k in (0, 2):
+        name = f"stage10/ci/seed-{k}/loo-ci"
+        ok("train", name, "configs/learned/ci.yaml", *data, "--seed", str(k))
+        seeds.append(runs / name)
+        assert yaml.safe_load((seeds[-1] / "config.yaml").read_text())["training"]["seed"] == k
+    box = runs / "stage10" / "ci-ensemble" / "test"
+    csvs = [str(s / "test" / "predictions.csv") for s in seeds]
+    ok("run", "python", "scripts/run_stage10_study.py", "mixture", "--out", str(box),
+       "--predictions", *csvs)  # fmt: skip
+    search = ["baseline", "baseline/ci-box", "configs/baseline/ci-brent.yaml", "ci/test.h5"]
+    search += ["--limit", "2", "--chunks", "2", "--box", str(box / "predictions.csv")]
+    for task in ("1", "0"):
+        ok(*search, "--box-level", "95", env={"SLURM_ARRAY_TASK_ID": task})
+    ok("merge", "baseline/ci-box")
+    out = tmp_path / "evaluate.json"
+    ok("run", "python", "scripts/run_stage10_study.py", "evaluate", "--searches",
+       f"box={runs / 'baseline' / 'ci-box'}", "--out", str(out))  # fmt: skip
+    record = json.loads(out.read_text())["searches"]
+    assert record["n_samples"] == 2
+    assert record["intervals"]["box"]["source"] == str(box / "predictions.csv")
+    assert len(record["summaries"]["box"]["truth_outside"]) <= 2
 
 
 def small_split(tmp_path: Path, n: int = 2) -> Path:

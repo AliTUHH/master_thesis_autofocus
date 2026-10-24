@@ -786,6 +786,306 @@ Etappe 9 braucht keine GPU. Für die Läufe hier gilt aber:
   auswerten als auf der CPU; mit den beiden Numeriken der CPU ordnete die kalte Suche dort ein
   Paar von Punkten verschieden und endete am selben $z_{01}$ (Laborbuch 09, 5.5, Punkt 6).
 
+### 8.5 Etappe 10: über das radiale Spektrum hinaus (Laborbuch 10)
+
+Etappe 10 vergleicht vier Familien gelernter Schätzer, jede mit den Seeds 0, 1 und 2 und ihrem
+Ensemble: CNN und NPE auf dem radialen Spektrum (Etappen 4 und 7), ein CNN auf dem polaren
+Spektrum mit 8 Sektoren der Richtung (`configs/learned/polar-cnn.yaml`) und ein CNN auf dem
+2× gebinnten Hologramm (`image-cnn.yaml`). Das Ensemble der CNNs mischt die Gaußverteilungen der
+Seeds zu gleichen Gewichten, das des NPE die drei Posteriors. Auf der VM lernen die Familien auf
+cpu-4x (10 000 Samples) und auf den Leave-one-out-Sätzen `loo2-<probe>` mit den Texturen der
+Etappe 10 (6000 Samples), und Brent sucht im 95-%-Intervall jedes Ensembles, auf den 48 Samples
+der Etappe 3 und auf den vier Messhologrammen. Hier die vollen Läufe, in dieser Reihenfolge:
+
+1. die Sätze `loo2-<probe>` mit 50 000 weiteren Trainings-Samples (8.5.1),
+2. die vier Familien mit je drei Seeds auf diesen 56 000 Samples (8.5.2),
+3. auf cpu-4x mit 60 000 Samples dieselben Familien und zwei Varianten, die auf der CPU der VM
+   zu teuer sind: das polare Spektrum bis f² = 0,25 mit 2048 Bins (`polar-cnn-hf.yaml`) und das
+   Bild-CNN ohne Binning auf 512² (`image-cnn-b1.yaml`) (8.5.3),
+4. Brent kalt und im 95-%-Intervall der Ensembles auf allen 250 Test-Samples statt auf 48
+   (8.5.4),
+5. die Auswertung auf der VM mit `scripts/run_stage10_study.py evaluate` (8.5.5).
+
+Die Umgebung braucht sbi (8.1), auch für die CNNs: `run_stage10_study.py` schreibt die Version
+von sbi in jede Datei, die es anlegt. Die Befehle setzen `source cluster/maxwell/config.sh` und
+`R=$HOLOFOCUS_SCRATCH/runs` voraus (6.1).
+
+#### 8.5.1 Daten
+
+`configs/dataset/loo2-<probe>.yaml` ist `loo-<probe>.yaml` aus 7.2 mit den Texturen der
+Etappe 10, deren Anpassung auch die Pegel des Spektrums enthält, und mit eigenem Seed;
+`loo2-<probe>-large.yaml` legt 50 000 Trainings-Samples mit eigenem Seed und derselben Physik
+dazu. Val und Test bleiben die 250 Samples der kleinen Config.
+
+```bash
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    cluster/maxwell/submit.sh --cpu datagen configs/dataset/loo2-$p.yaml --splits val test
+    cluster/maxwell/submit.sh datagen configs/dataset/loo2-$p.yaml --splits train
+done
+```
+
+Es gelten die Regeln aus 7.2: Val und Test mit `--cpu`, damit der Job sie mit den
+Fingerabdrücken `results/datasets/loo2-<probe>-{val,test}.csv` vergleicht (erwartet PASS oder
+WARN), und die kleine Config auf der GPU nur mit `--splits train`. Auf der VM brauchte ein
+Sample mit einem Thread (vier Jobs auf den vier Kernen) 4,0–4,2 s beim Spinnenhaar, 1,83 s
+beim Zahn, 0,38–0,40 s bei der Kaktusnadel und 0,35–0,37 s beim Mg-Draht; 50 000 Samples des
+Spinnenhaars wären damit auf einem Kern 57 h. **PRÜFEN** wie in 7.2: die Zeit pro Sample auf
+der GPU im Log des Train-Jobs ablesen (`train: 600/6000 samples, … s/sample`) und die große
+Config erst danach abschicken, mit einem Zeitlimit, in das 50 000 mal diese Zeit deutlich
+passt, sonst mit `--limit 25000`:
+
+```bash
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    cluster/maxwell/submit.sh --time 12:00:00 datagen configs/dataset/loo2-$p-large.yaml
+done
+```
+
+Platz: 0,7–0,8 MB pro Sample wie in 7.2, mit den kleinen Configs zusammen wieder etwa 170 GB auf
+Scratch. Die Sätze aus 7.2 braucht Etappe 10 nicht; sind ihre Trainings (7.2, 8.2) fertig,
+dürfen sie weg.
+
+#### 8.5.2 Die vier Familien auf 56 000 Samples
+
+48 Trainings: pro Probe drei CNNs und der NPE mit je drei Seeds. Die Namen folgen
+`results/stage10/loo2/` der VM, damit `run_stage10_study.py measured --runs` sie findet
+(8.5.5): die CNNs unter `stage10/loo2-large/<familie>/seed-<k>/loo-<probe>` mit `--seed k`
+(als Array hinge der Job `-seedk` an den Namen), die NPEs wie in 8.2 unter
+`stage10/loo2-large/npe/matched-<probe>`, die Seeds 1 und 2 als Array mit `-seed1`, `-seed2`.
+
+```bash
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    loo2=(--train loo2-$p/train.h5 loo2-$p-large/train.h5 --val loo2-$p/val.h5
+        --test loo2-$p/test.h5)
+    for k in 0 1 2; do
+        cluster/maxwell/submit.sh train stage10/loo2-large/radial-cnn/seed-$k/loo-$p \
+            configs/learned/spectrum-cnn-wide.yaml "${loo2[@]}" --seed $k
+        cluster/maxwell/submit.sh train stage10/loo2-large/polar-cnn/seed-$k/loo-$p \
+            configs/learned/polar-cnn.yaml "${loo2[@]}" --seed $k
+        cluster/maxwell/submit.sh --sbatch --mem=32G train \
+            stage10/loo2-large/image-cnn/seed-$k/loo-$p configs/learned/image-cnn.yaml \
+            "${loo2[@]}" --seed $k
+    done
+    cluster/maxwell/submit.sh npe stage10/loo2-large/npe/matched-$p configs/learned/npe-nsf.yaml \
+        "${loo2[@]}"
+    cluster/maxwell/submit.sh --array 1-2 npe stage10/loo2-large/npe/matched-$p \
+        configs/learned/npe-nsf.yaml "${loo2[@]}"
+done
+```
+
+Jeder Job sagt Val und den Test-Split der Probe vorher (`<lauf>/test`). Speicher: Die Eingaben
+liegen im Arbeitsspeicher und beim Zusammenfügen der beiden Trainingsdateien kurz doppelt. Beim
+Bild-CNN sind das 128 KB pro Sample (float16, 256²), für 56 000 Samples 7,3 GB und beim
+Zusammenfügen 15 GB, daher `--mem=32G`; das polare Spektrum braucht 32 KB pro Sample (3,7 GB
+beim Zusammenfügen), radiales Spektrum und NPE 4 KB. Zeit: Auf der CPU der VM brauchte ein
+Training mit einem Thread (vier Jobs auf den vier Kernen) pro Trainings-Sample 0,23 s (radial),
+0,47 s (polar), 0,58 s (Bild, 40 Epochen) und 0,29 s (NPE), für 56 000 Samples also 3,6, 7,3,
+9,0 und 4,5 h. Das Zeitlimit des Jobs (12 h) reicht damit auch ohne GPU. **PRÜFEN:** die Zeit pro
+Epoche auf der A100 (im Log die Zeilen `epoch …: … (… s)`).
+
+#### 8.5.3 cpu-4x mit 60 000 Samples
+
+Drei der Familien gibt es auf 60 000 Samples schon aus früheren Abschnitten; Etappe 10 nimmt
+davon die Seeds 0 bis 2:
+
+| Familie | Läufe | aus |
+|---|---|---|
+| radiales Spektrum, CNN | `learned/spectrum-cnn-wide-60k-seed0`, `-seed1`, `-seed2` | Abschnitt 7, Lauf 2 |
+| radiales Spektrum, NPE | `npe-large/npe-nsf`, `npe-large/npe-nsf-seed1`, `-seed2` | 8.1, Lauf 2 |
+| Bild 2× gebinnt, CNN | `learned/image-cnn-60k` (Seed 0), `learned/image-cnn-60k-seed1`, `-seed2` | Abschnitt 7, Lauf 3, und hier |
+| polares Spektrum, CNN | `stage10/cpu-4x-large/polar-cnn-seed0`, `-seed1`, `-seed2` | hier |
+| polares Spektrum bis f² = 0,25 | `stage10/cpu-4x-large/polar-cnn-hf-seed0`, `-seed1`, `-seed2` | hier |
+| Bild ohne Binning, CNN | `stage10/cpu-4x-large/image-cnn-b1-seed0`, `-seed1`, `-seed2` | hier |
+
+```bash
+large=(--train cpu-4x/train.h5 cpu-4x-extra/train.h5 cpu-4x-large/train.h5 --val cpu-4x/val.h5
+    --test cpu-4x/test.h5)
+cluster/maxwell/submit.sh --array 1-2 --sbatch --mem=32G train learned/image-cnn-60k \
+    configs/learned/image-cnn.yaml "${large[@]}"
+for c in polar-cnn polar-cnn-hf; do
+    cluster/maxwell/submit.sh --array 0-2 --sbatch --mem=16G train stage10/cpu-4x-large/$c \
+        configs/learned/$c.yaml "${large[@]}"
+done
+cluster/maxwell/submit.sh --array 0-2 --sbatch --mem=96G train stage10/cpu-4x-large/image-cnn-b1 \
+    configs/learned/image-cnn-b1.yaml "${large[@]}"
+```
+
+`polar-cnn-hf.yaml` ist `polar-cnn.yaml` mit 2048 statt 1024 Bins bis f² = 0,25 statt 0,125,
+`image-cnn-b1.yaml` ist `image-cnn.yaml` ohne Binning; Modell und Training bleiben dieselben (das
+prüft `test_repository_configs_and_validation` in `tests/test_learned.py`). Beim Zusammenfügen
+der drei Trainingsdateien brauchen die Eingaben 3,9 GB (polar), 7,9 GB (polar bis 0,25), 16 GB
+(Bild 2× gebinnt) und 63 GB (Bild ohne Binning, 512 KB pro Sample).
+
+- **PRÜFEN:** ob die GPU-Partition einem Job 96 GB gibt (`MaxMemPerNode`, Abschnitt 2). Wenn
+  nicht, beim Bild-CNN ohne Binning `--limit 30000` anhängen (die ersten 30 000 Samples der drei
+  Dateien, 31 GB beim Zusammenfügen) und zum Vergleich das gebinnte ebenso mit `--limit 30000`
+  in einen eigenen Namen trainieren.
+- **PRÜFEN:** die Zeit pro Epoche des Bild-CNN ohne Binning. Es hat viermal so viele Pixel wie
+  das gebinnte; auf der CPU der VM wären 60 000 Samples damit grob geschätzt 40 h mit einem
+  Thread, gemessen ist das nicht. Passt es auf der A100 nicht in die 12 h des Jobs, `--time`
+  erhöhen, so weit die Partition es erlaubt (Abschnitt 2), denn ein abgebrochenes Training
+  beginnt von vorn (Abschnitt 7).
+
+Dann die Ensembles auf dem Test-Split, für 8.5.4 und 8.5.5: die CNN-Seeds mit
+`run_stage10_study.py mixture` (Sekunden, auf dem Login-Knoten), die NPE-Seeds mit
+`holofocus-learn npe-predict` (auf der VM 20 s):
+
+```bash
+C=$R/stage10/cpu-4x-large
+mix() {  # mix FAMILIE LAUF...: die Seeds als Mischung nach $C/FAMILIE-ensemble/test
+    local family=$1 csv=() run
+    shift
+    for run in "$@"; do csv+=("$run/test/predictions.csv"); done
+    cluster/maxwell/submit.sh --local run python scripts/run_stage10_study.py mixture \
+        --out "$C/$family-ensemble/test" --predictions "${csv[@]}"
+}
+mix radial-cnn $R/learned/spectrum-cnn-wide-60k-seed{0,1,2}
+mix image-cnn $R/learned/image-cnn-60k $R/learned/image-cnn-60k-seed{1,2}
+for c in polar-cnn polar-cnn-hf image-cnn-b1; do mix $c $C/$c-seed{0,1,2}; done
+cluster/maxwell/submit.sh --local run holofocus-learn npe-predict $R/npe-large/npe-nsf \
+    $R/npe-large/npe-nsf-seed{1,2} --data $HOLOFOCUS_SCRATCH/data/cpu-4x/test.h5 \
+    --out $C/npe-ensemble/test --device cpu
+```
+
+#### 8.5.4 Brent auf allen 250 Test-Samples
+
+Auf der VM suchte Brent auf den 48 Samples der Etappe 3. Hier sucht er auf allen 250, kalt und
+im 95-%-Intervall jedes Ensembles: zuerst der Ensembles der VM
+(`results/stage10/cpu-4x/<familie>-ensemble/test/predictions.csv`, committet), dann der aus
+8.5.3. Nelder–Mead kalt auf allen 250 ist `baseline/cpu-4x-test-p2` aus 6.1.
+`paper2-cpu-brent.yaml` ist die Baseline aus 6.1 mit Brents Verfahren statt Nelder–Mead
+(Laborbuch 09); im Intervall sucht Brent zwischen dessen Enden, auf $\Omega_z$ beschnitten.
+
+```bash
+B=configs/baseline/paper2-cpu-brent.yaml
+brent() {  # brent NAME [OPTIONEN]: Brent auf allen 250 Test-Samples in 10 Stücken, dann merge
+    local name=$1 id
+    shift
+    id=$(cluster/maxwell/submit.sh --array 0-9 baseline baseline/$name $B cpu-4x/test.h5 \
+        --chunks 10 "$@")
+    cluster/maxwell/submit.sh --cpu --after "$id" merge baseline/$name
+}
+brent cpu-4x-test-brent-p2                                   # kalt, in ganz Omega_z
+for f in radial-cnn npe polar-cnn image-cnn; do              # Intervalle der VM
+    brent cpu-4x-test-brent-box95-$f-p2 \
+        --box results/stage10/cpu-4x/$f-ensemble/test/predictions.csv --box-level 95
+done
+for f in radial-cnn npe polar-cnn polar-cnn-hf image-cnn image-cnn-b1; do   # aus 8.5.3
+    brent cpu-4x-test-brent-box95-$f-60k-p2 \
+        --box $C/$f-ensemble/test/predictions.csv --box-level 95
+done
+```
+
+Wie `$W` in 6.1 gehören die Intervalle der VM zu deren Test-Split; hatten die Labels in
+Abschnitt 5 PASS, passen sie auch zu dem auf Maxwell. Fehlt in einer CSV ein Sample, lehnt
+`baseline` den Lauf ab. Zeit: Auf den 48 Samples brauchte Brent kalt 8,2 Rekonstruktionen pro
+Sample und im 95-%-Intervall 5,6–5,8 (Laborbuch 09), die Baseline von [2] 12,1 (Etappe 3). Ein
+Array mit Brent kalt dauert also etwa zwei Drittel und eines im Intervall etwa die Hälfte dessen,
+was der gpu-check für `padding_2` schätzt (Abschnitt 4). Das sind 11 Arrays zu je 10 Tasks.
+
+Prüfen gegen die VM auf den 48 gemeinsamen Samples, mit `check` aus 6.4:
+
+```bash
+check cpu-4x-test-brent-p2 cpu-4x-test-brent      # Brent kalt (Etappe 9)
+for f in radial-cnn npe polar-cnn image-cnn; do
+    cluster/maxwell/submit.sh --local run python scripts/check_cluster_run.py baseline \
+        "$R/baseline/cpu-4x-test-brent-box95-$f-p2" \
+        --reference results/stage10/baseline/cpu-4x-test-brent-box95-$f
+done
+```
+
+Erwartet ist PASS oder WARN wie in 6.4: Auch Brent nimmt einen anderen Weg, wenn zwei MFE-Werte
+durch Rundung die Reihenfolge tauschen, und auf der GPU liegen die MFE-Werte einige ppm neben
+denen der CPU (8.4).
+
+#### 8.5.5 Auswertung auf der VM
+
+Nach dem Zurückgeben (Abschnitt 9) auf der VM. `evaluate` rechnet die Kennzahlen von `compare`
+der Etappe 10 – Anteil innerhalb 100 µm mit Wilson-Intervall, MAE mit Bootstrap-Intervall,
+Abdeckung des 95-%-Intervalls, gepaarte Vergleiche mit exaktem McNemar-Test – für Läufe, die man
+ihm als `NAME=PFAD` nennt. Mehrere CSVs, durch Kommas getrennt, sind die Seeds eines
+CNN-Ensembles und werden zu gleichen Gewichten gemischt. Ein Aufruf mit `--predictions` gehört
+zu genau einem Test-Split; enthalten zwei Dateien verschiedene Samples, bricht `evaluate` ab.
+
+```bash
+M=results/maxwell
+E=$M/stage10
+G=$E/loo2-large
+S="python scripts/run_stage10_study.py"
+seeds() {  # seeds MUSTER: die Pfade für die Seeds 0, 1 und 2 (%s im Muster), durch Kommas
+    printf "$1," 0 1 2 | sed 's/,$//'
+}
+
+# 1. Test-Split von cpu-4x (250 Samples): die Ensembles der VM und die aus 8.5.3
+args=()
+for f in radial-cnn npe polar-cnn image-cnn; do
+    args+=("$f=results/stage10/cpu-4x/$f-ensemble/test/predictions.csv")
+done
+for f in radial-cnn npe polar-cnn polar-cnn-hf image-cnn image-cnn-b1; do
+    args+=("$f-60k=$E/cpu-4x-large/$f-ensemble/test/predictions.csv")
+done
+$S evaluate --predictions "${args[@]}" --out $E/evaluate-cpu-4x.json
+
+# 2. die Leave-one-out-Test-Splits, ein Aufruf pro Probe
+for p in spider_hair tooth cactus_needle magnesium_wire; do
+    holofocus-learn npe-predict $G/npe/matched-$p $G/npe/matched-$p-seed{1,2} \
+        --data data/loo2-$p/test.h5 --out $G/npe/matched-$p-ensemble/test --threads 3
+    args=("npe=results/stage10/loo2/npe/matched-$p-ensemble/test/predictions.csv"
+        "npe-56k=$G/npe/matched-$p-ensemble/test/predictions.csv")
+    for f in radial-cnn polar-cnn image-cnn; do
+        args+=("$f=results/stage10/loo2/$f/ensemble/loo-$p/test/predictions.csv"
+            "$f-56k=$(seeds "$G/$f/seed-%s/loo-$p/test/predictions.csv")")
+    done
+    $S evaluate --predictions "${args[@]}" --out $E/evaluate-loo2-$p.json
+done
+
+# 3. die Suchen auf allen 250 Test-Samples
+B=$M/baseline
+args=(nm-cold=$B/cpu-4x-test-p2 brent-cold=$B/cpu-4x-test-brent-p2)
+for f in radial-cnn npe polar-cnn image-cnn; do
+    args+=("brent-box95-$f=$B/cpu-4x-test-brent-box95-$f-p2")
+done
+for f in radial-cnn npe polar-cnn polar-cnn-hf image-cnn image-cnn-b1; do
+    args+=("brent-box95-$f-60k=$B/cpu-4x-test-brent-box95-$f-60k-p2,$E/cpu-4x-large/$f-ensemble/test/predictions.csv")
+done
+$S evaluate --searches "${args[@]}" --out $E/evaluate-searches.json
+
+# 4. die Messhologramme: Schätzungen der Modelle aus 8.5.2 und Brent in ihren Intervallen
+$S --threads 1 measured --holograms DIR --runs $G --out $E/measured
+for f in radial-cnn npe polar-cnn image-cnn; do
+    python scripts/run_stage3_experiments.py --threads 3 measured --holograms DIR --binning 1 \
+        --padding 4 --method brent --revisit-tolerance 1e-9 --box $E/measured/$f-loo2-ensemble \
+        --out $E/measured/brent-box95-$f-loo2-ensemble-b1-p4
+done
+args=() searches=()
+for f in radial-cnn npe polar-cnn image-cnn; do
+    args+=("$f=results/measured/$f-loo2-ensemble" "$f-56k=$E/measured/$f-loo2-ensemble")
+    searches+=("brent-box95-$f=results/measured/brent-box95-$f-loo2-ensemble-b1-p4"
+        "brent-box95-$f-56k=$E/measured/brent-box95-$f-loo2-ensemble-b1-p4")
+done
+$S evaluate --measured "${args[@]}" --measured-searches "${searches[@]}" \
+    --out $E/evaluate-measured.json
+```
+
+- Teil 2 braucht `data/loo2-<probe>/test.h5` der VM (sonst
+  `holofocus-dataset generate configs/dataset/loo2-<probe>.yaml --out data/loo2-<probe> --splits test`).
+  Waren Val und Test auf Maxwell nur WARN (nicht bytegleich), vorher die Seeds auf den Splits der
+  VM neu vorhersagen: `holofocus-learn predict <lauf> --data data/loo2-<probe>/test.h5 --out
+  <lauf>/test`, beim NPE `npe-predict`.
+- In Teil 3 findet `evaluate` die Intervalle jeder Suche über `box` in ihrer `run.yaml`. Für die
+  Intervalle aus 8.5.3 steht dort ein Pfad auf Scratch, deshalb die CSV nach dem Komma; dass es
+  dieselbe ist, prüft `evaluate` über SHA-256. Pro Suche stehen in `summaries` MAE, Anteil
+  innerhalb 100 µm, Rekonstruktionen und `truth_outside`, die Samples, deren wahres $z_{01}$
+  außerhalb des Intervalls lag (in Etappe 9 beim Intervall des CNN 6 von 48). Die Suche mit dem
+  Namen `brent-cold` ist die Referenz des MFE: `mfe_vs_brent_cold_ppm` zählt, wie oft eine Suche
+  an einem um mehr als 100 ppm höheren MFE endet.
+- Teil 4 rechnet auf der CPU: `measured` schätzt mit jedem Seed und Ensemble auf den vier
+  Hologrammen, 4× gebinnt mit den 16 Phasen des Binning-Gitters wie auf der VM (Minuten); jede
+  Suche mit Binning 1 und Padding 4 dauerte in Etappe 9 etwa 30 min pro Hologramm mit 3 Threads,
+  die 16 zusammen also etwa 8 h. `nm-cold` und `brent-cold` sind dort die Suchen der Etappen 3
+  und 9 in ganz $\Omega_z$ (`results/measured/b1-p4`, `brent-b1-p4`).
+- Die Bilder der Etappe 10 (`scripts/make_stage10_figures.py`) zeigen die Läufe der VM; für die
+  Läufe von Maxwell sind die JSON-Dateien von `evaluate` die Grundlage des Laborbuchs.
+
 ## 9 Ergebnisse sichern und zurückgeben
 
 Jeder Job außer `run` kopiert am Ende sein Laufverzeichnis ohne HDF5-Dateien nach DUST, an
@@ -806,6 +1106,7 @@ git checkout -b maxwell-ergebnisse-$(date +%Y%m%d)
 mkdir -p $M/logs
 cp -r $R/baseline $R/comparison $R/learned $R/learned-large $R/gpu-check $R/mfe-scan $M/  # was es davon gibt
 cp -r $R/npe $R/npe-large $R/npe-loo-large $M/   # die NPE-Läufe aus 8.1 und 8.2, falls trainiert
+cp -r $R/stage10 $M/                # Etappe 10 (8.5): Trainings, Ensembles, falls gelaufen
 rm -rf $M/baseline/*/chunk-*
 cp $HOLOFOCUS_SCRATCH/logs/holofocus-*.out $M/logs/
 cp $HOLOFOCUS_ENV/holofocus-env.txt $M/
@@ -813,6 +1114,9 @@ git add $M                          # HDF5-Dateien und *.pt schließt .gitignore
 git add -f $M/learned/*/model.pt    # die trainierten Modelle gehören dazu
 git add -f $M/learned-large/*/model.pt   # die Modelle aus 7.1 und 7.2, falls trainiert
 git add -f $M/npe*/*/model.pt       # die NPEs aus 8.1 und 8.2, falls trainiert
+git add -f $M/stage10/loo2-large/*/seed-*/loo-*/model.pt   # die CNNs aus 8.5.2, falls trainiert
+git add -f $M/stage10/loo2-large/npe/*/model.pt            # die NPEs aus 8.5.2, falls trainiert
+git add -f $M/stage10/cpu-4x-large/*/model.pt              # die Modelle aus 8.5.3, falls trainiert
 git commit -m "Maxwell: Baseline auf dem ganzen Test-Split, Training auf 60 000 Samples"
 git push -u origin maxwell-ergebnisse-$(date +%Y%m%d)
 ```
@@ -870,6 +1174,14 @@ Auf der VM geprüft (4 CPU-Kerne, ohne SLURM und ohne GPU, mit `--device cpu`):
   (Test, 24 s); `npe` als Array-Task 1 mit Training nach `<name>-seed1` und Seed 1 in der
   Config, Vorhersagen für Val und den Kalibrier-Split, den Prüfungen von sbi und der Kopie nach
   DUST (Test, 13 s).
+- Die Kette aus 8.5 mit `--local` auf dem CI-Datensatz: CNN-Seeds mit `--seed` in die Namen
+  der VM, ihre Mischung mit `run_stage10_study.py mixture` über `run`, Brent in deren
+  95-%-Intervallen als Array mit zwei Stücken, `merge` und `evaluate`, das die Intervalle über
+  die `run.yaml` der zusammengeführten Suche findet (Test, 36 s mit einem Thread).
+  `evaluate` gibt für die Läufe der VM die Zahlen von `compare`, z. B. für die Suchen der
+  Etappe 9 im Intervall des CNN 6 von 48 Samples mit dem wahren $z_{01}$ außerhalb, und
+  `measured --runs/--out` legt die Dateien so an wie auf der VM, nur unter den angegebenen
+  Ordnern.
 - `gpu-check --local` auf der CPU der VM: alle Prüfungen PASS einschließlich `training`, „no
   check failed“, 5,5 min mit 4 Threads; die Baseline von Sample 0 trifft die Schätzung aus
   Etappe 3 auf 0 µm.
@@ -900,6 +1212,8 @@ Nur auf Maxwell zu prüfen (**PRÜFEN**, Abschnitt 2 und gpu-check):
 - Treiber und CUDA-Version der A100-Knoten und damit der PyTorch-Index.
 - Alles, was auf der GPU rechnet: die Ergebnisse des gpu-check auf der A100 (Abschnitt 4), die
   Laufzeiten und damit die Zahl der Stücke und die Zeitlimits, die Zeit pro Sample der Sätze
-  mit Textur (Abschnitt 7.2), der NPE auf der GPU (Abschnitte 8.1 und 8.2).
+  mit Textur (Abschnitte 7.2 und 8.5.1), der NPE auf der GPU (Abschnitte 8.1 und 8.2), die
+  Zeit pro Epoche und der Speicher der Trainings aus 8.5, vor allem des Bild-CNN ohne Binning
+  (8.5.3).
 - Pfade und Kontingente von Scratch und DUST und ob alte Dateien auf Scratch gelöscht werden.
 - Ob von Maxwell aus ein Push zu GitHub geht (Abschnitt 9).

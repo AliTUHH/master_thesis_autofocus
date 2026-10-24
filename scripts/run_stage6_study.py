@@ -67,6 +67,8 @@ from holofocus.learned.objectmodel import (
     BINNING,
     DETECTOR_FITS,
     FIT_SCALES,
+    LEVEL_NAMES,
+    LEVEL_SCALE,
     LOO_FACTOR,
     REGION_FRACTIONS,
     TEXTURE_FITS,
@@ -164,11 +166,13 @@ def loo_header(name: str, large: bool) -> str:
     return "".join(f"# {line}".rstrip() + "\n" for line in lines)
 
 
-def own_values(name: str) -> dict:
+def own_values(name: str, fits: dict[str, Texture] | None = None) -> dict:
     """What the measured hologram of ``name`` itself shows, in the keys of
     :class:`~holofocus.learned.objectmodel.LooRanges`; ``None`` where it shows nothing (the
-    detector of the Mg wire, the slope of an untextured fit)."""
-    model, detector, texture = MEASURED_MODELS[name], DETECTOR_FITS[name], TEXTURE_FITS[name]
+    detector of the Mg wire, the slope of an untextured fit). ``fits``: the texture fits
+    (default :data:`~holofocus.learned.objectmodel.TEXTURE_FITS`)."""
+    texture = (TEXTURE_FITS if fits is None else fits)[name]
+    model, detector = MEASURED_MODELS[name], DETECTOR_FITS[name]
     return {
         "psf_sigma": None if detector is None else detector.psf_sigma,
         "photons": model.photons,
@@ -182,10 +186,10 @@ def own_values(name: str) -> dict:
     }
 
 
-def loo_coverage(name: str) -> dict:
+def loo_coverage(name: str, fits: dict[str, Texture] | None = None) -> dict:
     """The leave-one-out ranges of ``name`` and whether its own values lie inside them."""
-    ranges = dataclasses.asdict(loo_ranges(name))
-    own = own_values(name)
+    ranges = dataclasses.asdict(loo_ranges(name, fits))
+    own = own_values(name, fits)
     inside = {}
     for key, value in own.items():
         texture = key in ("texture_rms", "background_texture_rms")
@@ -317,12 +321,14 @@ def _fit_row(entry: dict) -> dict:
         "spectral_slope": m["slope"],
         "floor": m["floor"],
         "low_excess": m["low_excess"],
+        **{k: m[k] for k in ("level_mid", "level_upper") if k in m},
         "stage": entry["stage"],
         "seconds": entry["seconds"],
     }
 
 
-def fit_sample(name: str, holograms: Path, n: int, out: Path) -> None:
+def fit_sample(name: str, holograms: Path, n: int, out: Path, levels: bool = False) -> None:
+    """``levels``: the objective with the absolute levels of the spectrum (Stage 10)."""
     target = out / f"fit-{name}.json"
     radial, measured = measured_features(holograms, name)
     base = matched_config(name)
@@ -337,9 +343,12 @@ def fit_sample(name: str, holograms: Path, n: int, out: Path) -> None:
         "scales": FIT_SCALES,
         "settings": [],
     }
+    if levels:
+        record["levels"] = {"names": list(LEVEL_NAMES), "scale": LEVEL_SCALE}
     if target.exists():
         old = json.loads(target.read_text())
-        same = all(old.get(k) == record[k] for k in ("sample", "base_config", "split", "n"))
+        keys = ("sample", "base_config", "split", "n", "levels")
+        same = all(old.get(k) == record.get(k) for k in keys)
         if same and np.allclose(old["measured"]["ctf_bands"], measured["ctf_bands"]):
             record["settings"] = old["settings"]
     done = {_key(Texture(**e["texture"])) for e in record["settings"]}
@@ -355,7 +364,7 @@ def fit_sample(name: str, holograms: Path, n: int, out: Path) -> None:
             "texture": dataclasses.asdict(texture),
             "stage": stage,
             "median": median,
-            "objective": fit_objective(median, measured),
+            "objective": fit_objective(median, measured, levels),
             "phase_shift_median": float(np.median([f["phase_shift"] for f in features])),
             "seconds": time.perf_counter() - start,
         }
@@ -396,7 +405,7 @@ def fit_sample(name: str, holograms: Path, n: int, out: Path) -> None:
 
 def cmd_fit(args) -> None:
     for name in args.samples:
-        fit_sample(name, args.holograms, args.n, args.out)
+        fit_sample(name, args.holograms, args.n, args.out, args.levels)
 
 
 PROFILE_F2_MAX = 0.125
@@ -747,6 +756,9 @@ def main() -> None:
     fi.add_argument("--samples", **samples)
     fi.add_argument("--n", type=int, default=16, help="test samples per texture")
     fi.add_argument("--out", type=Path, default=RESULTS / "objectmodel")
+    fi.add_argument(
+        "--levels", action="store_true", help="objective with the levels of the spectrum (Stage 10)"
+    )
     fi.set_defaults(func=cmd_fit)
 
     cf = sub.add_parser("configs", help="the leave-one-out dataset configs")

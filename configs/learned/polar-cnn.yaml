@@ -1,0 +1,34 @@
+# Learned autofocus on the polar power spectrum (Stage 10): the power spectrum in 8 sectors of
+# the direction of the spatial frequency (22.5 degrees apart, modulo 180) times the 1024 bins
+# of f^2 up to 0.125 of spectrum-cnn-wide.yaml, with linear weights in angle and f^2. A fiber
+# puts its CTF pattern into the sectors across its axis; the radial average mixes them with
+# the texture of all directions. Network: a first stage over 3 sectors x 7 bins (cyclic and
+# symmetric in the angle, stride 2 along f^2), mean and maximum over the sectors, then the
+# stages, head, schedule and loss of spectrum-cnn-wide.yaml (465k parameters). Invariant to
+# rotations by 90 degrees and flips, so no augmentation. Lengths in metres.
+name: polar-cnn
+target_scale: 5.0e-3
+representation:
+  kind: polar
+  bins: 1024
+  f2_max: 0.125
+  angles: 8
+model:
+  channels: [32, 64, 128, 128]
+  kernel_size: 7
+  pool_to: 16
+  hidden: 128
+  dropout: 0.1
+  min_sigma: 1.0e-3       # 5 um
+training:
+  epochs: 100
+  batch_size: 32
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  warmup_epochs: 2
+  beta: 0.5               # beta-NLL
+  augment: false          # the polar CNN is invariant to rotations by 90 degrees and flips
+  limit: null
+  patience: null
+  seed: 0
+device: auto

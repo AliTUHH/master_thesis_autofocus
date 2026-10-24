@@ -55,7 +55,7 @@ from ..dataset.storage import _git_commit, read_config, read_labels
 from ..device import get_device
 from .config import EmbeddingConfig, NPEConfig
 from .data import choose_indices, fov_shape, load_inputs, load_many
-from .models import ImageCNN, SpectrumCNN, count_parameters
+from .models import build_cnn, count_parameters
 from .posterior import (
     GridPosterior,
     calibration_summary,
@@ -95,16 +95,16 @@ def prior_box(paths: Sequence[str | Path], target_scale: float) -> tuple[float, 
 
 class Embedding(nn.Module):
     """Convolution stack of the Stage 4 CNN for the representation ``kind`` (global average
-    pooling for images, adaptive pooling for spectra) and an MLP to ``features`` outputs."""
+    pooling for images, adaptive pooling for spectra; the polar CNN of Stage 10 for ``polar``)
+    and an MLP to ``features`` outputs."""
 
     def __init__(self, config: EmbeddingConfig, kind: str) -> None:
         super().__init__()
-        model = config.model_config()
+        cnn = build_cnn(kind, config.model_config())
         self.image = kind == "image"
-        self.features = (ImageCNN(model) if self.image else SpectrumCNN(model)).features
-        n_in = model.channels[-1] * (1 if self.image else model.pool_to)
+        self.features = cnn.features
         self.head = nn.Sequential(
-            nn.Linear(n_in, config.hidden),
+            nn.Linear(cnn.n_features, config.hidden),
             nn.ReLU(inplace=True),
             nn.Dropout(config.dropout),
             nn.Linear(config.hidden, config.features),

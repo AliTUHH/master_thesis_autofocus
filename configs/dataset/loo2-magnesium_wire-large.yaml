@@ -1,0 +1,44 @@
+# Large leave-one-out training data for the measured Mg wire (Stage 10).
+#
+# loo2-magnesium_wire.yaml with 50000 training samples and another seed, for GPU runs
+# (docs/maxwell-gpu.md).
+name: loo2-magnesium_wire-large
+seed: 20261114
+geometry:
+  energy_kev: 11.0
+  z02: 19.661
+  z01_guess: 0.4724
+  z01_guess_range: null
+  detector_pixel_size: 6.5e-06
+  detector_shape: [2048, 2048]
+  binning: 4
+sampling:
+  dz01_range: [-0.005, 0.005]
+simulation:
+  padding_margin: 1.0
+  oversample: 2
+  a0_range: [1.0, 1.0]
+  psf_sigma_range: [1.2, 2.01]
+  device: auto
+  precision: single
+phantoms:
+  types: {fiber: 1.0}
+  delta_beta: 120.0
+  phase_shift_range: [0.5, 2.0]
+  size_range: [0.15, 0.6]
+  margin: 0.05
+  supersample: 4
+  fiber_diameter_range: [0.04, 1.0]
+  phase_per_pixel_range: [0.0107, 0.0957]
+  texture_rms_range: [0.005, 0.2]
+  background_texture_rms_range: [0.005, 0.2]
+  texture_slope_range: [2.25, 3.5]
+  texture_cutoff: 0.01
+noise:
+  model: poisson_gaussian
+  photons_range: [17500.0, 136000.0]
+  read_noise: 2.0
+  flat_field_range: [0.0125, 0.078]
+  flat_field_cutoff: 0.179
+storage: {store_phase: false, store_clean: false, compression: gzip, compression_level: 4}
+splits: {train: 50000}
